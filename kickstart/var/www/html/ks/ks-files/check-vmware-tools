@@ -1,0 +1,38 @@
+#!/bin/bash  
+#  
+# check-vmware-tools  
+#  
+# chkconfig:   - 99 00     
+# desciption: Script to check that vmware tools is compiled for the current kernel
+# processname: check-vmware-tools  
+#  
+
+case $1 in   
+
+   start)  
+	echo -n $"checking vmware tools: "  
+	if [ ! -e /usr/bin/vmware-config-tools.pl ]; then  
+		echo "vmware tools has not been installed! Aborting"  
+		exit 1  
+	else  
+		if [ ! -e /etc/.vmware-installed ]; then
+#		if [ ! -e /lib/modules/`uname -r`/misc/vmxnet.ko ]; then  
+			echo "not available, running vmware-config-tools.pl..."  
+			touch /etc/.vmware-installed
+			/usr/bin/vmware-config-tools.pl --default  
+			reboot  
+		else  
+			echo "OK"  
+		fi  
+	fi  
+   ;;
+
+   stop)
+	echo -n $"nothing to do here!"
+   ;;  
+
+   *)  
+	echo "usage: $0 start"  
+	exit 1  
+   ;;  
+esac 

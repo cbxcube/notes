@@ -1,0 +1,160 @@
+TSM TDP CONFIGURATION
+
+1)AIX.... cd /usr/tivoli/tsm/client/ba/bin/dsm.sys
+  Solaris cd /opt/tivoli/tsm/client/ba/bin/dsm.sys
+  copy the tsm-ora stanza in dsm.sys from source server to target server.
+
+2)Edit the tsm-ora stanza that has been copied from the source server to the target server
+EDIT:
+
+SErvername  tsm-sourceserver-ora  (edit to include source server)
+   COMMmethod         TCPip
+   TCPServeraddress   tsmply2dev2.uhc.com
+   TCPPort            1508
+   TCPCLIENTAddress   targetserverbu.uhc.com  (edit to be destination server)
+   TCPWindowsize      256
+   TCPBuffsize        32
+   HTTPport           1581
+
+
+NODEname              sourceserver
+PASSWORDAccess        PROMPT
+INCLEXCL              /usr/tivoli/tsm/client/ba/bin/inclexcl.tdp
+resourceutilization 10
+
+SCHEDLOGname          /var/tsm/logs/dsmsched.log
+SCHEDLOGRetention     5
+ERRORLOGname          /var/tsm/logs/dsmerror.log
+ERRORLOGRetention     33
+
+
+3)  cd /opt/tivoli/tsm/client/oracle/bin64 (AIX is in /usr instead)
+    On target server cp dsm.opt dsm_sourceserver.opt
+    On target server cp tdpo.opt tdpo_sourceserver.opt
+
+4)  verify tdpo_sourceserver.opt permissions are 755
+
+dbsp8098:/usr/tivoli/tsm/client/oracle/bin64 #ls -l
+total 4000
+-rwxrw-rw-   1 bin      bin              47 Feb 23 2003  agent.lic
+-rw-r--r--   1 root     system           24 Nov 15 17:07 dsm.opt
+-rwxr-xr-x   1 root     system           24 Nov 28 16:26 dsm_dbsp0047.opt            ########
+drwxr-xr-x   2 root     system          256 Nov 15 17:07 en_US
+-rwxr-xr-x   1 bin      bin          730483 Feb 23 2003  libobk64.a
+-rw-r--r--   1 root     system          415 Nov 15 17:07 tdpo.opt
+-rwxr-xr-x   1 bin      bin             691 Feb 23 2003  tdpo.opt.smp64
+-rwxr-xr-x   1 root     system          415 Nov 28 16:25 tdpo_dbsp0047.opt          ########
+-rwxr-xr-x   1 bin      bin          621511 Feb 23 2003  tdpoconf
+-rwxr-xr-x   1 bin      bin          667033 Feb 23 2003  tdposync
+
+
+5)  edit contents:
+
+
+dsm_sourceserver.opt
+SErvername      tsm-sourceserver-ora    (edit)
+
+tdpo_sourceserver.opt
+DSMI_ORC_CONFIG  /usr/tivoli/tsm/client/oracle/bin64/dsm_sourceserver.opt    (edit)
+DSMI_LOG         /u01/app/oracle/admin/tdp/log
+
+
+TDPO_FS            ora_db
+TDPO_NODE          sourceserver    (This needs to match the node name from the tsm-ora stanza, ETC servers will have -ora on the end)
+TDPO_OWNER         oracle
+TDPO_PSWDPATH      /usr/tivoli/tsm/client/oracle/bin64
+
+
+*TDPO_DATE_FMT      1
+*TDPO_NUM_FMT       1
+*TDPO_TIME_FMT      1
+
+
+*TDPO_MGMT_CLASS_2   mgmtclass2
+*TDPO_MGMT_CLASS_3   mgmtclass3
+*TDPO_MGMT_CLASS_4   mgmtclass4
+
+
+6) Run on target server to verify config from /.../client/oracle/bin64 directory:
+     #./tdpoconf showenv -tdpo_opt=tdpo_sourceserver.opt
+
+
+IBM Tivoli Storage Manager for Databases:
+Data Protection for Oracle
+Version 5, Release 2, Level 0.0
+(C) Copyright IBM Corporation 1997, 2003. All rights reserved.
+
+
+DATA PROTECTION FOR ORACLE INFORMATION
+ Version:              5
+ Release:              2
+ Level:                0
+ Sublevel:             0
+ Platform:             64bit TDP Oracle AIX
+
+TSM SERVER INFORMATION
+ Server Name:          TSM-DBSP0047-ORA
+ Server Address:       TSMPLY2DEV2.UHC.COM
+ Communication Method: TCP/IP
+
+SESSION INFORMATION
+ Owner Name:           oracle
+ Node Name:            dbsp0047
+ DSMI_DIR:             /usr/tivoli/tsm/client/api/bin64
+ DSMI_ORC_CONFIG:      /usr/tivoli/tsm/client/oracle/bin64/dsm_dbsp0047.opt
+ TDPO_OPTFILE:         tdpo_dbsp0047.opt
+ Password Directory:   /usr/tivoli/tsm/client/oracle/bin64
+ Compression:          FALSE
+
+ANS0282E (RC168)  Password file is not available.
+
+
+7) Run on target server from /.../client/oracle/bin64 directory to set passwd:  
+	Passwords: plysourceserver (Plymouth) etcsourceserver-ora (ETC)
+	#./tdpoconf password -tdpo_opt=tdpo_sourceserver.opt
+
+Password file is created, make sure permissions are 644; Password file will be named TDPO.sourceserver for PLY and TDPO.sourceserver-ora for etc.
+If this hangs, check routing from the bu interface to the sources tsm server.  You may need to add a route from the bu gateway to the sources tsm server.
+
+
+Troubleshooting:
+Password incorrect:
+remove TDPO.sourceserver password file from /../client/oracle/bin64 directory and repeat password set process to reset password.
+
+
+Failure Example: AIX... Needs link created in oracle
+	dbss8029:/opt/tivoli/tsm/client/oracle/bin64 #./tdpoconf showenv -tdpo_opt=tdpo_dbsd0001.opt
+
+
+	*dbsp8098* <oracle:>:/usr/tivoli/tsm/client/oracle/bin64=> sbttest test
+	The sbt function pointers are loaded from oracle.static library.
+	libobk.a(shr.o) could not be loaded.  Check that it is installed
+
+
+Success Example: Solaris
+	*dbss8001* <oracle:>:/opt/tivoli/tsm/client/oracle/bin64=> sbttest test
+	The sbt function pointers are loaded from libobk.so library.
+	-- sbtinit succeeded
+	Return code -1 from sbtinit, bsercoer = 0, bsercerrno = 0
+	Message 0 not found;  product=RDBMS; facility=SBT
+
+
+Failure Example:
+	./tdpoconf showenv -tdpo_opt=tdpo_dbsd0001.opt
+
+	IBM Tivoli Storage Manager for Databases:
+	Data Protection for Oracle
+	Version 5, Release 2, Level 0.0
+	(C) Copyright IBM Corporation 1997, 2003. All rights reserved.
+
+
+	ANS0220E (RC400)  An invalid option was found during option parsing.
+
+	Check:
+
+	/opt/tivoli/tsm/client/ba/bin/dsm.sys
+
+	*INCLEXCL              /opt/tivoli/tsm/client/ba/bin/inclexcl.cluster
+	INCLEXCL              /opt/tivoli/tsm/client/ba/bin/inclexcl
+
+	comment out or remove any . extention on the inclexcl

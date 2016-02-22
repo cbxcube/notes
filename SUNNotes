@@ -1,0 +1,403 @@
+# from XSCF set auto-boot fals
+setdomainmode -y -d 0 -m autoboot=off
+
+
+# How to determine switch port:
+   snoop -d qfe0 -x0 01:00:0c:cc:cc:cc
+
+# to remove the entire Gnome package set in one command:
+   /bin/yes | pkgrm -A -Y GNOME2
+   /bin/yes | pkgrm -A -Y MOZ17
+
+
+# to get a good reading on SAN devices using iostat:
+iostat -xnzTd 5
+
+Thu Apr 26 14:15:57 2012
+                    extended device statistics
+    r/s    w/s   kr/s   kw/s wait actv wsvc_t asvc_t  %w  %b device
+    0.0    1.2    0.0   36.0  0.0  0.0    0.0    6.6   0   1 c0t1d0
+    0.0    1.2    0.0   36.0  0.0  0.0    0.0    5.9   0   1 c0t0d0
+    0.0    0.2    0.0    0.2  0.0  0.0    0.0    0.9   0   0 c3t50000972083BCD20d2
+    0.0    0.2    0.0    0.2  0.0  0.0    0.0    0.8   0   0 c4t50000972083BCD28d1
+    3.6    4.6   25.8   46.2  0.0  0.0    0.0    1.6   0   1 c2t50000972083BCD14d5
+    2.8    7.2   20.8   71.8  0.0  0.0    0.0    1.0   0   1 c4t50000972083BCD28d5
+
+
+
+#64 or 32 bit
+isainfo -kv
+
+
+# Memory performance
+ps -eo pid,vsz,args | sort -nr -k 2 | grep -v PID 	#2nd column is memory size in Kb
+echo "::memstat" | sudo mdb -k 				#shows memory usage and cache
+http://www.optix.org/~dxy/solaris/command/
+http://blogs.warwick.ac.uk/chrismay/entry/solaris_10_memory/
+
+
+# Test net interfaces from OBP
+watch-net-all
+or
+watch-net
+
+
+# Package conversion:
+pkgtrans ./sunfreeware-gunzipped-pkg .
+        - will create the Solaris standard package for installation and integration into jumpstart
+
+
+# Solaris 11 Pkg repo
+  # mkdir /dpool/store/data/repo_support
+  # mount -F hsfs `lofiadm -a /dpool/store/iso/sol-11-exp-201011-repo-full.iso` /mnt
+  # rsync -aP /mnt/repo /dpool/store/data/repo_support
+  # umount /mnt
+  # lofiadm -d /dev/lofi/1
+  # svccfg -s pkg/server setprop pkg/inst_root=/dpool/store/data/repo_support/repo
+  # svcadm refresh pkg/server
+  # svcadm enable pkg/server
+
+  # pkg set-publisher -G http://pkg.oracle.com/solaris/release -g http://10.33.72.1/ solaris - removes oracles repo and adds local repo
+  pkg publisher
+  PUBLISHER                             TYPE     STATUS   URI
+  solaris                  (preferred)  origin   online   http://10.33.72.1/
+
+  # pkg rebuild-index - create the index
+
+  # pkg list -a | grep constructor
+  install/distribution-constructor              0.5.11-0.151.0.1 installed  -----
+  pkg search constructor
+  pkg: Some repositories failed to respond appropriately:
+  solaris:
+  http protocol error: code: 503 reason: Service Unavailable
+  URL: 'http://unic.thilelli.net/solaris/search/1/False_2_None_None_%3A%3A%3Aconstructor
+
+  # svccfg -s pkg/server setprop pkg/readonly=true
+  # svcadm refresh pkg/server
+  # svcadm restart pkg/server
+  # pkgrepo -s /dpool/store/store/data/repo_support/repo refresh
+  Repository refresh initiated.
+
+
+# dladm - useful for showing dynamic link connection information
+  dladm show-link - displays connected interfaces at what speed
+  dladm show-aggr - displays and aggregated interfaces
+    dladm create-aggr -l passive -d 
+
+
+# cfgadm - useful if using Solaris qlogic driver (SUNWqlc) as opposed to the Qlogic brand driver (QLA2300)
+  cfgadm -avl - displays devices available on the host
+  cfgadm -avl -o show_FCP_dev - shows extended device information for fiber connected devices
+  cfgadm -avl -o show_SCSI_LUN - shows extended device information for scsi luns
+
+
+# lofiadm - mount ISO as a drive
+    lofiadm -a /path/to/iso/image - you'll receive output akin to "/dev/lofi/1"
+    mount -o ro -F hsfs /dev/lofi/1 /mnt
+  Or to do this all in one line:
+    mount -o ro -F hsfs `lofiadm -a /path/to/iso/image.iso` /mnt
+
+  To clean up after:
+    umount /mnt
+    lofiadm -d /dev/lofi/1 - to remove the lofi device.
+
+
+# Processor information
+  psrinfo - displays processor status
+  psradm -n CPU# - tries to online CPU#
+  mpstat 10 - shows processor statistics, polling every 10 seconds.
+
+
+# enable mpxio:
+  vi /kernel/drv/fp.conf
+  comment out: mpxio-disable=yes - will disable mpxio (search for more than one entry)
+  comment in: mpxio-disable=no - will enable mpxio
+
+
+# mpxio troubleshooting
+  mpathadm show lu /dev/rdsk/c6########s2 - more reliable than luxadm
+  or
+  luxadm display /dev/rdsk/c6########s2
+
+
+# Change mount points for a zone from global zone
+  from local zone - 
+	apsz8123 #df -k /saswork/group1
+	Filesystem            kbytes    used   avail capacity  Mounted on
+	/saswork/group1          51609487   51217 51042176     1%    /saswork/group1
+  from global zone -
+	vsmd8009 #umount /zones/apsz8123/root/saswork/group1
+	vsmd8009 #vi /etc/zones/apsz8123.xml
+		- change name of mountpoint
+	vsmd8009 #mount /dev/vx/dsk/apsz8123/apsz8123-sswork-group1 /zones/apsz8123/root/saswork/bi
+  from local zone - 
+	apsz8123 #df -k /saswork/bi
+	Filesystem            kbytes    used   avail capacity  Mounted on
+	/saswork/bi          51609487   51217 51042176     1%    /saswork/bi
+
+
+# Re-enable paths
+  dlnkmgr view -lu
+  find ssd for offline path
+	
+
+# Filesystem minfree space:
+  fstyp -v /dev/vx/dsk/diskdg/volume | grep min - displays the minfree space for /volume
+  fstune -m 1 /filesystem - sets the minfree space for /filesystem to 1%
+
+
+# Emulex HBA's:
+  pkginfo -l lpfc
+  /usr/sbin/lpfc/lputil
+    /kernel/drv/sd.conf - contains the LUN configurations
+    requires reconfigure reboot
+	touch /reconfigure
+	init 6
+  vi /kernel/drv/sd.conf
+    add:
+      name="sd" class="scsi"
+	target=15 lun=0;
+		- one required for each imported lun
+		name="sd" parent="lpfc" target=0 lun=0 hba="lpfc0";
+			- lun=0 - should be lun=number_obtained_from_SAN
+			- hba="lpfc0" - not necessary, but make sure there is one for both HBA's if in use.
+    touch /reconfigure; init 6
+
+
+# Network speed:
+  /etc/init.d/nddset -> /etc/rc2.d/S70nddset - sets speed and duplex on startup
+  kstat bge - shows speed and duplex
+  http://www.deathwish.net/solaris/duplex_speed.html has more info.
+
+
+# domains:
+  from console:
+	select 0 for platform shell
+	showplatform - displays what letter corresponds with which domain
+	"#." should exit to domain menu.
+	disconnect - breaks connection to the console
+
+
+# Replacement of root disk in SVM:
+  http://docs.sun.com/app/docs/doc/806-6111/6jf2ve3n8?a=view
+
+
+# To install several package files in solaris:
+  from /:
+    for i in /path/to/pkgfiles/*pkg
+    do
+    pkgadd -d $i
+    done
+  Otherwise if the pkgages are all in one file:
+    pkgadd -d /path/to/pkg_file
+
+# To find what package a file is associated with:
+  pkgchk -l -p /path/to/file
+    example: pkgchk -l -p /usr/openwin/bin/xterm
+
+# Scrub solaris disks:
+  dd if=/dev/zero bs=1048576 of=/dev/rdsk/c3t0d1s2 &
+  c3t0d1s2 is local disk not SAN
+
+
+# Solaris system config:
+  prtdiag -v
+  prtconf -V
+  ipcs -A
+
+
+# Solaris system monitoring:
+  prstat - shows all processes
+  prstat -t - shows amnt of CPU used per user
+
+
+# Static Routes:
+  netstat -rn
+  To route traffic to backup interface for NFS mounts (Solaris): route add host NFS_filer_IP BU_Interface_gateway
+  Add route add to /etc/rcS.d/S99routes, create S99routes if it doesn't exist in any rc startup directory
+
+
+# NFS mounts:
+  SUN: /etc/vfstab
+
+
+# Find WWN's of HBAs in Solaris (21 indicates HBA WWN, 20 indicates switch port):
+  dbsd0003:/etc #prtpicl -v -c scsi-fcp|grep wwn
+	:node-wwn      20  00  00  e0  8b  18  55  d0 
+	:port-wwn      21  00  00  e0  8b  18  55  d0 
+	:node-wwn      20  00  00  e0  8b  08  c4  fc 
+	:port-wwn      21  00  00  e0  8b  08  c4  fc 
+  dbsd0003:/luxadm -e dump_map /path/to/fiber/device/from/luxadm -e port:
+  dbsd0003:/ #luxadm -e port
+
+	Found path to 2 HBA ports
+
+	/devices/ssm@0,0/pci@1b,700000/SUNW,qlc@2/fp@0,0:devctl            CONNECTED
+	/devices/ssm@0,0/pci@1b,600000/SUNW,qlc@1/fp@0,0:devctl            CONNECTED
+	dbsd0003:/ #luxadm -e dump_map /devices/ssm@0,0/pci@1b,700000/SUNW,qlc@2/fp@0,0:devctl
+	Pos  Port_ID Hard_Addr Port WWN         Node WWN         Type
+	0    62cc13  0         50060e8004572429 50060e8004572429 0x0  (Disk device)
+	1    62dc13  0         50060e800457240b 50060e800457240b 0x0  (Disk device)
+	2    660e13  0         210000e08b1855d0 200000e08b1855d0 0x1f (Unknown Type,Host Bus Adapter)
+  For Emulex HBAs:
+	/usr/sbin/lpfc/lputil - follow menu options
+	or
+	Check console log for WWNN:
+	sysasdmin-uau321> less
+	NOTICE: lpfc1: WWPN:10:00:00:00:c9:2f:37:01 WWNN:20:00:00:00:c9:2f:37:01 DID 0x24000a
+	NOTICE: lpfc0: Firmware Rev 3.82A1 (C2D3.82A1)
+	NOTICE: lpfc0: Fcode Rev 1.31a5
+	NOTICE: lpfc0: WWPN:10:00:00:00:c9:2f:1b:33 WWNN:20:00:00:00:c9:2f:1b:33 DID 0x230009
+  # SOLARIS 10
+	vsmd0030:/root #fcinfo hba-port
+	HBA Port WWN: 210000e08b0f10d3
+       		OS Device Name: /dev/cfg/c2
+       		Manufacturer: QLogic Corp.		
+	        Model: QLA2340
+	        Firmware Version: 3.3.26
+	        FCode/BIOS Version:  fcode: 0.0;
+	        Type: unknown
+	        State: offline
+	        Supported Speeds: 1Gb 2Gb 
+	        Current Speed: not established 
+	        Node WWN: 200000e08b0f10d3
+	HBA Port WWN: 210000e08b0f0cce
+	        OS Device Name: /dev/cfg/c3
+	        Manufacturer: QLogic Corp.
+	        Model: QLA2340
+	        Firmware Version: 3.3.26
+	        FCode/BIOS Version:  fcode: 0.0;
+	        Type: N-port
+	        State: online
+	        Supported Speeds: 1Gb 2Gb 
+	        Current Speed: 2Gb 
+	        Node WWN: 200000e08b0f0cce
+
+  
+# Metadisk:
+  (http://www.genunix.org/wiki/index.php/SVM_HOWTO_(Solaris_Volume_Manager))
+  If device shows up needing maintenance,
+  check: iostat -En for the c0t0d0 of the device in question, if no errors, 
+  run: metareplace -e d35 c1t0d0s5 for the main mirror of that device
+  If replacing hard drive:
+	Create copy of mirror drives vtoc:
+		prtvtoc /dev/rdsk/c0t1d0s2 > /etc/c0t0d0s2.vtoc
+  		c0t1d0s2 = Slice 2, which is whole drive, of good drive
+ 		c0t0d0s2 = Slice 2, which is whole drive, of bad drive
+	Delete the metadb's off the bad disk:
+		metadb -i - verify which metadb's exist on the bad drive
+		metadb -d /dev/dsk/c0t0d0s7 - remove the metadb's off the bad drive
+	Replace bad Drive with good drive after hardware has been replaced:
+	  	Check to see if drive is recognized:
+  		echo|format|more - should show new disk is available
+	format the new drive:
+		format c0t0d0 -> label -> reply y - to label the new disk
+		fmthard -s /etc/c0t0d0s2.vtoc /dev/rdsk/c0t0d0s2
+		c0t0d0s2 = replaced drive
+	Metareplace metadevices reporting problems
+		metareplace -e d0 c0t0d0s0
+		metareplace -e d2 c0t0d0s3
+	Replace bad SUN drive:
+		Format the new drive.
+		# prtvtoc /dev/rdsk/c0t1d0s2 | fmthard -s - /dev/rdsk/c0t0d0s2
+		Make a new MDDB copy on the new drive
+		# metadb -a -c2 /dev/dsk/c0t0d0s7
+		Transistion state and resync failed components
+		#metareplace -e d30 c0t0d0s0
+		#metareplace -e d31 c0t0d0s1
+		#metareplace -e d33 c0t0d0s3
+		#metareplace -e d34 c0t0d0s4
+
+  Create parition for new filesystem to reside on:
+	df -k - shows partitions currently in use, ie d30, d35, and d98 are in use
+		apss0020:${PWD} #df -k
+		Filesystem            kbytes    used   avail capacity  Mounted on
+		/dev/md/dsk/d30      4133838 1476799 2615701    37%    /
+		/proc                      0       0       0     0%    /proc
+		mnttab                     0       0       0     0%    /etc/mnttab
+		fd                         0       0       0     0%    /dev/fd
+		/dev/md/dsk/d35      4133838  371479 3721021    10%    /var
+		swap                 15166424      16 15166408     1%    /var/run
+		swap                 1048576    1280 1047296     1%    /tmp
+		/dev/md/dsk/d98      2034207    2115 2032092     1%    /home
+		unpiox01bu:/vol/facets_prod
+                       	   849346560 3879640 845466920     1%    /approot
+
+	metastat - shows hard and soft partitions and how they are mirrored, check to see which partitions are free
+		- d31 is usually swap, d30 is usually root; in this case d98 is a 2GB soft partition made off of d36 which has a total of 52 GB.  Which means 50GB of the 52 are free.  The other 2 are used by d98.  So we will use space from d36.
+
+		d98: Soft Partition
+		   Device: d36
+	           State: Okay
+	           Size: 4194304 blocks (2.0 GB)
+	              Extent              Start Block              Block count
+               		   0                       32                  4194304
+  
+		d36: Mirror
+		    Submirror 0: d16
+		      State: Okay         
+		    Submirror 1: d26
+		      State: Okay         
+		    Pass: 1
+		    Read option: roundrobin (default)
+		    Write option: parallel (default)
+		    Size: 109727808 blocks (52 GB)
+
+		d16: Submirror of d36
+		    State: Okay         
+		    Size: 109727808 blocks (52 GB)
+		    Stripe 0:
+			Device     Start Block  Dbase        State Reloc Hot Spare
+			c1t0d0s6          0     No            Okay   Yes 
+
+		d26: Submirror of d36
+		    State: Okay         
+		    Size: 109727808 blocks (52 GB)
+		    Stripe 0:
+			Device     Start Block  Dbase        State Reloc Hot Spare
+			c1t1d0s6          0     No            Okay   Yes 
+
+	metainit d99 -p d36 5g - creates 5GB soft partition d99 from partition d36
+	metainit d99 -p d36 1228800b - creates d99 as a soft partition of d36 at 1228800 blocks in size
+
+  Create Filesystem:
+	newfs /dev/md/rdsk/d99 - creates filesystem on d99 partition
+		vi /etc/vfstab - add new filesystem to mount automatically at reboot, yy & p last line is easiest method
+		apss0020:${PWD} #vi /etc/vfstab
+		"/etc/vfstab" 11 lines, 475 characters 
+		#device         device          mount           FS      fsck    mount   mount
+		#to mount       to fsck         point           type    pass    at boot options
+		#
+		fd      -       /dev/fd fd      -       no      -
+		/proc   -       /proc   proc    -       no      -
+		/dev/md/dsk/d31 -       -       swap    -       no      -
+		/dev/md/dsk/d30 /dev/md/rdsk/d30        /       ufs     1       no      logging
+		/dev/md/dsk/d35 /dev/md/rdsk/d35        /var    ufs     1       no      logging
+		swap    -       /tmp    tmpfs   -       yes     size=1024m
+		/dev/md/dsk/d98 /dev/md/rdsk/d98        /home    ufs     2       yes      logging
+		/dev/md/dsk/d99 /dev/md/rdsk/d99        /u01    ufs     2       yes      logging
+
+	cd /
+	mkdir /u01 - create u01 directory 
+	mount /u01 - mount u01 directory using info from vfstab
+	chown oracle:dba /u01 - chang ownership to desired owner
+  Grow Filesystem:
+	metattach d42 150M - will grow softpartition d42 by 150M
+	growfs -M /u01 /dev/md/rdsk/d42 - will grow the filesystem
+  Delete Partition:
+	umount /filesystem		
+	metaclear d# - where d#=metadevice
+  update MBR:
+	installboot /usr/platform/`uname -i`/lib/fs/ufs/bootblk /dev/rdsk/c1t2d0s0
+
+
+# User locked out, /etc/passwd & /etc/shadow show no locks:
+  check /var/adm/authlog for PAM errors related to userid
+  To remove locks: login_limit -c userid
+
+
+# LDAP security:
+  If server is running LDAP:
+    lsuser userid - shows users account settings
+    ldaplist -l passwd jjoh105 - shows users account settings
+    ldaplist -l netgroup usc - shows settings of usc netgroup

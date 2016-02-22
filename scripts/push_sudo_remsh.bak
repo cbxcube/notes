@@ -1,0 +1,177 @@
+#!/bin/ksh
+#-----------------------------------------------------------------------------#+
+#  Script: push_sudo                     		                      #+
+#  Usage:  This script will push /opt/local/sudo/etc/sudoers to all box hosts #+
+#               This script runs as follows:                                  #+
+#                    ./usr/local/bin/push_sudo /opt/local/sudo/etc/sudoers    #+      
+#  Comments: This script must run from ccux18 (master sudoers)		      #+
+#            Must be superuser or root to run this script       	      #+
+#            /tmp/update_sudoers.log is a history of the last update   	      #+
+#  By: Mike Feist      							      #+
+#  date: 11/27/2000    							      #+
+#  Copyright: (c) 2000 Carlson Companies Inc.				      #+
+#  Revision date(s): 04/08/01 By Mike Feist                                   #+
+#                    Added to the function: move_sun_file to check the        #+
+#		     sudoers path; it can be: /etc/sudoers or the new path    #+
+#		     /opt/local/sudo/etc/sudoers
+#                                                                             #+
+#                    07/16/01 By Josh Thorstad                                #+
+#		     Removed the need to specify the sudoers file             #+
+#		     Optimized code, faster on failures                       #+
+#		     Removed bad error message seen on some Sun systems       #+
+#                                                                             #+
+# 		     12/30/04 Moved to ccux65. ERC                            #+
+#		     09/15/05 ERC. Added support to push to CM 4.1x hosts
+#			      which do not allow remsh access.   
+#-----------------------------------------------------------------------------#+
+
+function push_sudoers
+{
+while (($i <= 2)) 
+do
+	if [ $i = 1 ] ; then
+       	     #HOSTS=`box -v | grep "^hostname"| grep ccux |egrep -v "$CANT_RSH"|awk '{print $2}'`
+       	     HOSTS=`box -v | grep "^hostname"| egrep "ccux|shmn|cwtotc" |egrep -v "$CANT_RSH"|awk '{print $2}'`
+             move_ccux_file
+             ((i = i + 1))
+             push_sudoers
+	elif [ $i = 2 ] ; then
+             HOSTS=`box -v | grep "^hostname"| egrep "sun|ssmn" |egrep -v "$CANT_RSH"|awk '{print $2}'`
+	     move_sun_file
+	     ((i = i + 1))
+             # we are not using sudoers on aix servers  push_sudoers
+	     
+	fi
+done
+}
+
+function move_ccux_file
+{
+for Host in ${HOSTS}
+do
+	echo "Pushing ${FILE} to ${Host} - `date`" >>$OUTPUT
+	echo "Pushing ${FILE} to ${Host} - `date`"
+	if (( $? == 1 ))
+	then
+		echo "push err on ${Host} - `date`" >>$OUTPUT
+	fi
+	
+   	rcp ${FILE} ${Host}:/opt/local/sudo/etc/sudoers >>$OUTPUT 2>&1
+	if (( $? == 1 ))
+	then
+		echo "rcp err on ${Host} - `date`" >>$OUTPUT 2>&1
+		FAIL=1
+	fi
+	if [ "${FAIL}" = "1" ]
+		then
+			print ""
+		else 
+			remsh ${Host} chown root:root /opt/local/sudo/etc/sudoers >>$OUTPUT 2>&1
+			if (( $? == 1 ))
+				then
+					echo "chown err on ${Host} - `date`" >>$OUTPUT 2>&1
+					FAIL=1
+			fi
+	fi
+	if [ "${FAIL}" = "1" ]
+		then
+			print ""
+		else
+			remsh ${Host} chmod 440 /opt/local/sudo/etc/sudoers >>$OUTPUT 2>&1
+			if (( $? == 1 ))
+				then
+					echo "chmod err on ${Host} - `date`" >>$OUTPUT 2>&1
+			fi
+	fi
+done
+}
+
+function move_sun_file
+{
+for Host in ${HOSTS}
+do
+	echo "Pushing ${FILE} to ${Host} - `date`" >>$OUTPUT
+	echo "Pushing ${FILE} to ${Host} - `date`"
+	if (( $? == 1 ))
+	then
+		echo "push err on ${Host} - `date`" >>$OUTPUT 2>&1
+	fi
+
+	CM=$(remsh ${Host} uname -r) 
+	if [ "${CM}" = "5.7" ] 
+		then
+			DEST=/opt/local/sudo/etc/
+		else
+			DEST=/usr/local/etc/
+	fi
+   	rcp ${FILE} ${Host}:${DEST}sudoers >> /dev/null 2>&1
+	if (( $? == 1 ))
+		then
+			rcp ${FILE} ${Host}:/etc/sudoers >> /dev/null 2>$1
+			FAIL=1
+	fi
+
+	if [ "${FAIL}" = "1" ]
+		then
+			print ""
+		else
+			remsh ${Host} chown root:root ${DEST}sudoers >>$OUTPUT
+			if (( $? == 1 ))
+				then
+					echo "chown err on ${Host} - `date`" >>$OUTPUT 2>&1
+					FAIL=1
+			fi
+	fi
+	if [ "${FAIL}" = "1" ]
+			then
+				print ""
+			else
+				remsh ${Host} chmod 440 ${DEST}sudoers >>$OUTPUT 2>$1
+				if (( $? == 1 ))
+					then
+						echo "chmod err on ${Host} - `date`" >>$OUTPUT 2>&1
+				fi
+	fi
+done
+}
+
+function move_aix_file   # this fuction has been commented out see above note
+{
+for Host in ${HOSTS}
+do
+	if [ ${Host} = ccaix11 ]  # left in for when we use sudoers on aix...
+	then
+   		echo "Pushing ${FILE} to ${Host} - `date`" >>$OUTPUT
+   		rcp ${FILE} ${Host}:/etc/ >>$OUTPUT
+		remsh ${Host} chown root:root no_id >>$OUTPUT
+		remsh ${Host} chmod 440 no_id >>$OUTPUT
+	else
+		print "skipping ${Host}"
+	fi
+done
+}
+
+# Actual start of the script:
+
+SUDIR=/opt/local/sudo/etc/sudoers
+RUNFROM=ccux65
+
+[ `uname -n` != "$RUNFROM" ] && { echo "\nThis should be run on $RUNFROM...\n"
+                                  exit 1; }
+
+CANT_RSH=`cat /usr/local/bin/cant_rsh`
+
+FILE=/opt/local/sudo/etc/sudoers
+i=1
+OUTPUT="/tmp/update_sudoers.log"
+echo "####### `who -m` #######" > ${OUTPUT}
+echo "Please document what you have changed.  When you are done, please type <ctrl>+d" |tee -a ${OUTPUT}
+cat >> ${OUTPUT}
+echo " " >> ${OUTPUT}
+push_sudoers
+# Now push setup the ssmn00pk00071 web sudo file
+remsh ssmn00pk00071 /usr/local/bin/web_sudo
+chown p00unx ${OUTPUT}
+su - p00unx -c /home/uss/p00unx/push_sudo_rce
+   mailx -s "Push_Sudo results" root@uxmailhost.carlson.com < /tmp/update_sudoers.log > /dev/null
+exit

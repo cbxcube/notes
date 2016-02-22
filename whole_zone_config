@@ -1,0 +1,72 @@
+Whole Root Zones:
+
+crontab:
+  Add the following to each local zone's crontab:
+    # Daily rsync - /usr/local/bin
+    30 23 * * * /usr/local/bin/rsync -avz --rsync-path=/usr/local/bin/rsync ssmn00pk00071.carlson.com::adminscripts_solaris10/ /usr/local/bin > /tmp/rsync.adminscripts 2>&1
+    # Daily rsync - sudoers
+    30 22 * * * /usr/local/bin/rsync -avz --rsync-path=/usr/local/bin/rsync ssmn00pk00071.carlson.com::sudoers_solaris10/sudoers /usr/local/etc > /tmp/rsync.sudoers 2>&1
+    # Run find against server for use by findtree
+    0 5 * * * /usr/local/bin/findall > /dev/null 2>&1
+    # Flush sendmail queues
+    30 1 * * * /usr/sbin/sendmail -q >/dev/null 2>&1
+
+Update ssh:
+  from global
+   for i in `zoneadm list | grep -v global`
+   do
+    cp -p /var/svc/manifest/network/openssh.xml /zones/${i}/root/var/svc/manifest/network
+    cp -p /lib/svc/method/opensshd /zones/${i}/lib/svc/method
+    cpd /zones/${i}/root/usr/local/etc/sshd_config
+    cp -p /usr/local/etc/sshd_config /zones/${i}/root/usr/local/etc
+    cp -p /usr/local/etc/ssh_host* /zones/${i}/root/usr/local/etc
+    zlogin ${i} svccfg import /var/svc/manifest/network/openssh.xml
+    zlogin ${i} svcadm disable ssh
+    zlogin ${i} svcadm enable openssh
+    cp -pr /root/.ssh /zones/${i}/root/root
+   done
+
+control-M:
+  from Global zone:
+   pkgrm CSScontrolm
+   mount ssmn00pk00144:/jumpstart /mnt
+   pkgadd -G -d /mnt/Solaris10_10-08/config/build/10.0.0/packages/CSScontrolm-6.1.03-300
+   for i in `zoneadm list | grep -v global`
+   do
+    cp /mnt/Solaris10_10-08/config/build/10.0.0/packages/CSScontrolm-6.1.03-300 /zones/${i}/root/tmp
+    zlogin ${i} pkgadd -G -d /tmp/CSScontrolm-6.1.03-300
+   done
+
+fswatch:
+  on each local zone:
+   pkgadd -G -d /home/uss/bin/GBISfswatch
+   cp /home/uss/bin/fswatch /opt/local/fswatch/bin
+   /opt/local/fswatch/bin/fswatch
+   vi /opt/local/fswatch/etc/fswatch.cfg - verify all file systems have correct reporting group and threshold
+  from global zone:
+   cpv /opt/local/fswatch/etc/fswatch.cfg - change threshold for all FS's being monitored at local zone level to 100
+  
+coreadm:
+  Make core file system that has 2Gb for the Global and 2Gb for each zone:
+   zfs create -o mountpoint=/var/core -o quota=8g -o reservation=8g pools4/core
+   chmod 700 /var/core
+   mkdir -m 755 /core
+   for i in `zoneadm list | grep -v global`
+   do
+    mkdir -m 755 /zones/${i}/root/var/core
+    zfs create -o mountpoint=/core/${i} -o quota=2g -o reservation=2g pools4/core/${i}
+    mount -F lofs /core/${i} /zones/${i}/root/var/core
+    chmod 700 /zones/${i}/root/var/core
+    echo "add fs" > /tmp/zcfg.tpl
+    echo "set dir=/var/core" >> /tmp/zcfg.tpl
+    echo "set special=/core/${i}" >> /tmp/zcfg.tpl
+    echo "set type=lofs" >> /tmp/zcfg.tpl
+    echo "add options rw,nodevices,nosuid" >> /tmp/zcfg.tpl
+    echo "end" >> /tmp/zcfg.tpl
+    echo "verify" >> /tmp/zcfg.tpl
+    echo "commit" >> /tmp/zcfg.tpl
+    zonecfg -z ${zone} -f /tmp/zcfg.tpl
+    rm /tmp/zcfg.tpl
+    zlogin ${i} coreadm -g /var/core/core_%n_%f_%u_%g_%t_%p -i core -e global -e global-setid -e log -d process -d proc-setid
+   done
+    

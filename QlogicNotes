@@ -1,0 +1,30 @@
+#Sun HBA driver commands with Qlogic card:
+luxadm -e port - displays devices connected to fiber channels (Includes internal path on V490/480's)
+  example:	root@ssmn00pk00268# luxadm -e port
+		/devices/pci@400/pci@0/pci@c/QLGC,qlc@0/fp@0,0:devctl              CONNECTED
+		/devices/pci@400/pci@0/pci@c/QLGC,qlc@0,1/fp@0,0:devctl            CONNECTED
+		/devices/pci@500/pci@0/pci@9/QLGC,qlc@0/fp@0,0:devctl              CONNECTED
+		/devices/pci@500/pci@0/pci@9/QLGC,qlc@0,1/fp@0,0:devctl            CONNECTED
+
+luxadm -e dump_map /path/to/connected/deivce:devctl - displays information about the device that is connected to this fiber channel
+  example:	root@ssmn00pk00268# luxadm -e dump_map /devices/pci@400/pci@0/pci@c/QLGC,qlc@0/fp@0,0:devctl
+		Pos  Port_ID Hard_Addr Port WWN         Node WWN         Type
+		0    741e13  0         500104f00051d037 500104f00051d036 0x1  (Tape device)
+		1    745d13  0         500104f00051d046 500104f00051d045 0x1  (Tape device)
+		2    745e13  0         500104f00051d052 500104f00051d051 0x1  (Tape device)
+		3    746a13  0         500104f00051d04c 500104f00051d04b 0x1  (Tape device)
+		4    746b13  0         500104f00051d040 500104f00051d03f 0x1  (Tape device)
+		5    748d13  0         2101001b32a3fd74 2001001b32a3fd74 0x1  (Tape device)
+		6    745c13  0         2100001b32133a62 2000001b32133a62 0x1f (Unknown Type,Host Bus Adapter)
+
+luxadm -e forcelip /path/to/connected/device:devctl - reinitializes the path to the fiber connected device
+  example:	root@ssmn00pk00268# luxaem -e forcelip /devices/pci@400/pci@0/pci@c/QLGC,qlc@0/fp@0,0:devctl
+
+#Run the following if LUNs or drives do not appear right away:
+cfgadm -avl - review controller configuration, will also rescan controllers when adding new drives or LUNs
+
+#Qlogic commands with Qlogic cards:
+scli - starts SanSurfer Command line interface
+
+
+

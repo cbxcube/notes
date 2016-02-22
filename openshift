@@ -1,0 +1,314 @@
+# Scale up/down gear
+from broker:
+sudo rhc cartridge-scale jbossews-1.0 -a appname -l appnamespace -p 'passwordhash' --server brokerVIP --min lowest_gear# --max largest_gear#
+
+example:
+[jeffreyjohnson@broker01-prd ~]$ sudo rhc cartridge-scale jbossews-1.0 -a gopu39b9w3 -l gopu39b9w3 -p 'C3iG72xMjXN6QK8bZWgVuFdn0matMw3' --server 165.109.107.22  --min 10 --max 10 || true
+
+Or from Jenkins job:
+from:
+http://sonar.fiaspdev.org:8080/job/CHI_PROD_COMPONENT_SCALE_UP/
+log in with Corp creds (username is case sensitive) -> Danil or other Dev can provide access
+Build with Parameters -> Build
+
+# Add a new node 
+https://jive.fico.com/docs/DOC-11390
+  Clone existing node in the environment, do not power up, set to boot to BIOS
+  after clone, disable primary NIC, power on, force boot to single user
+  1) Stop mcollective from running and prevent it from starting at boot
+	service ruby193-mcollective stop
+	chkconfig ruby193-mcollective off
+  2) re-IP and rename host
+	vi /etc/hosts
+	vi /etc/sysconfig/network
+		HOSTNAME=osenode05.fairisaac.com
+	vi /etc/sysconfig/network-scripts/ifcfg-eth0
+  		cp the HWADDR from the VM Settings for the primary NIC into /etc/sysconfig/ifcfg-eth0
+  	mv /etc/udev/rules.d/70-persistent-net.rules /var/tmp
+	vi /etc/openshift/node.conf -> change any instance of IP and Hostname to the new node
+		PUBLIC_HOSTNAME=osenode05.fairisaac.com
+		PUBLIC_IP=172.29.72.34
+	vi /etc/httpd/conf.d/000001_openshift_origin_node_servername.conf
+		ServerName osenode05.fairisaac.com
+	vi /etc/openshift/resource_limits.conf (set node_profile to gear size, mediun, c.medium, r.medium, large, qa.medium)
+		node_profile=qa.medium
+		
+  3) shutdown VM, reenable primary NIC, boot
+  4) Add the new nodes into the environments DNS:
+	[jeffreyjohnson@broker01 ~]$ sudo oo-register-dns -h osenode06.fairisaac.com -n 172.29.72.37 -d ort-platform.ficoanalyticcloud.com -s 172.29.72.27 -k /var/named/ort-platform.ficoanalyticcloud.com.key
+  5) Start mcollective and make it persistent, validate IPTables is running and persistent
+	service ruby193-mcollective start
+	chkconfig ruby193-mcollective on
+	service iptables start
+	chkconfig iptables on
+  6) Verify the broker can see the node
+	[jeffreyjohnson@broker01 ~]$ sudo oo-mco ping 
+		new node should appear
+  7) Add new node into the QA District for testing functionality
+	[jeffreyjohnson@broker01 ~]$ sudo oo-admin-ctl-district -c add-node -n qa.medium -p qa.medium -i osenode06.fairisaac.com -s qa.medium
+  8) Test the functionality of the new node
+	[jeffreyjohnson@broker01 ~]$ sudo rhc app create -a jjohntestjboss1 -g qa.medium -t jbosseap-6 -l demo
+	[jeffreyjohnson@broker01 ~]$ sudo rhc app create -a jjohntestjboss2 -s -g qa.medium -t jbosseap-6 -l demo
+        [jeffreyjohnson@broker01 ~]$ sudo rhc app delete -a jjohntestjboss1 -l demo	
+        [jeffreyjohnson@broker01 ~]$ sudo rhc app delete -a jjohntestjboss2 -l demo	
+  9) Remove new node from qa.medium district to and prepare it for the new R district
+        [jeffreyjohnson@broker01 ~]$ sudo oo-admin-ctl-district -c deactivate-node -i osenode06.fairisaac.com -n qa.medium
+        [jeffreyjohnson@broker01 ~]$ sudo oo-admin-ctl-district -c remove-node -i osenode06.fairisaac.com -n qa.medium
+        on the node:
+	   vi /etc/openshift/resource_limits.conf 
+		set node_profile=r.medium
+  10) Create new R district
+	vi /etc/openshift/broker.conf
+		VALID_GEAR_SIZES="qa.medium,medium,c.medium,r.medium,large"
+	[jeffreyjohnson@broker01 ~]$ sudo oo-admin-ctl-district -c create -n r.medium -p r.medium
+  11) Add new node to R district
+        on the node:
+	   service ruby193-mcollective restart
+	   oo-cgroup-enable --with-all-containers
+	   oo-pam-enable --with-all-containers
+	   oo-admin-ctl-tc restart
+	on the broker:
+	   [jeffreyjohnson@broker01 ~]$ sudo oo-admin-ctl-district -c add-node -n r.medium -p r.medium -i osenode06.fairisaac.com -s r.medium
+  12) Re-register with Spacewalk and patch OS
+        Unsubscribe any extra channels. The nodes only require the following channels on a normal day:
+	[jeffreyjohnson@broker01 ~]$ sudo rhn-channel -l
+	rhel-x86_64-server-6
+	rhel6s-x86_64-base
+	rhel6s-x86_64-optional
+	rhel6s-x86_64-supplementary
+	[jeffreyjohnson@broker01 ~]$ sudo yum update -> watch for any incongruities
+
+
+
+# Stop an application
+sudo oo-admin-ctl-app -l appowner -a appname -c stop
+URL: https://d32pqdnslx-d32pqdnslx.ort-platform.ficoanalyticcloud.com
+Example: oo-admin-ctl-app -l d32pqdnslx -a d32pqdnslx -c stop
+
+# Poodle Remediation
+BROKERS:
+cp /etc/httpd/conf.d/000002_openshift_origin_broker_proxy.conf /etc/httpd/conf.d/000002_openshift_origin_broker_proxy.conf.10242014
+vi /etc/httpd/conf.d/000002_openshift_origin_broker_proxy.conf
+Add "SSLProtocol ALL -SSLv2 -SSLv3" to the "VirtualHost *:443" stanza
+service httpd restart
+
+NODES:
+cp /etc/httpd/conf.d/000001_openshift_origin_node.conf /etc/httpd/conf.d/000001_openshift_origin_node.conf.10242014; cp /var/lib/openshift/.httpd.d/frontend-mod-rewrite-https-template.erb /var/lib/openshift/.httpd.d/frontend-mod-rewrite-https-template.erb.10242014
+
+vi /etc/httpd/conf.d/000001_openshift_origin_node.conf
+Adjust "SSLProtocol ALL -SSLv2 -SSLv3"
+
+vi /var/lib/openshift/.httpd.d/frontend-mod-rewrite-https-template.erb
+Adjust "SSLProtocol ALL -SSLv2 -SSLv3"
+
+service httpd restart
+
+FIX RHC on the brokers:
+cd /root/.openshift
+vi express.conf
+ssl_version=tlsv1
+
+# Disk Quotas
+verify "usrquota" mount option is enabled for /var/lib/openshift
+ie. 
+  [root@rhlappfac669 ~]# grep openshift /etc/fstab
+  /dev/mapper/vg_root-lv_openshift /var/lib/openshift         ext4    defaults,usrquota        1 2
+quotacheck -cmug /var/lib/openshift
+restorecon -vr /var/lib/openshift
+quotaon /var/lib/openshift
+repquota -a -> will show any file systems with disk quotas turned on
+
+# Run down application information and ssh to app
+to obtain the node the app is running on and the app's GUID from broker:
+sudo oo-app-info -a appname
+  example: 
+    [jeffreyjohnson@broker01 ~]$ sudo oo-app-info -a d2wx75wumt | egrep "UUID|node"
+      App UUID:      5404bcf74c173f47d3000329
+              Server Identity: osenode04.fairisaac.com
+              Gear UUID:       5404bcf74c173f47d3000329
+     d2wx75wumt-d2wx75wumt.ort-platform.ficoanalyticcloud.com is an alias for osenode04.fairisaac.com.
+     osenode04.fairisaac.com is an alias for rhlappfac634.fairisaac.com.
+
+ssh to the node and then switch to the app user:
+sudo oo-su GUID -c oo-trap-user
+  example:
+    sudo oo-su 5404bcf74c173f47d3000329 -c oo-trap-user
+
+oo-admin-move --gear_uuid UUID -p medium
+
+sudo oo-admin-ctl-district -c deactivate-node -i osenode03.fairisaac.com -n medium-1
+
+# /etc/sysconfig/init
+umask 022
+
+
+# Console returning 500 Internal Server error
+# Clear broker and console cache
+  oo-admin-broker-cache --console --clear
+# restart broker and console
+  service openshift-broker restart
+  service openshift-console restart
+# Verify all nodes have the same cartridges installed
+  broker $ rhc cartridges
+  nodes $ oo-admin-cartridge -l
+    - install any missing cartridges on nodes
+    - oo-admin-cartridge -a install -s /path/to/cartridge/source
+    - service mcollective restart
+    - clear broker cache and restart broker/console services
+# Verify cartridges have correct selinux context
+  nodes $ restorecon -R /var/lib/openshift/.cartridge_repository/
+    - service mcollective restart
+    - clear broker cache and restart broker/console services
+  broker $ mco facts cart_list -> shows if any cartridges aren't on all nodes
+# search for apps with missing framework
+1) Obtain Cartridge/App configuration info
+curl -k -X GET https://openshift.redhat.com/broker/rest/domains/NAMESPACE/applications --user "USERNAME:PASSWORD" >> /tmp/curlout.$DATE
+  Example:
+	curl -k -X GET https://broker.openshift-dmpint.ficoanalyticcloud.com/broker/rest/domains/dmp/applications --user "dmp:PKchu14" >> /tmp/curlout.02032014
+2) Parse the data
+cat /tmp/curlout.$DATE | python -mjson.tool > pretty_curl_output
+  - each application begins with a line '"aliases": [' -> "framework"
+  - grep "aliases\"\:\ " pretty_curl_output | wc -l
+    380    # total number of applications
+  - grep -A 20 "aliases\"\:\ " pretty_curl_output | grep framework | wc -l
+    379    # total number of framework attributes - 380-379 = 1 app missing framework
+  - grep -A 60 "aliases\"\:\ " pretty_curl_output | grep "gear_count" -B 1   # will be able to count, in order from the top, which app is missing framework
+  - awk '/app_url/{i++}i==6{print; exit}' pretty_curl_output    # counts for the 6th application in pretty_curl_output
+    "app_url": "http://hhy89w03pv-dmp.openshift-dmpint.ficoanalyticcloud.com/",    # the 6th application in pretty_curl_outpu
+
+
+#PATCHING via Proxy
+start tinyproxy on lux255
+	/etc/rc.d/init.d/tinyproxy start
+from worksation:
+	putty -> lux255 -> Connection -> SSH -> Tunnels ->
+		Source Port = 8888
+		Destination = Localhost:10000
+		radial buttons -> local, ipv4
+		click Add
+		click Open
+		login as yourself
+	putty -> server to be patched (ie rhlappdmp634) -> Connection -> Data clear username -> Connection -> SSH -> Tunnels
+		Source Port = 8888
+		Destination = localhost:8888
+		radial buttons -> remote, ipv4
+		click Add
+		click Open
+		login as root
+open separates ssh session to server to patch:
+	vi /etc/sysconfig/rhn/up2date
+		enableProxy=1
+		httpProxy=localhost:8888
+	export https_proxy=localhost:8888
+	yum check-update
+
+
+https://www.openshift.com/wiki/troubleshooting-guide-for-openshift-on-rhel-6
+
+Cacti:
+http://cacti.fiaspdev.org
+  username = admin
+  password = T3mpP@sswd!
+
+rhc - openshift broker api commands
+rhc app create -a appname -t php -g small_dev -d -k
+rhc app create -a jbossscale1 -t jbosseap-6 -g c.medium -l demo -s --no-git -d
+
+"oo-" - os commands for openshift
+oo-admin-ctl-district - displays information for all nodes attached to the broker
+
+rhc setup 
+
+mco ping
+mco inventory
+
+broker:
+/etc/openshift/broker.conf
+/etc/openshift/console.conf
+/etc/mcollective/client.cfg
+/etc/activemq/activemq.xml -> watch for memory errors; restart if run out of memory
+   example:
+	2013-11-06 14:58:20,261 | INFO  | Usage(default:memory:topic://mcollective.openshift.reply:memory) percentUsage=101%, usage=1062891, limit=1048576, percentUsageMinDelta=1%;Parent:Usage(default:memory) percentUsage=5%, usage=3818546, limit=67108864, percentUsageMinDelta=1%: Usage Manager Memory Usage limit reached. Stopping producer (ID:rhlappfac610.platform.openshift-ort.ficoanalyticcloud.com-34665-1383345796351-14:1160:-1:1) to prevent flooding topic://mcollective.openshift.reply. See http://activemq.apache.org/producer-flow-control.html for more info (blocking for: 4116s) | org.apache.activemq.broker.region.Topic | ActiveMQ Transport: tcp:///172.29.72.13:32058@61613
+
+/var/log/openshift/broker/mcollective-client.log -> owned by apache:root
+/var/log/openshift/broker -> contains logs
+
+nodes:
+/etc/activemq/activemq.xml
+/etc/openshift/resource_limits.conf
+/etc/openshift/node.conf
+/var/log/openshift/node/platform.log
+
+https://openshift-facort.ficoanalyticcloud.com
+root@rhlappdmp603 = T3mpP@sswd!
+User: dmp = PKchu14
+
+Out of gears:
+vi /etc/openshift/resource_limits.conf
+   - increase max_active_gears
+
+rhlappfac610 and rhlappfac611 = ORT FAC Brokers
+
+rhlappfac610#> mongo
+rs.status()
+
+
+rhlappfac411 (aka broker-01.fairisaac.com) = Prod broker
+
+
+### test setup rhlspainf612/613
+You should update the mongo username and password in the /etc/openshift/broker.conf file to match the user name and password you specify in the instructions below.
+
+db.addUser("admin", "adminpass")
+db.addUser("openshift", "password")
+
+
+username="mcollective" password="secret"
+
+jetty-reaml passwrod = admin: password
+
+
+#BROKER
+subscription-manager register
+subscription-manager subscribe --pool $BROKERPOOLID
+
+[root@broker-01 ~]# yum repolist
+Loaded plugins: product-id, rhui-lb, security, subscription-manager
+Updating certificate-based repositories.
+rhel-6-server-cf-tools-1-rpms                                                                                             | 2.8 kB     00:00     
+rhel-6-server-cf-tools-1-rpms/primary_db                                                                                  |  18 kB     00:00     
+rhel-6-server-rhev-agent-rpms                                                                                             | 3.1 kB     00:00     
+rhel-6-server-rhev-agent-rpms/primary_db                                                                                  |  18 kB     00:00     
+rhel-6-server-rpms                                                                                                        | 3.7 kB     00:00     
+rhel-6-server-rpms/primary_db                                                                                             |  23 MB     00:04     
+rhel-server-ose-1.2-infra-6-rpms                                                                                          | 2.8 kB     00:00     
+rhel-server-ose-1.2-infra-6-rpms/primary_db                                                                               | 111 kB     00:00     
+rhel-server-ose-infra-6-rpms                                                                                              | 2.8 kB     00:00     
+rhel-server-ose-infra-6-rpms/primary_db                                                                                   | 151 kB     00:00     
+rhel-server-rhscl-6-eus-rpms                                                                                              | 2.8 kB     00:00     
+rhel-server-rhscl-6-eus-rpms/primary_db                                                                                   | 222 kB     00:00     
+rhui-custom-savvis-cloud-unmanaged                                                                                        | 2.5 kB     00:00     
+rhui-rhel-6-server-rhui-rpms                                                                                              | 3.7 kB     00:00     
+repo id                                      repo name                                                                                     status
+rhel-6-server-cf-tools-1-rpms                Red Hat CloudForms Tools for RHEL 6 (RPMs)                                                        31
+rhel-6-server-rhev-agent-rpms                Red Hat Enterprise Virtualization Agents for RHEL 6 Server (RPMs)                                 32
+rhel-6-server-rpms                           Red Hat Enterprise Linux 6 Server (RPMs)                                                      11,033
+rhel-server-ose-1.2-infra-6-rpms             Red Hat OpenShift Enterprise 1.2 Infrastructure (RPMs)                                           311
+rhel-server-ose-infra-6-rpms                 Red Hat OpenShift Enterprise Infrastructure (RPMs)                                               451
+rhel-server-rhscl-6-eus-rpms                 Red Hat Software Collections RPMs for Red Hat Enterprise Linux 6 RHEL 6 Server EUS               440
+rhui-custom-savvis-cloud-unmanaged           Custom Repositories - savvis-cloud-unmanaged                                                       0
+rhui-rhel-6-server-rhui-rpms                 Red Hat Enterprise Linux 6 Server from RHUI (RPMs)                                            10,607
+repolist: 22,905
+
+
+oo-diagnostics
+
+oo-register-dns -h nodename -d domain -n ip.address -k keyfile
+ie. oo-register-dns -h node-01 -d lab.savvis.fairisaac.com -n 192.168.1.3 -k /var/named/lab.savvis.fairisaac.com.key
+
+
+oo-admin-ctl-domain -l component -c update -s key_conect -k key_name -t ssh-rsa
+oo-admin-ctl-domain -l component -c update -s key_conect -k key_name -t ssh-rsa
+oo-admin-ctl-domain -l manager -c update -s key_conect -k key_name -t ssh-rsa
+rhc sshkey add joshuaprismon --confirm --type ssh-rsa --content AAAAB3NzaC1yc2EAAAADAQABAAABAQDGtUoKU+QcbGQ5uBd7JhW9lAiplsZQwfeJ+Ul4/RMAR4Ck/zkDWsnvKfoczTJ5HI3EZyKLDXa88aZ1k9NJoOdqoARkBKFUrhanyhYBAHHBl3Zri2XQAFba7Brtnbv/n+4tZ7gc55mCiSyhBKvVu9DWokLkLOSwl1bLRAMx3HaHN9Lyzfr0K+HdVLfgeqFagEAiwB9iSPZjijZ/TNT2L2BNEMQKnfEmFoLB0o52OJncb7BEaSj11XVnJ3XpNfHsaQ8i7IUwp+00x5EyVoxDyTNk2Nk7V5bA0eRVn1SjOor2ESeR7lCgKBMakHVVrN+M0CcOvF3PImOuMPd4B98OhrZX -l component
+

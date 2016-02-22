@@ -1,0 +1,79 @@
+#!/bin/sh
+
+HOSTNAME=`/usr/bin/hostname`
+
+###########
+#
+# Update syslog.conf entry if needed.
+#
+###########
+
+DEFAULT_ENTRY=`/usr/bin/grep "^local2.debu.*uxloghost" /etc/syslog.conf > /dev/null 2>&1;echo $?`
+
+if [ "${DEFAULT_ENTRY}" -ne "0" ] ; then
+	echo "Need to update /etc/syslog.conf"
+	echo "Making backup copy"
+	BACKUP_FILE="/etc/syslog.conf.`date +%m%d%y_%H%M%S`"
+	/usr/bin/cp -p /etc/syslog.conf ${BACKUP_FILE}
+	echo "local2.debug\t\t\t\t\t@uxloghost.carlson.com" >> /etc/syslog.conf
+
+	# Show difference
+	ls -la  /etc/syslog.conf ${BACKUP_FILE}
+	/usr/bin/diff /etc/syslog.conf ${BACKUP_FILE}
+else
+	echo "Correct setting in /etc/syslog.conf"
+fi
+
+###########
+#
+# Now to update all zone entries on global hosts.
+#
+###########
+
+# Check if we are a global box or not.
+#GLOBAL_HOST=`echo "${HOSTNAME}" | /usr/bin/grep -i "00[gz]k" > /dev/null 2>&1;echo $?`
+GLOBAL_HOST=`echo "${HOSTNAME}" | /usr/bin/grep -i "00gk" > /dev/null 2>&1;echo $?`
+
+# If we are a global box, check all of the zones files.
+if [ "${GLOBAL_HOST}" -eq "0" ] ; then
+	echo "${HOSTNAME} is a Global box."
+
+	# Get listing of all /zones/*/root/etc/syslog.conf
+	#
+	# root@ssmn00gk00298# /usr/bin/ls -1 /zones/*/root/etc/syslog.conf | /usr/bin/grep -v "/zones/master"
+	# /zones/vsmn00dk00036/root/etc/syslog.conf
+	# /zones/vsmn00dk00037/root/etc/syslog.conf
+	# /zones/vsmn00dk00038/root/etc/syslog.conf
+	# /zones/vsmn00dk00039/root/etc/syslog.conf
+	# /zones/vsmn00dk00040/root/etc/syslog.conf
+	# /zones/vsmn00dk00041/root/etc/syslog.conf
+	# root@ssmn00gk00298# 
+	# 
+	ZONE_SYSLOG_FILES=`/usr/bin/ls -1 /zones/*/root/etc/syslog.conf | /usr/bin/grep -v "/zones/master"`
+	
+	for SYSLOG_ZONE_FILE in ${ZONE_SYSLOG_FILES}
+	do
+		ZONE_ENTRY=`/usr/bin/grep "^local2.debu.*uxloghost" ${SYSLOG_ZONE_FILE} > /dev/null 2>&1;echo $?`
+	
+		if [ "${ZONE_ENTRY}" -ne "0" ] ; then
+			echo "Need to update ${SYSLOG_ZONE_FILE} on ${HOSTNAME}"
+	
+			echo "Making backup copy"
+			BACKUP_FILE="${SYSLOG_ZONE_FILE}.`date +%m%d%y_%H%M%S`"
+			/usr/bin/cp -p ${SYSLOG_ZONE_FILE} ${BACKUP_FILE}
+			echo "local2.debug\t\t\t\t\t@uxloghost.carlson.com" >> ${SYSLOG_ZONE_FILE}
+	
+			# Show difference
+			/usr/bin/diff ${SYSLOG_ZONE_FILE} ${BACKUP_FILE}
+		fi
+	done
+fi
+
+
+# Now need to recycle all instances of syslog that are running.
+# Do this regardless of zone or not.
+for PID in `/usr/bin/ps -ef | /usr/bin/grep "[s]yslogd" | awk '{print $2}'`
+do
+	echo "Want to send HUP to ${PID}"
+	/usr/bin/kill -HUP ${PID}
+done

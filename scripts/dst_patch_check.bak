@@ -1,0 +1,73 @@
+#!/bin/ksh
+#
+# $Id: dst_patch_check,v 1.2 2006/12/12 21:45:10 uexw062 Exp $
+#
+# Used to check dst patch status
+#
+# Run before date
+RUNDATE=20100101
+OS=`uname -r`
+HOST=`uname -n`
+STAT=0
+
+#DESTFILE="/home/uss/bin/explorer/servers/${HOST}/dst_patch.status"
+DESTFILE="${BASE}/servers/${HOST}/dst_patch.status"
+DESTFILE="/home/uss/dst_status/dst_patch_status.${HOST}"
+
+# save fd 1 & 2 for later
+exec 6<&1 7<&2
+
+# send stdout/stderr to ${DESTFILE}
+exec > ${DESTFILE} 2>&1
+
+case ${OS} in
+  5.6|5.7)
+    echo "${HOST} DST Patch Status:\n"
+    echo "Status: Need Patches - No Standard patchset available"
+    exit 0
+    ;;
+  5.8)
+    PATCH_MIN="109809-02 108993-52"
+    ;;
+  5.9)
+    PATCH_MIN="113225-03 112874-33"
+    ;;
+  5.10)
+    PATCH_MIN="122032-01 121208-03"
+    ;;
+esac
+
+echo "${HOST} DST Patch Status:\n"
+
+for PATCH in `echo "${PATCH_MIN}"`
+do
+  BASE_NUM=`echo ${PATCH} | cut -d- -f1`
+  MIN_REV=`echo ${PATCH} | cut -d- -f2`
+
+  INST_REV=`showrev -p | grep "Patch: ${BASE_NUM}" | sort | awk '{print $2}' | tail -1 | cut -d- -f2`
+
+
+  if [ "${INST_REV}" -lt "${MIN_REV}" ]; then
+    echo "${BASE_NUM} installed version: ${INST_REV} minimum: ${MIN_REV}"
+    let STAT+=1
+  elif [ "${INST_REV}" -eq "${MIN_REV}" ]; then
+    echo "${BASE_NUM} is at minimum"
+    let STAT+=0
+  else
+    echo "${BASE_NUM} is greater than minimum level"
+    let STAT+=0
+  fi
+done
+
+echo
+
+if [ "${STAT}" -gt 0 ]; then
+  echo "Status: Need Patches"
+else
+  echo "Status: OK"
+fi
+
+echo
+
+# reset stdout/stderr
+exec 1<&6 6<&- 2<&7 7<&-

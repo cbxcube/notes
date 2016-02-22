@@ -1,0 +1,28 @@
+#!/bin/ksh -x
+#
+# Used to get list of users with home directory size and gecos info
+#         so that we can see if any have been disabled or to find out whom
+#		to contact about using too much space.	   ERC
+
+
+LOG=/tmp/uap_user_directory_size_check.txt
+YP_PASSWD=/tmp/ypcat_pw
+>$LOG
+IFS=,
+
+ypcat passwd > $YP_PASSWD
+
+for DIR in /uap /uss
+do
+	echo $DIR >>$LOG
+	cd $DIR
+	du -sk u??????|sort -n |tail -20 |\
+	while read SIZE USER ignore
+		do
+			GECOS=`grep $USER /tmp|awk -F: '{print $5}'`
+			echo "${SIZE} ${USER} ${GECOS}" >> $LOG
+			sleep 1
+		done
+	echo ================== >> $LOG
+done
+rm $YP_PASSWD

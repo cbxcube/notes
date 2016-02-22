@@ -1,0 +1,32 @@
+commonly used cmnds:
+mkvterm -m Server-9116-561-SN10B60F1 -p vamn00pk02015 - Australia
+mkvterm -m Server-9116-561-SN10B60E1 -p vamn00pk01004 - US
+
+vtmenu
+
+
+More HMC commands:
+asmmenu
+bkconsdata    bkprofdata
+chaccfg       chhwres            chsysstate
+chcod         chled              chusrtca
+chcuod        chlparutil         chvet
+chhmc         chsacfg            chsyscfg
+chhmcusr      chsvcevent         chsyspwd
+deploysysplan
+hmcshutdown   hmcwin
+installios    osinstall
+lscuod        lshwinfo     lslparutil   lssvcevents  lsvet
+lsdump        lshwres      lsmediadev   lssyscfg
+lshmc         lsled        lspartition  lssysconn
+lsaccfg       lshmcusr     lslic        lsrefcode    lssysplan
+lscod         lshsc        lslock       lssacfg      lsusrtca
+lpar_netboot
+migrcfg       mkaccfg     mkhmcusr    mksysconn   mkvterm
+mkauthkeys    mksyscfg    mksysplan
+rmaccfg      rmlparutil   rmsysplan    rstprofdata
+rmhmcusr     rmsyscfg     rmvterm      runlpcmd
+rmlock       rmsysconn    rsthwres
+viosvrcmd vtmenu
+
+

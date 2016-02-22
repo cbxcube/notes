@@ -1,0 +1,24 @@
+1) Set auto-boot to false and power down server:
+         root@ux386 eeprom auto-boot?=false
+         root@ux386 init 5
+2) Terix will replace the degraded IOU#0 tray
+3) power server on and boot to Single user
+         ok> boot -s
+4) install patches:
+         root@ux386 patchadd /var/tmp/patches/141874-10
+         root@ux386 patchadd /var/tmp/patches/143647-07
+5) install XCP firmware update:
+        on console:
+           #. to enter XSCF
+	XSCF> getflashimage -u root ftp://ux255/jumpstart/patches/OBP/M4000/FFXCP1093.tar.gz
+	XSCF> flashupdate -c check -m scp -s 1093
+        XSCF> flashupdate -c update -m xcp -s 1093
+6) Confirm new version of firmware:
+        XSCF> version -c xcp
+        XSCF#0 (Active )
+        XCP0 (Reserve): 1093
+        XCP1 (Current): 1093
+7) Reset auto-boot to true and reboot domain
+        XSCF> console -d 0
+        root@ux386# eeprom auto-boot?=true
+        root@ux386# init 6

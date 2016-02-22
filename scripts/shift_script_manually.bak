@@ -1,0 +1,67 @@
+#!/usr/bin/ksh
+
+#  Gather nsrck status from sudo logs on ccux65
+
+NOTIFY="edcarrigan1921@gmail.com ecarrigan@carlson.com nowens@carlson.com dlamont@carlson.com msauer@carlson.com egray@carlson.com rryan@carlson.com jgramenz@carlson.com bkasten@carlson.com"
+
+FILE=/tmp/nsrck_status.`date +%H%M`
+
+# scrap sudo logs for the Level ^ check of nsrck # limiting to Nov 
+
+grep L6 /var/adm/sudo.log|grep Nov |grep -v "Nov 16"|sed  -e 's/ssmn00pk00058.*\]  //' -e 's# : TTY.*COMMAND=# #' -e 's#/usr.*v ##' |\
+while read line
+do
+
+DATE=`echo $line|cut -c1-15`
+USER=`echo $line|awk '{print $4}'`
+SERVER1=`echo $line| awk '{print $5}'`
+SERVER2=`echo $line| awk '{print $6}'`
+SERVER3=`echo $line| awk '{print $7}'`
+SERVER4=`echo $line| awk '{print $8}'`
+SERVER5=`echo $line| awk '{print $9}'`
+SERVER6=`echo $line| awk '{print $10}'`
+SERVER7=`echo $line| awk '{print $11}'`
+SERVER8=`echo $line| awk '{print $12}'`
+SERVER9=`echo $line| awk '{print $13}'`
+SERVER10=`echo $line| awk '{print $14}'`
+SERVER11=`echo $line| awk '{print $15}'`
+SERVER12=`echo $line| awk '{print $16}'`
+SERVER13=`echo $line| awk '{print $17}'`
+SERVER14=`echo $line| awk '{print $18}'`
+SERVER15=`echo $line| awk '{print $19}'`
+SERVER16=`echo $line| awk '{print $20}'`
+SERVER17=`echo $line| awk '{print $21}'`
+SERVER18=`echo $line| awk '{print $22}'`
+SERVER19=`echo $line| awk '{print $23}'`
+SERVER20=`echo $line| awk '{print $24}'`
+SERVER21=`echo $line| awk '{print $25}'`
+SERVER22=`echo $line| awk '{print $26}'`
+SERVER23=`echo $line| awk '{print $27}'`
+SERVER24=`echo $line| awk '{print $28}'`
+SERVER25=`echo $line| awk '{print $29}'`
+SERVER26=`echo $line| awk '{print $30}'`
+SERVER27=`echo $line| awk '{print $31}'`
+SERVER28=`echo $line| awk '{print $32}'`
+SERVER29=`echo $line| awk '{print $33}'`
+SERVER30=`echo $line| awk '{print $34}'`
+SERVER31=`echo $line| awk '{print $35}'`
+
+   for SERVER in $SERVER1 $SERVER2 $SERVER3 $SERVER4 $SERVER5 $SERVER6 $SERVER7 $SERVER8 $SERVER9 $SERVER10 $SERVER11 $SERVER12 $SERVER13  $SERVER14 $SERVER15 $SERVER16 $SERVER17 $SERVER18 $SERVER19 $SERVER20 $SERVER21 $SERVER22 $SERVER23 $SERVER24 $SERVER25 $SERVER26 $SERVER27 $SERVER28 $SERVER29 $SERVER30 $SERVER31 
+   do
+	if [ ! -z $SERVER ];
+	then
+		echo $DATE,$USER,$SERVER >> $FILE
+	fi
+   done
+done
+
+COUNT=`awk -F, '{print $3}' $FILE |sort -u|wc -l`
+
+echo "\n details on servers submitted from SUDO logs on ccux65:/var/adm/sudo.log\n" >> $FILE
+echo nsrck -L6 - Unique servers submitted = $COUNT >> $FILE
+
+mailx -s "NSRCK -L6 report for `ls -1 $FILE|cut -d. -f2` - $COUNT submitted" $NOTIFY < $FILE 
+exit 0
+
+#Nov 17 23:46:16 u02ibaa /usr/sbin/nsrck -L6 -vvv ssmn00pk00060.carlson.com
+

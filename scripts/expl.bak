@@ -1,0 +1,80 @@
+#!/usr/bin/ksh
+#
+# Use to review nfs explorer file in /home/uss/explorer
+
+# Usage: expl [-cdpgs] {hostname*}
+
+# -c = prtconf -v
+# -d = disk info
+# -p = /etc/passwd info
+# -g = /etc/group info
+# -s = /etc/shadow info
+
+function usage 
+{
+	echo "Need to pass -option and hostname"
+	echo "Usage: $0 -option *hostname*"
+	echo "         -c = prtconf -v"
+	echo "         -d = disk info "
+	echo "        -df = df disk info "
+	echo "         -m = metastat info "
+	echo "         -p = /etc/passwd"
+	echo "         -g = /etc/group"
+	echo "         -s = /etc/shadow"
+	echo "         -f = format info"
+	echo "      -diag = prtdiag -v"
+	echo "    -eeprom = eeprom"
+	echo "       -mem = prtdiag -v|grep Mem"
+	echo "     -model = prtdiag -v|grep head|grep ^SUNW"
+	echo "   ifconfig = ifconfig -a"
+	echo "     -route = /etc/defaultrouter "
+	echo "      -host = /etc/inet/hosts file "
+	echo "   -pkginfo = pkginfo list "
+	echo "    -system = system list "
+	echo "      -inst = /etc/path_to_inst "
+	echo "     -picld = picld output "
+
+}
+
+
+if [ $# -ne 2 ]; then 
+	usage;exit 
+fi
+
+OPTION=$1
+SERVERS=$2
+
+case "${OPTION}"
+in
+	-c) OPT="sysconfig/prtconf-v.out" ;;
+	-diag) OPT="sysconfig/prtdiag-v.out" ; 
+		cat /home/uss/bin/explorer/servers/${SERVERS}/explorer*/${OPT}; exit  ;;
+	-mem) OPT="sysconfig/prtconf-v.out" ; 
+		grep Mem /home/uss/bin/explorer/servers/${SERVERS}/explorer*/${OPT}|sort -u ; exit  ;;
+	-model) OPT="sysconfig/prtconf-v.out" ; 
+		head -5 /home/uss/bin/explorer/servers/${SERVERS}/explorer*/${OPT} | grep ^SUNW|sort -u ; exit  ;;
+	-eeprom) OPT="sysconfig/eeprom.out" ;;
+	-ifconfig) OPT="sysconfig/ifconfig-a.out" ;;
+        -picld) OPT="sysconfig/prtpicl-v.out" ;;
+	-ifconfig) OPT="sysconfig/ifconfig-a.out" ;;
+	-p) OPT=etc/passwd ;;
+	-g) OPT=etc/group ;;
+	-s) OPT=etc/shadow ;;
+	-c) OPT=etc/passwd ;;
+	-f) OPT=disks/format.out ;;
+	-d) OPT=disks/diskinfo ;;
+	-m) OPT=disks/svm/metastat.out ;;
+	-df) OPT=disks/df-kl.out ;;
+	-inst) OPT=etc/path_to_inst ;;
+	-mount) OPT=disks/mount.out ;;
+	-route) OPT=etc/defaultrouter ;;
+	-host|-hosts) OPT=etc/hosts ;;
+	-pkginfo) OPT=patch+pkg/pkginfo-l.out ;;
+	-pkginfo-i) OPT=patch+pkg/pkginfo-i.out ;;
+	-pkginfo-l) OPT=patch+pkg/pkginfo-l.out ;;
+	-system) OPT=etc/system ;;
+	*) echo "Invalid option specified";usage; exit ;;
+esac
+
+echo ls -l /home/uss/bin/explorer/servers/${SERVERS}/explorer*/${OPT}
+cat /home/uss/bin/explorer/servers/${SERVERS}/explorer*/${OPT}

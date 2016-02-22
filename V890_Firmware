@@ -1,0 +1,178 @@
+1) RSC Card possibly fautlty:
+Internal error reading from console.
+rsc> console
+
+HP #476953
+Terix #318546
+
+Update system firmware (30 Minutes)-
+#:/ unzip 142706-02.zip
+#:/ cp -p 142706-02/flash-update* /
+#:/ chmod 755 /flash-update*
+#:/ echo flash-update* >> /boot/solaris/filelist.ramdisk
+#:/ bootadm update-archive
+
+#:/ init 0
+
+ok> printenv -> screen print to keep any settings that may change during OBP upgrade
+
+{5} ok printenv
+Variable Name           Value                          Default Value
+
+test-args                                              
+diag-passes             1                              1
+local-mac-address?      true                           false
+scsi-initiator-id       7                              7
+oem-logo                                               No default
+oem-logo?               false                          false
+oem-banner                                             No default
+oem-banner?             false                          false
+ansi-terminal?          true                           true
+screen-#columns         80                             80
+screen-#rows            34                             34
+ttyb-rts-dtr-off        false                          false
+ttyb-ignore-cd          true                           true
+ttya-rts-dtr-off        false                          false
+ttya-ignore-cd          true                           true
+ttyb-mode               9600,8,n,1,-                   9600,8,n,1,-
+ttya-mode               9600,8,n,1,-                   9600,8,n,1,-
+output-device           screen                         screen
+input-device            keyboard                       keyboard
+auto-boot-on-error?     true                           true
+load-base               16384                          16384
+auto-boot?              false                          true
+network-boot-arguments  host-ip=10.33.36.75,rout ...   
+boot-command            boot                           boot
+diag-file                                              
+diag-device             net                            net
+boot-file                                              
+boot-device             /pci@8,600000/SUNW,qlc@2 ...   disk net
+use-nvramrc?            false                          false
+nvramrc                 devalias net /pci@9,6000 ...   
+security-mode           none                           No default
+security-password                                      No default
+security-#badlogins     0                              No default
+verbosity               normal                         normal
+fcode-debug?            false                          false
+diag-out-console        false                          false
+diag-trigger            error-reset power-on-res ...   error-reset power-on-res ...
+service-mode?           false                          false
+diag-script             normal                         normal
+diag-level              max                            max
+diag-switch?            false                          false
+error-reset-recovery    sync                           sync
+
+
+
+ok> boot disk /flash-update-SunFire880
+
+Resetting ...
+
+
+Software Reset
+
+Enabling system bus....... Done
+Initializing CPUs......... Done
+Initializing boot memory.. Done
+Initializing OpenBoot
+Probing system devices
+Probing I/O buses
+screen not found.
+keyboard not found.
+Keyboard not present.  Using ttya for input and output.
+Probing system devices
+Probing I/O buses
+
+
+Sun Fire V890, No Keyboard
+Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
+OpenBoot 4.22.34, 32768 MB memory installed, Serial #71621500.
+Ethernet address 0:14:4f:44:db:7c, Host ID: 8444db7c.
+
+
+
+
+                                                                      
+Rebooting with command: boot disk /flash-update-SunFire880
+Boot device: /pci@8,600000/SUNW,qlc@2/fp@0,0/disk@0,0  File and args: /flash-update-SunFire880
+-
+
+Standalone Flash PROM Update Utility, Rev. 3.0
+                        Ultra(tm) 1
+                        Ultra(tm) 2
+                        Ultra(tm) 5/10
+                        Ultra(tm) 30
+                        Ultra(tm) 60 / E220R / Netra T1120/1125
+                        Ultra(tm) 80 / E420R / Netra T1400/1405
+                        Ultra(tm) Enterprise(tm) 250
+                        Ultra(tm) Enterprise(tm) 450
+                        Sun Blade(tm) 100
+                        Sun Blade(tm) 1000
+                        Sun Blade(tm) 1500
+                        Sun Blade(tm) 1500 (Silver)
+                        Sun Blade(tm) 2500
+                        Sun Blade(tm) 2500 (Silver)
+                        Sun Fire (tm) 280R
+                        Sun Fire (tm) 480R / Sun Fire V490
+                        Sun Fire (tm) 880 / Sun Fire V890
+                        Netra(tm) T4
+                        Sun Fire (tm) V125
+                        Sun Fire (tm) V210/V240,Netra 240
+                        Sun Fire (tm) V215/V245
+                        Sun Fire (tm) V440, Netra 440
+                        Sun Fire (tm) V445
+                        Sun Ultra(tm) 25/45 Workstation
+
+
+This utility allows you to interactively update the firmware
+revisions in specific system Flash PROM components.
+
+Type h for help, q to quit, Return or Enter to continue: <enter>
+
+Every precaution should be taken to prevent the loss of system
+power during the Flash PROM programming process!
+
+Type h for help, q to quit, Return or Enter to continue: <enter>
+
+
+       Firmware Release(s)                Firmware Release(s)
+ Currently Existing in the System      Available for Installation  /  Install?
+---------------------------------- -------------------------------------------
+OBP 4.22.34 2007/07/23 13:01       OBP 4.30.4.c 2010/09/29 09:44 Sun Fire 8XX   no
+POST 4.22.34 2007/07/23 13:11      Sun Fire[TM] V880/V890 POST 4.30.4.c 2010/09/29 10:25   no
+
+Type sa if you wish to select all available firmware releases for
+installation.  Type h for help, quit to exit, or cont to continue: sa <enter>
+
+
+       Firmware Release(s)                Firmware Release(s)
+ Currently Existing in the System      Available for Installation  /  Install?
+---------------------------------- -------------------------------------------
+OBP 4.22.34 2007/07/23 13:01       OBP 4.30.4.c 2010/09/29 09:44 Sun Fire 8XX   YES
+POST 4.22.34 2007/07/23 13:11      Sun Fire[TM] V880/V890 POST 4.30.4.c 2010/09/29 10:25   YES
+
+Type sa if you wish to select all available firmware releases for
+installation.  Type h for help, quit to exit, or cont to continue: cont <enter>
+
+The Flash programming process is about to begin.
+
+Type h for help, q to quit, Return or Enter to continue: <enter>
+
+
+
+Erasing the top half of the Flash PROM.
+Programming OBP into the top half of the Flash PROM.
+Verifying OBP in the top half of the Flash PROM.
+
+Erasing the bottom half of the Flash PROM.
+Programming OBP into the bottom half of Flash PROM.
+Verifying OBP in the bottom half of the Flash PROM.
+
+Erasing the top half of the Flash PROM.
+Programming POST into the top half of Flash PROM.
+Verifying POST in the top half of the Flash PROM.
+
+Programming was successful.
+
+
+Resetting ...

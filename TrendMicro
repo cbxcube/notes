@@ -1,0 +1,20 @@
+License Key: SP-JT9W-W4JKS-KES29-VCKJS-GLRTP-VYZWH
+
+#Verify Libstdc is installed:
+sudo yum install -y libstdc++-libc6.2-2.so.3
+
+#Install TrendMicro:
+/hosting/TrendMicro/SProtectLinux-3.0 $ sudo ./SProtectLinux-3.0.bin
+	Server Name = localhost FQDN
+	Do you wish to connect this SPLX server to Trend Micro Control Manager? (y/n) [y]
+	SPLX server name or IP address: spenta0341b.paisleyhosting.com
+	Do you wish to connect to Control Manager server using HTTPS? (y/n) [n] y
+	Control Manager server name or IP address: vm015.paisleyhosting.com
+	Do you access Control Manager through a proxy server? (y/n) [n]
+	Please specify a folder name for this product (for example: /SPLX) [New entity]: /Metlife
+	kcote@spenta0341b:/hosting/TrendMicro $ sudo ./splxmod_setup.scr
+
+ALL GOOD!!!
+
+ihhaep24
+sXrnDNXP4

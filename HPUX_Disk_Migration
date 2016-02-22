@@ -1,0 +1,112 @@
+STEPS
+
+# Allocate new LUNs, add them into LVM
+# Look for new LUNs
+ioscan -fnC disk
+ls -ltr /dev/disk -> look for recently created disks
+wwid disk# -> wwid should match newly create LUN
+# Add into LVM control
+pvcreate -f /dev/rdisk/disk25
+Physical volume "/dev/rdisk/disk25" has been successfully created.
+
+# Add new LUN to VG
+vgextend -A y vgglq_c /dev/disk/disk25
+Volume group "vgglq_c" has been successfully extended.
+Volume Group configuration for /dev/vgglq_c has been saved in /etc/lvmconf/vgglq_c.conf
+
+vgdisplay -v vgglq_c
+--- Volume groups ---
+...
+   Current LE                  19660
+   Allocated PE                19660
+   Used PV                     1
+
+...
+   --- Physical volumes ---
+   PV Name                     /dev/disk/disk0
+   PV Status                   available
+   Total PE                    19660
+   Free PE                     0
+   Autoswitch                  On
+  Proactive Polling           On
+
+   PV Name                     /dev/disk/disk25
+   PV Status                   available
+   Total PE                    19660
+   Free PE                     19660
+   Autoswitch                  On
+   Proactive Polling           On
+
+# Mirror LV to use new disk
+lvextend -m 1 /dev/vgglq_c/lvol1 /dev/disk/disk25
+The newly allocated mirrors are now being synchronized. This operation will
+take some time. Please wait ....
+
+
+# Monitor progress of mirroring
+lvdisplay -v /dev/vgglq_c/lvol1 | more
+
+{snip}
+   00744 /dev/disk/disk0         00744 current  /dev/disk/disk25        00744 current
+   00745 /dev/disk/disk0         00745 current  /dev/disk/disk25        00745 current
+   00746 /dev/disk/disk0         00746 current  /dev/disk/disk25        00746 current
+   00747 /dev/disk/disk0         00747 current  /dev/disk/disk25        00747 current
+   00748 /dev/disk/disk0         00748 current  /dev/disk/disk25        00748 current
+   00749 /dev/disk/disk0         00749 current  /dev/disk/disk25        00749 current
+   00750 /dev/disk/disk0         00750 current  /dev/disk/disk25        00750 current
+   00751 /dev/disk/disk0         00751 current  /dev/disk/disk25        00751 current
+   00752 /dev/disk/disk0         00752 current  /dev/disk/disk25        00752 stale
+   00753 /dev/disk/disk0         00753 current  /dev/disk/disk25        00753 stale
+   00754 /dev/disk/disk0         00754 current  /dev/disk/disk25        00754 stale
+   00755 /dev/disk/disk0         00755 current  /dev/disk/disk25        00755 stale
+{snip}
+
+-> once all "stale" becomes "current", your command should be done.
+
+gle: # lvdisplay -v /dev/vgglq_c/lvol1 | grep "current" | wc
+19660 137620 1730080
+eagle: # lvdisplay -v /dev/vgglq_c/lvol1 | grep "stale" | wc
+18761 131323 1650935
+eagle: #
+
+# Break old LUN out of mirror leaving LV on new LUN -> remove disk0 from vglq_c
+lvreduce -m 0 /dev/vgglq_c/lvol1 /dev/disk/disk0
+Logical volume "/dev/vgglq_c/lvol1" has been successfully reduced.
+Volume Group configuration for /dev/vgglq_c has been saved in /etc/lvmconf/vgglq_c.conf
+# Remove old LUN from VG
+vgreduce -A y vgglq_c /dev/disk/disk0
+Volume group "vgglq_c" has been successfully reduced.
+Volume Group configuration for /dev/vgglq_c has been saved in /etc/lvmconf/vgglq_c.conf
+
+
+# Cleanup
+# verify old disk to compellent enterprise mgr
+eagle: # scsimgr -v get_info -D /dev/rdisk/disk19 | egrep WWID
+World Wide Identifier (WWID)                  = 0x6000d310001bec000000000000000112
+eagle: #
+
+This will be the same 'DeviceID' on the Compellent EM
+
+On the Compellent EM
+Find disk
+remove mapping
+
+Verify that LUN id is no lun 0, if not proceed
+
+Clean up old devices
+eagle: # ioscan -m lun /dev/disk/disk19
+Class     I  Lun H/W Path  Driver  S/W State   H/W Type     Health  Description
+======================================================================
+disk     19  64000/0xfa00/0x1c   esdisk  NO_HW       DEVICE       online  COMPELNTCompellent Vol
+             0/3/1/0.0x5000d310001bec26.0x9000000000000
+             0/7/1/0.0x5000d310001bec22.0x9000000000000
+                      /dev/disk/disk19   /dev/rdisk/disk19
+eagle: # rmsf -H 64000/0xfa00/0x1c
+eagle: #
+
+Verify that there is no stale device files:
+lssf -s
+
+If there is, remove with:
+rmsf -x
+

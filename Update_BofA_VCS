@@ -1,0 +1,153 @@
+#!/usr/bin/sh
+
+
+#Open main.cf for editing:
+haconf -makerw
+
+
+#Add Frauddg disk group resource for tmpboa:
+hares -add falcon_dg_frauddg DiskGroup falcon
+hares -modify falcon_dg_frauddg Enabled 1
+hares -modify falcon_dg_frauddg DiskGroup frauddg
+
+
+#Add Redo Volumes:
+hares -add oracle_v_dbredo1 Volume oracle
+hares -modify oracle_v_dbredo1 Enabled 1
+hares -modify oracle_v_dbredo1 DiskGroup oracledg
+hares -modify oracle_v_dbredo1 Volume dbredo1
+
+hares -add oracle_v_dbredo2 Volume oracle
+hares -modify oracle_v_dbredo2 Enabled 1
+hares -modify oracle_v_dbredo2 DiskGroup oracledg
+hares -modify oracle_v_dbredo2 Volume dbredo2
+
+hares -add oracle_v_dbredo3 Volume oracle
+hares -modify oracle_v_dbredo3 Enabled 1
+hares -modify oracle_v_dbredo3 DiskGroup oracledg
+hares -modify oracle_v_dbredo3 Volume dbredo3
+
+hares -add oracle_v_dbredo4 Volume oracle
+hares -modify oracle_v_dbredo4 Enabled 1
+hares -modify oracle_v_dbredo4 DiskGroup oracledg
+hares -modify oracle_v_dbredo4 Volume dbredo4
+
+hares -add oracle_v_dbredo5 Volume oracle
+hares -modify oracle_v_dbredo5 Enabled 1
+hares -modify oracle_v_dbredo5 DiskGroup oracledg
+hares -modify oracle_v_dbredo5 Volume dbredo5
+
+hares -add oracle_v_dbredo6 Volume oracle
+hares -modify oracle_v_dbredo6 Enabled 1
+hares -modify oracle_v_dbredo6 DiskGroup oracledg
+hares -modify oracle_v_dbredo6 Volume dbredo6
+
+
+#Add tmpboa volume to Falcon:
+hares -add falcon_v_tmpboa Volume falcon
+hares -modify falcon_v_tmpboa Enabled 1
+hares -modify falcon_v_tmpboa DiskGroup frauddg
+hares -modify falcon_v_tmpboa Volume tmpboa
+
+
+#Add Redo mount points:
+hares -add oracle_mnt_dbredo1 Mount oracle
+hares -modify oracle_mnt_dbredo1 Enabled 1
+hares -modify oracle_mnt_dbredo1 BlockDevice /dev/vx/dsk/oracledg/dbredo1
+hares -modify oracle_mnt_dbredo1 FSType vxfs
+hares -modify oracle_mnt_dbredo1 MountOpt rw
+hares -modify oracle_mnt_dbredo1 FsckOpt %-y	#necessary, learned after failed update on 11/14
+hares -modify oracle_mnt_dbredo1 MountPoint /dbredo1
+
+hares -add oracle_mnt_dbredo2 Mount oracle
+hares -modify oracle_mnt_dbredo2 Enabled 1
+hares -modify oracle_mnt_dbredo2 BlockDevice /dev/vx/dsk/oracledg/dbredo2
+hares -modify oracle_mnt_dbredo2 FSType vxfs
+hares -modify oracle_mnt_dbredo2 MountOpt rw
+hares -modify oracle_mnt_dbredo2 FsckOpt %-y    #necessary, learned after failed update on 11/14
+hares -modify oracle_mnt_dbredo2 MountPoint /dbredo2
+
+hares -add oracle_mnt_dbredo3 Mount oracle
+hares -modify oracle_mnt_dbredo3 Enabled 1
+hares -modify oracle_mnt_dbredo3 BlockDevice /dev/vx/dsk/oracledg/dbredo3
+hares -modify oracle_mnt_dbredo3 FSType vxfs
+hares -modify oracle_mnt_dbredo3 MountOpt rw
+hares -modify oracle_mnt_dbredo3 FsckOpt %-y    #necessary, learned after failed update on 11/14
+hares -modify oracle_mnt_dbredo3 MountPoint /dbredo3
+
+hares -add oracle_mnt_dbredo4 Mount oracle
+hares -modify oracle_mnt_dbredo4 Enabled 1
+hares -modify oracle_mnt_dbredo4 BlockDevice /dev/vx/dsk/oracledg/dbredo4
+hares -modify oracle_mnt_dbredo4 FSType vxfs
+hares -modify oracle_mnt_dbredo4 MountOpt rw
+hares -modify oracle_mnt_dbredo4 FsckOpt %-y    #necessary, learned after failed update on 11/14
+hares -modify oracle_mnt_dbredo4 MountPoint /dbredo4
+
+hares -add oracle_mnt_dbredo5 Mount oracle
+hares -modify oracle_mnt_dbredo5 Enabled 1
+hares -modify oracle_mnt_dbredo5 BlockDevice /dev/vx/dsk/oracledg/dbredo5
+hares -modify oracle_mnt_dbredo5 FSType vxfs
+hares -modify oracle_mnt_dbredo5 MountOpt rw
+hares -modify oracle_mnt_dbredo5 FsckOpt %-y    #necessary, learned after failed update on 11/14
+hares -modify oracle_mnt_dbredo5 MountPoint /dbredo5
+
+hares -add oracle_mnt_dbredo6 Mount oracle
+hares -modify oracle_mnt_dbredo6 Enabled 1
+hares -modify oracle_mnt_dbredo6 BlockDevice /dev/vx/dsk/oracledg/dbredo6
+hares -modify oracle_mnt_dbredo6 FSType vxfs
+hares -modify oracle_mnt_dbredo6 MountOpt rw
+hares -modify oracle_mnt_dbredo6 FsckOpt %-y    #necessary, learned after failed update on 11/14
+hares -modify oracle_mnt_dbredo6 MountPoint /dbredo6
+
+
+#Add tmpboa mount point:
+hares -add falcon_mnt_tmpboa Mount falcon
+hares -modify falcon_mnt_tmpboa Enabled 1
+hares -modify falcon_mnt_tmpboa BlockDevice /dev/vx/dsk/frauddg/tmpboa
+hares -modify falcon_mnt_tmpboa FSType vxfs
+hares -modify falcon_mnt_tmpboa MountOpt rw
+hares -modify falcon_mnt_tmpboa FsckOpt %-y    #necessary, learned after failed update on 11/14
+hares -modify falcon_mnt_tmpboa MountPoint /tmpboa
+
+
+#Create Redo resource dependancy links:
+hares -link oracle_mnt_dbredo1 oracle_v_dbredo1
+hares -link oracle_mnt_dbredo2 oracle_v_dbredo2
+hares -link oracle_mnt_dbredo3 oracle_v_dbredo3
+hares -link oracle_mnt_dbredo4 oracle_v_dbredo4
+hares -link oracle_mnt_dbredo5 oracle_v_dbredo5
+hares -link oracle_mnt_dbredo6 oracle_v_dbredo6
+
+hares -link oracle_boap5 oracle_mnt_dbredo1
+hares -link oracle_boap5 oracle_mnt_dbredo2
+hares -link oracle_boap5 oracle_mnt_dbredo3
+hares -link oracle_boap5 oracle_mnt_dbredo4
+hares -link oracle_boap5 oracle_mnt_dbredo5
+hares -link oracle_boap5 oracle_mnt_dbredo6
+
+hares -link oracle_v_dbredo1 oracle_dg_oracledg
+hares -link oracle_v_dbredo2 oracle_dg_oracledg
+hares -link oracle_v_dbredo3 oracle_dg_oracledg
+hares -link oracle_v_dbredo4 oracle_dg_oracledg
+hares -link oracle_v_dbredo5 oracle_dg_oracledg
+hares -link oracle_v_dbredo6 oracle_dg_oracledg
+
+
+#Create tmpboa resourece dependancy link:
+hares -link falcon_mnt_tmpboa falcon_v_tmpboa
+hares -link falcon_v_tmpboa falcon_dg_frauddg
+
+
+#Save and close main.cf:
+haconf -dump -makero
+
+
+#Tell the Admin to make the necessary mount points:
+echo "Need to make the dbredo mount points on the Oracle servers in the cluster."
+echo "Perform the following commands on ux351 and ux352:"
+echo "mkdir -m 755 /dbredo1"
+echo "mkdir -m 755 /dbredo2"
+echo "mkdir -m 755 /dbredo3"
+echo "mkdir -m 755 /dbredo4"
+echo "mkdir -m 755 /dbredo5"
+echo "mkdir -m 755 /dbredo6"

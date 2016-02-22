@@ -1,0 +1,49 @@
+hares -add falcon_mnt_fico1 Mount falcon
+hares -modify falcon_mnt_fico1 MountPoint /fico1
+hares -modify falcon_mnt_fico1 BlockDevice /dev/vx/dsk/appsdg/fico1
+hares -modify falcon_mnt_fico1 FSType vxfs
+hares -modify falcon_mnt_fico1 MountOpt rw
+hares -modify falcon_mnt_fico1 FsckOpt %-y
+hares -modify falcon_mnt_fico1 Enabled 1
+
+hares -add falcon_v_fico1 Volume falcon
+hares -modify falcon_v_fico1 Volume fico1
+hares -modify faclon_v_fico1 DiskGroup appsdg
+hares -modify faclon_v_fico1 Enabled 1
+
+hares -link falcon_mnt_fico1 falcon_v_fico1
+hares -link falcon_v_fico1 falcon_dg_appsdg
+
+
+hares -add falcon_mnt_fico2 Mount falcon
+hares -modify falcon_mnt_fico2 MountPoint /fico2
+hares -modify falcon_mnt_fico2 BlockDevice /dev/vx/dsk/appsdg/fico2
+hares -modify falcon_mnt_fico2 FSType vxfs
+hares -modify falcon_mnt_fico2 MountOpt rw
+hares -modify falcon_mnt_fico2 FsckOpt %-y
+hares -modify falcon_mnt_fico2 Enabled 1
+
+hares -add falcon_v_fico2 Volume falcon
+hares -modify falcon_v_fico2 Volume fico2
+hares -modify falcon_v_fico2 DiskGroup appsdg
+hares -modify falcon_v_fico2 Enabled 1
+
+hares -link falcon_mnt_fico2 falcon_v_fico2
+hares -link falcon_v_fico2 falcon_dg_appsdg
+
+
+hares -add falcon_mnt_fico3 Mount falcon
+hares -modify falcon_mnt_fico3 MountPoint /fico3
+hares -modify falcon_mnt_fico3 BlockDevice /dev/vx/dsk/appsdg/fico3
+hares -modify falcon_mnt_fico3 FSType vxfs
+hares -modify falcon_mnt_fico3 MountOpt rw
+hares -modify falcon_mnt_fico3 FsckOpt %-y
+hares -modify falcon_mnt_fico3 Enabled 1
+
+hares -add falcon_v_fico3 Volume falcon
+hares -modify falcon_v_fico3 Volume fico3
+hares -modify falcon_v_fico3 DiskGroup appsdg
+hares -modify falcon_v_fico3 Enabled 1
+
+hares -link falcon_mnt_fico3 falcon_v_fico3
+hares -link falcon_v_fico3 falcon_dg_appsdg

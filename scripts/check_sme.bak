@@ -1,0 +1,8 @@
+#!/usr/bin/ksh
+
+# check on SME interface backup SW etc
+
+echo Interface - `ifconfig -a|grep 172.16`
+echo Host file - `grep 172.16 /etc/hosts`
+echo DNS entry - 
+grep  -i $(hostname)b /home/uss/aix/matrix/sme-b-side.txt|grep 172.16|awk -F, '{print $1"\t"$2}'

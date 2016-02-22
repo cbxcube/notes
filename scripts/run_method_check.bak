@@ -1,0 +1,8 @@
+LINE=`ptree $$ | head -1`
+
+[ `echo "$LINE"|grep sshd` ] && METHOD=ssh
+[ `echo "$LINE"|grep controlm` ] && METHOD=Control-M
+[ `echo "$LINE"|grep cron` ] && METHOD=cron
+
+
+

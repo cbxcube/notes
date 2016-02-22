@@ -1,0 +1,253 @@
+# Add space to file systsm
+vgdisplay vgname -> any free PE's? if not, add a new disk
+  desired size in MB / PE size = # of PE's to grow to
+pvcreate /dev/rdisk/disk1
+vgextend vgname /dev/disk/disk1
+lvextend -l 12345 /dev/vgname/lvname -> 12345 = total number of PEs
+lvdisplay lvname -> LV Size (Mbytes)
+fsadm -F vxfs -b 300000M /mount/point -> 300000M = LV Size (Mbytes) from lvdisplay; 
+
+# Remove LV's and Vg's
+vgdisplay - will show the vg's
+lvremove /dev/vg/vol - remove the volume
+vgreduce vg /path/to/device - remove the device from the vg
+  ie, vgreduce stk01 /dev/dsk/c2t6d0
+
+for i in `vgdisplay -v stk01 | grep "LV Name" | awk '{print $3}'`
+do
+lvremove $i
+done
+
+for i in `vgdisplay -v stk01 | grep "PV Name" | awk '{print $3}'`
+do
+vgreduce stk01 $i
+done
+
+vgchange -a n stk01 - will disable vg stk01
+vgexport stk01 - will export vg stk01
+
+
+
+
+The following are an overview of how to create volumes in LVM for HP-UX.
+
+1) Add your disks, and verify their device names.
+
+    The command: 
+
+    # ioscan -fnC disk  
+
+
+2) Next, place the disks you wish to use for
+
+    volumes under LVM control.  This 
+    is done by converting a disk into 
+    a "Physical Volume" (pv).  The command 
+    used is: 
+
+    # pvcreate <devpath> 
+
+    example: #pvcreate /dev/rdsk/c1t0d0 
+
+    Note: You can use the "-f" option 
+    to "force" the creation, which keeps 
+    LVM for asking for verification... 
+    the "Would you like to proceed? (y/n)" 
+
+
+3) Now, create a device path for the volume group.
+
+    Do this by creating a directory in /dev 
+    by the name of the volume group. 
+
+    # mkdir /dev/<vgname> 
+
+    example: # mkdir /dev/vg01 
+
+
+4) Then create a "group node" in that directory.
+
+    The process looks like this: 
+
+    # mknod /dev/<vgname>/group c 64 <minornum> 
+
+    example: # mknod /dev/vg01/group c 64 0x030000 
+
+    Note: The minor number follows the following patern: 
+          0x030000 
+          0x040000 
+          0x050000 
+          ..... 
+
+
+5) You can now create your Volume Group (vg) to which
+
+    the Physical Volumes will be assigned.  A VG 
+    is similar to a Disk Group in Veritas.  The 
+    format is: 
+     
+    # vgcreate /dev/<vgname> <PVpath> <PVpath> .... 
+
+    example: # vgcreate /dev/vg01 /dev/dsk/c1t0d0 
+
+    Note: The PV DevPaths don't use a partition 
+    designation (sX).  You can specify as many PV's 
+    to add to a VG as you like on this one line. 
+
+
+6) Next create a Logical Volume (lv). This is the "volume"
+
+    itself, which will contain the file system. 
+
+    # lvcreate /dev/<vgname> 
+
+    example: # lvcreate /dev/vg01 
+
+    Note: This will create a 0 length volume.  It 
+    will also create two new files in the vg dev  
+    directory: lvol1 and rlvol1.  Being: Logical 
+    Volume 1, and Raw Logical Volume 1.  You can 
+    have multiple LV's per VG. 
+
+    Note(2): lvcreate with no options will create 
+    a concat volume.  To create striped volumes, 
+    use the options: 
+     -i <stripes>            This is the Vx equiv to column numbers. 
+     -I <stripesize>      This is the Vx equiv to a stripe width in kb. 
+     -m <mirror copies>      Number of mirrors. Can be "1" or "2".       
+     -L <lv size>            The size of the new volume in megabytes. 
+           
+
+7) Now you can extend to Logical Volume to the length
+
+    you desire.  To extend to it's max, do the 
+    following: 
+     
+ a) Run the command: # vgdisplay <vgpath> 
+          example: # vgdisplay /dev/vg01 
+
+ b) Look for the two lines: "Total PE" and "PE Size" 
+    PE stands for "Physical Extent".  If you 
+    multiply the number of "Total PE" by 
+    "PE Size" you will get the total size of  
+    the disk that is usable, usually in megabytes. 
+
+    NOTE: LVM breaks PV's into Physical Extents. 
+    These are like blocks in LVM.  PE Size is 
+    the size of each PE.  Total PE is the  
+    number of PE's avalible to the volume group. 
+    The "PE Size" is variable, default is "4M" 
+    but it can be reset to any desired size, 
+    during VG creation.  The options avable to 
+    "vgcreate" are: 
+    -e <maxpe>      Max Num of PE's for this VG. Default: 1016 
+                      Max PE cannot exceed: 65535 
+    -l <maxlv>      Max Num of LV's for this VG. Default: 255  
+    -p <maxpv>      Max Num of PV's for this VG. Default: 16 
+                      Max PV cannot exceed: 255 -s <pesize>        Size of each PE for this VG. Default: 4 
+                      PE Size must be a power of 2. 
+    -x <extensiblity> Can the VG be grown? Default: y 
+
+ c) With the number you got by multiplying "Total PE" by "PE Size" 
+    you have the total lenth of the VG.  To make all disks 
+    in the VG be used by 1 LV, and to use all the space, 
+    extend the Logical Volume with the command: 
+     
+    # lvextend -L <length> <lvdevpath> 
+
+    example: # lvextend -L 3200 /dev/vg01/lvol1 
+
+    This would extend VG01's LV 1 out to (NOT by) 3.2G. 
+    Remember the size is defaulted to Megabytes. 
+
+
+8) You can now create your filesystem with:
+
+    # newfs -F <fs> <raw_lvdevpath> 
+
+    example: # newfs -F vxfs /dev/vg01/rlvol1 
+
+
+9) Now mount the filesystem like usual:
+
+    # mount /dev/vg01/lvol1 /mydatavolume 
+
+
+
+Done!
+
+NOTES:
+
+    - Monitor LVM with the following commands: 
+          bdf      Similar to a Solaris style "df -k" output. 
+          pvdisplay      Display PV Information 
+          vgdisplay      Display VG Information 
+          lvdisplay      Display LV Information 
+     
+    - Remove LVM Objects with the commands: 
+          pvremove      Removes a PV Device (ie: /dev/dsk/c0t1..) 
+          vgreduce      Remove a PV from a VG Binding 
+                      use as: vgreduce /dev/vg01 /dev/dsk/c0t1d0 
+          vgremove      Removes a VG, only done when there 
+                      is only ONE disk left in the VG. 
+          lvremove      Removes a LV. 
+
+      To remove a complete volume you must unmount the fs, then 
+      remove the LV, then reduce the VG to all but one disk.  Then 
+      remove the VG.  Then you only need to remove each PV untill 
+      you have normal disks again, not under LVM control. 
+     
+     
+    - Here's a list of commands: 
+
+    ----VG----- 
+    vgcfgbackup    
+    vgchange       
+    vgcreate       
+    vgexport       
+    vgimport       
+    vgremove 
+    vgcfgrestore   
+    vgchgid        
+    vgdisplay      
+    vgextend       
+    vgreduce       
+    vgscan 
+
+    ---LV---- 
+    lvchange     
+    lvdisplay    
+    lvlnboot     
+    lvreduce     
+    lvrmboot 
+    lvcreate     
+    lvextend     
+    lvmmigrate   
+    lvremove 
+
+    ---PV---- 
+    pvchange    
+    pvck        
+    pvcreate    
+    pvdisplay   
+    pvmove      
+    pvremove 
+
+    - There are 3 LVM Objects: 
+
+          ---------------------------- 
+          |  Logical Volume         | 
+          ---------------------------- 
+            \/      \/      \/      \/       
+          ---------------------------- 
+          |  Volume Group               | 
+          ---------------------------- 
+            \/      \/      \/      \/ 
+          ---------------------------- 
+          |  Physical Volume         | 
+          ---------------------------- 
+
+          or: Disks are used to create PV's, 
+            which we group into VG's, from 
+            which we create LV's which  
+            contains the filesystem we use.

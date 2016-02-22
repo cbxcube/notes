@@ -1,0 +1,132 @@
+# MySQL Generate backup
+mysqldump -u username -p databasename > dumpfile.sql
+mysqldump -u username -p databasename | /bin/gzip dumpfile_`date '+%Y%m%d%H%M'`.sql.gz
+
+# MySQL Restore from backup
+mysql -u username -p databasename < dumpfile.sql
+
+# Log into MySQL as username
+mysql -u username -p 
+
+# Specify a DB to use in MySQL
+mysql> use dbname
+
+# Delete a database
+mysql> drop dbname
+
+
+# Refreshes
+MSGR -> MFGT -> GL
+
+HPUX:
+After creating volume from replay, and mapping the volumes to the destination server
+1) verify the server sees the volumes, the date should match, or run 'wwid disk250' to validate the SN of the volume
+raven: # ls -ltr /dev/disk
+...
+brw-r-----   1 bin        sys          3 0x00005e Apr  2 14:54 disk250
+brw-r-----   1 bin        sys          3 0x00005f Apr  2 14:55 disk252
+2) gather the major number for the 'group' in the VG we're workgin with; example major number is 0x210000
+raven: # ls -ltr /dev/vgmsgr93 | grep group
+crw-r--r--   1 root       sys         64 0x210000 Apr  2 15:31 group
+3) verify the old disks for the vg
+raven: # vgdisplay -v vgmsgr93 | grep "PV Name"
+raven: # vgdisplay -v vgmsgr93 | grep "PV Name"
+   PV Name                     /dev/disk/disk226
+   PV Name                     /dev/disk/disk225
+   PV Name                     /dev/disk/disk217
+   PV Name                     /dev/disk/disk214
+   PV Name                     /dev/disk/disk211
+ 
+for DISK in 226 225 217 214 211
+do
+wwid disk${DISK}
+done
+World Wide Identifier (WWID)                  = 0x6000d310001bea0000000000000065c9
+World Wide Identifier (WWID)                  = 0x6000d310001bea0000000000000065ca
+World Wide Identifier (WWID)                  = 0x6000d310001bea0000000000000065c7
+World Wide Identifier (WWID)                  = 0x6000d310001bea0000000000000065c8
+World Wide Identifier (WWID)                  = 0x6000d310001bea0000000000000065c6
+
+4) unmount file system(s)
+umount /msgr93/d01
+umount /msgr93/d03
+umount /msgr93/d05
+umount /msgr93/d06
+umount /msgr93/d08
+
+5) Disable old VG
+vgchange -an vgmsgr93
+vgexport vgmsgr93
+
+6) prepare new disks for VG import
+vgchagid /dev/rdisk/disk250 /dev/rdisk/disk252
+mkdir -m 755 /dev/vgmsgr93
+# next command will use the major number you gathered earlier
+mknod /dev/vgmsgr93/group c 64 0x210000
+
+7) import new disks
+if a map file doesn't exist:
+  on source server:
+	vgexport -p -m mapname.map vgname
+
+vgimport -m /opt/depots/admin/ryan/hpux/vgmsgr93.map vgmsgr93 /dev/disk/disk250 /dev/disk/disk252
+vgchange -a y vgmsgr93
+vgcfgbackup vgmsgr93
+
+8) confirm volumes are present and fsck them
+ls -ltr /dev/vgmsgr93
+total 0
+crw-r--r--   1 root       sys         64 0x210000 Apr  2 15:31 group
+brw-r-----   1 root       sys         64 0x210006 Apr  2 15:32 lvmsgr93arc1
+crw-r-----   1 root       sys         64 0x210005 Apr  2 15:32 rlvmsgr93ind1
+brw-r-----   1 root       sys         64 0x210005 Apr  2 15:32 lvmsgr93ind1
+crw-r-----   1 root       sys         64 0x210004 Apr  2 15:32 rlvmsgr93red1
+brw-r-----   1 root       sys         64 0x210004 Apr  2 15:32 lvmsgr93red1
+crw-r-----   1 root       sys         64 0x210003 Apr  2 15:32 rlvmsgr93rol1
+brw-r-----   1 root       sys         64 0x210003 Apr  2 15:32 lvmsgr93rol1
+crw-r-----   1 root       sys         64 0x210002 Apr  2 15:32 rlvmsgr93tab1
+brw-r-----   1 root       sys         64 0x210002 Apr  2 15:32 lvmsgr93tab1
+crw-r-----   1 root       sys         64 0x210001 Apr  2 15:32 rlvmsgr93cod_DEL_ME
+brw-r-----   1 root       sys         64 0x210001 Apr  2 15:32 lvmsgr93cod_DEL_ME
+crw-r-----   1 root       sys         64 0x210006 Apr  2 15:32 rlvmsgr93arc1
+
+fsck -y -F vxfs /dev/vgmsgr93/lvmsgr93arc1
+fsck -y -F vxfs /dev/vgmsgr93/lvmsgr93ind1
+fsck -y -F vxfs /dev/vgmsgr93/lvmsgr93red1
+fsck -y -F vxfs /dev/vgmsgr93/lvmsgr93rol1
+fsck -y -F vxfs /dev/vgmsgr93/lvmsgr93tab1
+fsck -y -F vxfs /dev/vgmsgr93/lvmsgr93cod_DEL_ME
+
+9) rename lv's if necessary and  mount file systems
+
+ep1q-dbor10: # for i in arc1 cod1 ind1 tab1 rol1 red1
+> do
+> mv /dev/vgmfgt10/lvmfgt${i} /dev/vgmfgt10/lvmfgt10${i}
+> mv /dev/vgmfgt10/rlvmfgt${i} /dev/vgmfgt10/rlvmfgt10${i}
+> done
+
+mount -a
+
+OR
+
+mount /msgr93/d01
+mount /msgr93/d03
+mount /msgr93/d05
+mount /msgr93/d06
+mount /msgr93/d08
+
+10) Clean up old disks
+unmap old disks in storage array, move old disks to 'to be deleted folder' if in compellent
+ioscan -fNC disk | grep NO
+disk    211  64000/0xfa00/0x52  esdisk   NO_HW       DEVICE       COMPELNTCompellent Vol
+disk    214  64000/0xfa00/0x53  esdisk   NO_HW       DEVICE       COMPELNTCompellent Vol
+disk    217  64000/0xfa00/0x54  esdisk   NO_HW       DEVICE       COMPELNTCompellent Vol
+disk    225  64000/0xfa00/0x55  esdisk   NO_HW       DEVICE       COMPELNTCompellent Vol
+disk    226  64000/0xfa00/0x56  esdisk   NO_HW       DEVICE       COMPELNTCompellent Vol
+disks should match those from earlier
+
+rmsf -a /dev/disk/disk211
+rmsf -a /dev/disk/disk214
+rmsf -a /dev/disk/disk217
+rmsf -a /dev/disk/disk225
+rmsf -a /dev/disk/disk226

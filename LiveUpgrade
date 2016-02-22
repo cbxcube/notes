@@ -1,0 +1,75 @@
+#Check current OS Version:
+   cat /etc/release - needs to be at least 10_0910 Solaris10_u9 for this to work properly.
+
+#check current boot environments:
+   lustatus
+
+#create new alternate boot environment(abe):
+   lucreate -n abe_name
+
+#delete alternate boot environment:
+   ludetele abe_name
+
+#patch alternate boot environment:
+   luupgrade -t -n 10_1009_date -s /patches/10_Recommended/patches
+   After 1 or 2 weeks of testing, come back and delete the old boot environment:
+     ludelete 10_1009
+
+#activate alternate boot environment:
+   luactivate abe_name
+
+
+root@uxlab4# luactivate 10_1009_new
+
+
+**********************************************************************
+
+The target boot environment has been activated. It will be used when you 
+reboot. NOTE: You MUST NOT USE the reboot, halt, or uadmin commands. You 
+MUST USE either the init or the shutdown command when you reboot. If you 
+do not use either init or shutdown, the system will not boot using the 
+target BE.
+
+**********************************************************************
+
+In case of a failure while booting to the target BE, the following process 
+needs to be followed to fallback to the currently working boot environment:
+
+1. Enter the PROM monitor (ok prompt).
+
+2. Boot the machine to Single User mode using a different boot device 
+(like the Solaris Install CD or Network). Examples:
+
+     At the PROM monitor (ok prompt):
+     For boot to Solaris CD:  boot cdrom -s
+     For boot to network:     boot net -s
+
+3. Mount the Current boot environment root slice to some directory (like 
+/mnt). You can use the following commands in sequence to mount the BE:
+
+     zpool import rpool
+     zfs inherit -r mountpoint rpool/ROOT/10_1009
+     zfs set mountpoint=<mountpointName> rpool/ROOT/10_1009 
+     zfs mount rpool/ROOT/10_1009
+
+4. Run <luactivate> utility with out any arguments from the Parent boot 
+environment root slice, as shown below:
+
+     <mountpointName>/sbin/luactivate
+
+5. luactivate, activates the previous working boot environment and 
+indicates the result.
+
+6. Exit Single User mode and reboot the machine.
+
+**********************************************************************
+
+Modifying boot archive service
+Activation of boot environment <10_1009_new> successful.
+root@uxlab4# lustatus
+Boot Environment           Is       Active Active    Can    Copy      
+Name                       Complete Now    On Reboot Delete Status    
+-------------------------- -------- ------ --------- ------ ----------
+10_1009                    yes      yes    no        no     -         
+10_1009_new                yes      no     yes       no     -    
+

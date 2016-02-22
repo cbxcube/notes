@@ -1,0 +1,100 @@
+NEW COMMANDS:
+Typical commands for the OpenView agents on servers:
+
+	ovc ûstatus  (#ovc -? To get a list of available commands)
+	opcagt ûstatus  (this is the command for older versions of the OpenView agent.)
+	ovc ûkill  (to stop the agent and kill the procs)
+	ovc ûstart  (to start the OpenView processes)
+	ovc ûstart coda (can replace coda with other components if needed)
+
+Typical commands to run for OVPA (formerly Measureware) status etc.:
+
+	ovpa status (current running state)
+	ovpa ? (displays usage)
+	ovpa stop/start (to stop and start ovpa)
+	fsmon status
+	fsmon stop/start
+
+
+from zig...
+zig(root) #opcragt.sh servername
+ie.
+  zig(root) #opcragt.sh bhutil2
+  RUNNING "opcragt -status bhutil2.uhc.com" locally
+  Node bhutil2.uhc.com:
+  OVO Managed Node status :
+  -------------------------
+  Control Agent        /opt/OV/bin/OpC/opcctla           (14623) is running
+  Message Agent        /opt/OV/bin/OpC/opcmsga           (14624) is running
+  BBC Local Location Broker /opt/OV/bin/llbserver             (14625) is running
+  Subagent 1:
+  Action Agent         /opt/OV/bin/OpC/opcacta           (14626) is running
+  Logfile Encapsulator /opt/OV/bin/OpC/opcle             (14627) is running
+  Monitor Agent        /opt/OV/bin/OpC/opcmona           (14628) is running
+  Message Interceptor  /opt/OV/bin/OpC/opcmsgi           (14629) is running
+  Done.
+ 
+  SUMMARY RESULTS:
+  bhutil2 OK  -  CONTROLING MANAGER: zig
+
+from server...
+#opcagt -status
+ie.
+  root@bhutil2(/)#opcagt -status
+  VPO Managed Node status :
+  -------------------------
+  Control Agent        /opt/OV/bin/OpC/opcctla           (14623) is running
+  Message Agent        /opt/OV/bin/OpC/opcmsga           (14624) is running
+  BBC Local Location Broker /opt/OV/bin/llbserver             (14625) is running
+  Subagent 1:
+  Action Agent         /opt/OV/bin/OpC/opcacta           (14626) is running
+  Logfile Encapsulator /opt/OV/bin/OpC/opcle             (14627) is running
+  Monitor Agent        /opt/OV/bin/OpC/opcmona           (14628) is running
+  Message Interceptor  /opt/OV/bin/OpC/opcmsgi           (14629) is running
+
+#mwa status
+ie. 
+  root@bhutil2(/)#mwa status
+  MeasureWare scope status:
+      Running scopeux               (MWA data collector) pid 15280 
+      Running midaemon              (measurement interface daemon) pid 15279 
+ 
+  MeasureWare background daemon status:
+      Running ttd                   (Transaction Tracking daemon) pid 15272 
+  
+  MeasureWare server status:
+      Running alarmgen              (alarm generator) pid 15830 
+      Running agdbserver            (alarm database server) pid 15829 
+      Running perflbd               (location broker) pid 15297 
+ 
+      The following data sources have running repository servers:
+                              PID  DATA SOURCE
+      Running rep_server    15828  FS_DATA 
+      Running rep_server    15820  SCOPE 
+ 
+  MeasureWare DSI logging process status:
+      The following DSI logging processes are running:
+                              PID  LOGFILE SET & CLASS
+      Running dsilog        15229  ./fslog FS_STATS -s -i ./fs.fifo
+
+Status Log files reside in /var/opt/perf and show what may be wrong if a part of MWA or OPCAGT is not running
+  status.alarmgen
+  status.rep_server
+  status.scope
+  status.perflbd
+  status.ttd
+
+/var/opt/perf/alarmdef sets alarm thresholds for several different alerts, ie. CPU usage, Disk thrashing, etc...
+
+To exit console after starting/stopping mwa:
+type: "~.<enter>"
+
+To have the Openview team complete the set up of Openview, Send the following e-mail:
+To: auto-ov-deskpro@mailinbound.uhc.com
+Subject: Please add server servername to monitoring
+Body:
+Hostname: Servername
+Team: Unix Owner Team
+Builder: OS Installer
+Type: Prod/Dev/Pre-Prod/QA
+BuilderPhone: 763-744-1234

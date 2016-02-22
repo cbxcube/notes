@@ -1,0 +1,349 @@
+#!/bin/ksh
+#set -x
+################################################################################
+# Simple script to GET stats about network cards
+# Should work on hme and qfe. Will NOT change anything.
+# Will report on speed and config of all network interfaces.
+# Paul Bates 27.03.2000
+# James Council 26.09.2001
+# 		 - Changed output to one liners.
+# 		 - Added IPversion check.
+# James Council 10.10.2002 (jamescouncil@yahoo.com)
+#		 - Added test for Cassini Gigabit-Ethernet card (ce_).
+#		 - Added test for GEM Gigabit-Ethernet (ge_)
+#		 - Added test for eri Fast-Ethernet (eri_).
+#		 - Added "Ethernet Address" field.
+# 		 - Removed "IPversion" field.
+#		 - Removed checking of a port more than once (i.e. qfe0 qfe0:1)
+# James Council 10.25.2002 (jamescouncil@yahoo.com)
+#		 - Fixed 1GB check on ge device.
+# James Council 04.02.2003 (jamescouncil@yahoo.com)
+#		 - Added dmfe check (suggested by John W. Rudick, & Erlend Tronsmoen)
+# James Council 05.12.2003 (jamescouncil@yahoo.com)
+#		 - Added "-t" for checking tcp settings (suggested by Todd Williamson)
+#		 - Fixed ce netstat problem (fix provided by Sam Horrocks)
+# Peter Lidauer  28.11.2003 
+#		 - Added "trp and tp" to bypass check of tokenring cards
+#		 - Added bge check
+# James Council 06.23.2004
+#		 - Changed to /etc/path_to_inst for building ports to check.
+#		   The script will now report on all ports found, not just ones that are
+#		   configured.
+#		 - Switched to "netstat -pn" to Mac Address.
+#		 - Added IP check for configured ports.
+#		 - Reduced headings and width to allow for IP output.
+#
+# NOTE:		 For further updates or comments please feel free to contact me via
+#		 http://council.homeunix.com
+#		 James Council
+#
+################################################################################
+
+#####################################
+# VARIABLES
+#
+SCRIPT=$(/bin/basename $0)
+NDD=/usr/sbin/ndd
+NETSTAT=/usr/bin/netstat
+IFC=/sbin/ifconfig
+
+typeset -R5 LINK
+typeset -R3 AUTOSPEED
+typeset -R4 STATUS
+typeset -R6 SPEED
+typeset -R5 MODE
+typeset -R17 ETHER
+typeset -R15 IP
+typeset -R17 HN
+
+#####################################
+# FUNCTIONS
+#
+
+#---- Function to check volume sizes and states.
+#
+USAGE()
+{
+echo
+echo "$SCRIPT"
+echo "$SCRIPT [-t]"
+echo
+echo "          -t = Print tcp settings"
+}
+
+#---- Function to test that the user is root.
+#
+Check_ID()
+{
+ID=$(/usr/ucb/whoami)
+if [ $ID != "root" ]; then echo "$ID, you must be root to run this program."
+        exit 1
+fi
+}
+
+#---- Function to test a Cassini Gigabit-Ethernet port (i.e. ce_).
+#
+Check_CE()
+{
+autospeed=`${NETSTAT} -k $LINK| \
+awk '{for (i=1; i<=NF; ++i) {if ($i == "cap_1000fdx") {print $(i+1)}}}'`
+case $autospeed in
+   1) AUTOSPEED=on		 ;;
+   0) AUTOSPEED=off		 ;;
+   *) AUTOSPEED=Error		 ;;
+esac
+
+status=`${NETSTAT} -k $LINK| \
+awk '{for (i=1; i<=NF; ++i) {if ($i == "link_up") {print $(i+1)}}}'`
+case $status in
+   1) STATUS=Up		 		 ;; 
+   0) STATUS=DOWN		 ;;
+   *) STATUS=Error		 ;;
+esac
+
+SPEED=`${NETSTAT} -k $LINK| \
+awk '{for (i=1; i<=NF; ++i) {if ($i == "link_speed") {print $(i+1)}}}'`
+
+mode=`${NETSTAT} -k $LINK| \
+awk '{for (i=1; i<=NF; ++i) {if ($i == "link_duplex") {print $(i+1)}}}'`
+case $mode in
+   2) MODE=FDX		 		 ;;
+   1) MODE=HDX		 		 ;;
+   0) MODE=---		 		 ;;
+   *) MODE=Error		 ;;
+esac
+}
+
+#---- Function to test Quad Fast-Ethernet, Fast-Ethernet, and
+#     GEM Gigabit-Ethernet (i.e. qfe_, hme_, ge_)
+#
+Check_NIC()
+{
+${NDD} -set /dev/${1} instance ${2}
+
+if [ $type = "ge" ];then
+		 autospeed=`${NDD} -get /dev/${1} adv_1000autoneg_cap`
+else		 autospeed=`${NDD} -get /dev/${1} adv_autoneg_cap`
+fi
+case $autospeed in
+   1) AUTOSPEED=on		 ;;
+   0) AUTOSPEED=off		 ;;
+   *) AUTOSPEED=Error		 ;;
+esac
+
+status=`${NDD} -get /dev/${1} link_status`
+case $status in
+   1) STATUS=Up		 		 ;;
+   0) STATUS=DOWN		 ;;
+   *) STATUS=Error		 ;;
+esac
+
+speed=`${NDD} -get /dev/${1} link_speed| head -1`
+case $speed in
+   1000) SPEED=1GB		 ;;
+   1) SPEED=100MB		 ;;
+   0) SPEED=10MB		 ;;
+   *) SPEED=Error		 ;;
+esac
+
+mode=`${NDD} -get /dev/${1} link_mode`
+case $mode in
+   1) MODE=FDX		 		 ;;
+   0) MODE=HDX		 		 ;;
+   *) MODE=Error		 ;;
+esac
+}
+
+#---- Function to test the Davicom Fast Ethernet, DM9102A, devices
+#     on the Netra X1 and SunFire V100 (i.e. dmfe_)
+#
+Check_DMF_NIC()
+{
+autospeed=`${NDD} -get /dev/${1}${2} adv_autoneg_cap`
+case $autospeed in
+   1) AUTOSPEED=on      ;;
+   0) AUTOSPEED=off     ;;
+   *) AUTOSPEED=Error   ;;
+esac
+
+status=`${NDD} -get /dev/${1}${2} link_status`
+case $status in
+   1) STATUS=Up         ;;
+   0) STATUS=DOWN       ;;
+   *) STATUS=Error      ;;
+esac
+
+speed=`${NDD} -get /dev/${1}${2} link_speed`
+case $speed in
+   1000) SPEED=1GB      ;;
+   100) SPEED=100MB     ;;
+   10) SPEED=10MB       ;;
+   0) SPEED=10MB        ;;
+   *) SPEED=Error       ;;
+esac
+
+mode=`${NDD} -get /dev/${1}${2} link_mode`
+case $mode in
+   1) MODE=FDX          ;;
+   0) MODE=HDX          ;;
+   *) MODE=Error        ;;
+esac
+}
+
+#---- Function to test the Broadcom Gigabit Ethernet, BCM570x, devices
+#     on the SunFire V210, V240 (i.e. bge_)
+#
+Check_BGE()
+{
+autospeed=`${NDD} -get /dev/${1}${2} adv_autoneg_cap`
+case $autospeed in
+   1) AUTOSPEED=on      ;;
+   0) AUTOSPEED=off     ;;
+   *) AUTOSPEED=Error   ;;
+esac
+
+status=`${NDD} -get /dev/${1}${2} link_status`
+case $status in
+   1) STATUS=Up         ;;
+   0) STATUS=DOWN       ;;
+   *) STATUS=Error      ;;
+esac
+
+speed=`${NDD} -get /dev/${1}${2} link_speed`
+case $speed in
+   1000) SPEED=1GB		 ;;
+   100) SPEED=100MB		 ;;
+   10) SPEED=10MB		 ;;
+   0) SPEED=0MB		 		 ;;
+   *) SPEED=Error		 ;;
+esac
+
+mode=`${NDD} -get /dev/${1}${2} link_duplex`
+case $mode in
+   2) MODE=FDX          ;;
+   1) MODE=HDX          ;;
+   0) MODE=DWN          ;;
+   -1) MODE="disc."     ;;
+   *) MODE=Error        ;;
+esac
+}
+
+#---- Function to print "read and write" tcp settings.
+#
+Check_TCP()
+{
+echo 
+echo "TCP settings"
+echo "============"
+for i in `/usr/sbin/ndd /dev/tcp \?| egrep -v "tcp_host_param"| \
+awk '/read and write/ {print $1}'`
+do
+ echo "`/usr/sbin/ndd -get /dev/tcp $i`\t\c"
+ echo $i
+done
+}
+
+#####################################
+# MASTER NICSTATUS FUNCTION
+#
+
+#---- Function to test network port configurations.
+#
+Nic_Status()
+{
+#set -x
+# Output header.
+echo
+echo " Link Aut U/Dn  Speed  Mode       Mac Address      IP Address            \
+  Name"
+echo "----- --- ---- ------ ----- ----------------- --------------- -----------\
+------"
+#
+# Create a uniq list of network ports configured on the system.
+#
+# NOTE: This is done to avoid multiple references to a single network port
+#       (i.e. qfe0 and qfe0:1).
+#
+awk '{print $3 $2}' /etc/path_to_inst| sed 's/"//g'| \
+egrep -i "hme|qfe|eri|ge|ce|dmfe"| egrep -v "central"| sort -u|
+while read link
+do
+#
+# This test was added to check for incorrect references in the
+# /etc/path_to_inst (usually from cards/ports being removed but not cleaned up.)
+#
+ testlink=$($NETSTAT -k $link| wc -l)
+#
+# Here we reference the functions above to set the variables for each port which
+# will be outputed below.
+#
+ if [ $testlink -gt 0 ];then
+  LINK=$link
+  type=$(echo $link | sed 's/[0-9]//g')
+  num=$(echo $link | sed 's/[a-z,A-Z]//g')
+  case $type in
+		 bge)  Check_BGE $type $num     ;;
+		 ce)   Check_CE $type $num      ;;
+		 dmfe) Check_DMF_NIC $type $num ;;
+		 *)    Check_NIC $type $num     ;;
+  esac
+#
+# Set ethernet variable.
+#
+  ETHER=$($NETSTAT -pn |grep $LINK| awk '/SP/ {print $NF}')
+#
+# If it is configured, determine the IP address."
+#
+   IP=$($IFC $type$num 2>/dev/null| awk '/inet/ {print $2}')
+#
+# Look for hostname of IP in DNS first and cut out the unqualified name.
+#
+   if [ ! -z $IP ]; then
+    HN=$(nslookup $IP 2>/dev/null| awk '/Name/ {print $NF}'| cut -d. -f1)
+   fi
+#
+# Look for hostname of IP in /etc/host if it is not found in DNS.  This output
+# will be enclosed in () to signify a /etc/host entry.
+#
+   if [ ! -z $IP ] && [ -z $HN ]; then
+    hn=$(grep $IP /etc/hosts 2>/dev/null| cut -f2)
+    HN=$(echo "($hn)")
+   fi
+#
+# Print output.
+#
+  echo "$LINK $AUTOSPEED $STATUS $SPEED $MODE $ETHER $IP $HN"
+#
+# Reset the IP variable
+#
+  IP=
+  HN=
+ fi
+done
+}
+
+
+#############################################
+# Start
+#############################################
+#
+aflag=
+bflag=
+vflag=
+while getopts t? name
+do
+ case $name in
+  t)    tflag=1                 ;;
+  ?)    USAGE
+        exit 2                  ;;
+ esac
+done
+
+Check_ID
+Nic_Status
+
+if [ ! -z $tflag ]; then
+ Check_TCP
+fi
+
+set +x

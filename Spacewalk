@@ -1,0 +1,94 @@
+# Add New Channels and Repos
+Adding new Repos to Spacewalk:
+1) Make sure any necessary subscriptions are valid to repos
+2) Add the external repos to the mrepo confs
+ie, sudo vi /etc/mrepo.conf.d/rhel6s.conf
+openshift2.1_node = rhns:///rhel-$arch-server-6-ose-2.1-node
+openshift2.1_jboss = rhns:///rhel-$arch-server-6-ose-2.1-jbosseap
+openshift2.1_infr = rhns:///rhel-$arch-server-6-ose-2.1-infrastructure
+openshift2.1_rhc = rhns:///rhel-$arch-server-6-ose-2.1-rhc
+3) Sync new repos with external repos (this will create a repository for SW to use in /var/www/mrepo):
+sudo mrepo -guv -r openshift2.1_node
+sudo mrepo -guv -r openshift2.1_jboss
+sudo mrepo -guv -r openshift2.1_infr
+sudo mrepo -guv -r openshift2.1_rhc
+4) Create SW Repo:
+via cli:
+sudo spacecmd "create_repo -n 'Openshift JBosseap 2.1 RHEL6s x86_64' -u 'http://localhost/mrepo/rhel6s-x86_64/RPMS.openshift2.1_jboss'"
+sudo spacecmd "create_repo -n 'Openshift Client Tools 2.1 RHEL6s x86_64' -u 'http://localhost/mrepo/rhel6s-x86_64/RPMS.openshift2.1_rhc'"
+sudo spacecmd "create_repo -n 'Openshift Infrastructure 2.1 RHEL6s x86_64' -u 'http://localhost/mrepo/rhel6s-x86_64/RPMS.openshift2.1_infr'"
+sudo spacecmd "create_repo -n 'Openshift Node 2.1 RHEL6s x86_64' -u 'http://localhost/mrepo/rhel6s-x86_64/RPMS.openshift2.1_node'"
+
+via browser:
+Openshift JBosseap 2.1 RHEL6s x86_64
+http://localhost/mrepo/rhel6s-x86_64/RPMS.openshift2.1_jboss
+Openshift Client Tools 2.1 RHEL6s x86_64
+http://localhost/mrepo/rhel6s-x86_64/RPMS.openshift2.1_rhc
+Openshift Infrastructure 2.1 RHEL6s x86_64
+http://localhost/mrepo/rhel6s-x86_64/RPMS.openshift2.1_infr
+Openshift Node 2.1 RHEL6s x86_64
+http://localhost/mrepo/rhel6s-x86_64/RPMS.openshift2.1_node
+
+5) Create new SW Dev Channel:
+via cli:
+sudo spacecmd "softwarechannel_create -n 'Openshift JBosseap 2.1 RHEL6s x86_64 Dev' -l 'rhel-x86_64-server-6-ose-2.1-jbosseap-dev' -p 'rhel6s-x86_64-base-dev' -a x86_64"
+sudo spacecmd "softwarechannel_addrepo 'Openshift JBosseap 2.1 RHEL6s x86_64 Dev' 'Openshift JBosseap 2.1 RHEL6s x86_64'"
+
+sudo spacecmd "softwarechannel_create -n 'Openshift Client Tools 2.1 RHEL6s x86_64 Dev' -l 'rhel-x86_64-server-6-ose-2.1-rhc-dev' -p 'rhel6s-x86_64-base-dev' -a x86_64"
+sudo spacecmd "softwarechannel_addrepo 'Openshift Client Tools 2.1 RHEL6s x86_64 Dev' 'Openshift Client Tools 2.1 RHEL6s x86_64'"
+
+sudo spacecmd "softwarechannel_create -n 'Openshift Infrastructure 2.1 RHEL6s x86_64 Dev' -l 'rhel-x86_64-server-6-ose-2.1-infrastructure-dev' -p 'rhel6s-x86_64-base-dev' -a x86_64"
+sudo spacecmd "softwarechannel_addrepo 'Openshift Infrastructure 2.1 RHEL6s x86_64 Dev' 'Openshift Infrastructure .1 RHEL6s x86_64'"
+
+sudo spacecmd "softwarechannel_create -n 'Openshift Node 2.1 RHEL6s x86_64 Dev' -l 'rhel-x86_64-server-6-ose-2.1-node-dev' -p 'rhel6s-x86_64-base-dev' -a x86_64"
+sudo spacecmd "softwarechannel_addrepo 'Openshift Node 2.1 RHEL6s x86_64 Dev' 'Openshift Node 2.1 RHEL6s x86_64'"
+
+via browser:
+Openshift JBosseap 2.1 RHEL6s x86_64 Dev
+rhel-x86_64-server-6-ose-2.1-jbosseap-dev
+Openshift Client Tools 2.1 RHEL6s x86_64 Dev
+rhel-x86_64-server-6-ose-2.1-rhc-dev
+Openshift Infrastructure 2.1 RHEL6s x86_64 Dev
+rhel-x86_64-server-6-ose-2.1-infrastructure-dev
+Openshift Node 2.1 RHEL6s x86_64 Dev
+rhel-x86_64-server-6-ose-2.1-node-dev
+
+6) Create new Prod SW channels:
+via cli:
+sudo spacecmd "softwarechannel_create -n 'Openshift JBosseap 2.1 RHEL6s x86_64' -l 'rhel-x86_64-server-6-ose-2.1-jbosseap' -p 'rhel6s-x86_64-base' -a x86_64"
+sudo spacecmd "softwarechannel_create -n 'Openshift Client Tools 2.1 RHEL6s x86_64' -l 'rhel-x86_64-server-6-ose-2.1-rhc' -p 'rhel6s-x86_64-base' -a x86_64"
+sudo spacecmd "softwarechannel_create -n 'Openshift Infrastructure 2.1 RHEL6s x86_64' -l 'rhel-x86_64-server-6-ose-2.1-infrastructure' -p 'rhel6s-x86_64-base' -a x86_64"
+sudo spacecmd "softwarechannel_create -n 'Openshift Node 2.1 RHEL6s x86_64' -l 'rhel-x86_64-server-6-ose-2.1-node' -p 'rhel6s-x86_64-base' -a x86_64"
+
+via browser:
+Openshift JBosseap 2.1 RHEL6s x86_64
+rhel-x86_64-server-6-ose-2.1-jbosseap
+Openshift Client Tools 2.1 RHEL6s x86_64
+rhel-x86_64-server-6-ose-2.1-rhc
+Openshift Infrastructure 2.1 RHEL6s x86_64
+rhel-x86_64-server-6-ose-2.1-infrastructure
+Openshift Node 2.1 RHEL6s x86_64
+rhel-x86_64-server-6-ose-2.1-node
+
+7) Sync Dev Channel to Repository
+sudo spacewalk-repo-sync --channel rhel-x86_64-server-6-ose-2.1-jbosseap-dev --type yum
+sudo spacewalk-repo-sync --channel rhel-x86_64-server-6-ose-2.1-rhc-dev --type yum
+sudo spacewalk-repo-sync --channel rhel-x86_64-server-6-ose-2.1-infrastructure-dev --type yum
+sudo spacewalk-repo-sync --channel rhel-x86_64-server-6-ose-2.1-node-dev --type yum
+
+8) Sync Prod Channel to Dev Channel
+sudo spacecmd -y "softwarechannel_sync rhel-x86_64-server-6-ose-2.1-jbosseap-dev rhel-x86_64-server-6-ose-2.1-jbosseap"
+sudo spacecmd -y "softwarechannel_sync rhel-x86_64-server-6-ose-2.1-rhc-dev rhel-x86_64-server-6-ose-2.1-rhc"
+sudo spacecmd -y "softwarechannel_sync rhel-x86_64-server-6-ose-2.1-infrastructure-dev rhel-x86_64-server-6-ose-2.1-infrastructure"
+sudo spacecmd -y "softwarechannel_sync rhel-x86_64-server-6-ose-2.1-node-dev rhel-x86_64-server-6-ose-2.1-node"
+
+
+# Refresh a channels caches
+cat << EOF | spacecmd -y -q
+clear_caches
+ssm_clear
+ssm_add channel:rhel6s-x86_64-rhntools-dev
+system_schedulepackagerefresh ssm
+EOF 
+
+

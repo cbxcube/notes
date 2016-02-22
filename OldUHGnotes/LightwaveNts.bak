@@ -1,0 +1,14 @@
+Login as sysadmin (Password, same as root);
+commands:
+listdev - shows list of servers/devices connection settings on lightwave
+editdev (edits lightwave port settings):
+  editdev --name=server xx - (server = device name, xx = port number) - names port on lightwave
+  editdev --type=1 xx - (xx = port number) - changes port setting to DCE
+  dev xx - shows a ports current settings
+less - shows previous console display
+
+
+Edit a terminals settings:
+
+Ctrl+numeric "-" - brings you to terminal settings
+Esc - exits, select Y/N to save

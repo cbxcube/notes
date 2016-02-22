@@ -1,0 +1,6 @@
+for FS in `cat /etc/exports|awk '{print $1}'`
+do
+echo $FS
+echo $FS `grep "$FS " /etc/fstab`
+echo ------------------
+done

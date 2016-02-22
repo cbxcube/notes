@@ -1,0 +1,13 @@
+for SER in `cat /tmp/ed`
+do
+#CMDB database dump last created on: May 13 06:05.
+#5/13/2008 4:03:18,"Server(s) - UNIX","ENTERPRISE 3500 16380931","CWTOTC64",,"MN03-OTC-DATA CENTER (1C080)","4000-45798-2
+535","CWT","043H3A8C","330971","158007","CRC-0001926188","PRODUCTION",,"Retired / Archived","Co-Location Services Only","
+SERVER",,"347977","trn1as","CWT","APPLICATION",,,,,,,"Yes",,,,,,"SUN MICROSYSTEMS",,,,,"2",,,,,"H22",,,,"CRC-12755 STATE
+HWY 55","PLYMOUTH","UNITED STATES","MN",,,"05/02/2007","SHARK RACK",,,,"2 Gb",,,,,,,,,,,,,,,,,,,,,,"12.000",,,,"22572000"
+
+/usr/local/bin/cmdb $SER|grep UNIX|awk -F, '{print $3,$4,$8,$9,$13,$15}'
+echo $SER
+echo =====================
+done
+

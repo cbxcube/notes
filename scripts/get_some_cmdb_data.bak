@@ -1,0 +1,19 @@
+for HOST in SWMN00XA03021 SWMN00XB03005 SWMN00XB03080 SWMN00XB03082 SWMN00XB03083 SWMN00XB03112 SWMN00XB03114 SWMN00XB03115 SWMN00XB03116 SWMN00XB03117 SWMN00XB03119 SWMN00XB03120 SWMN00XB03139 SWMN00XB03142 SWMN00XB03143 SWMN00XB03171 SWMN00XB03182 SWMN00XB03205 SWMN00XB03206 SWMN00XD03029 SWMN00XS03047 SWMN00XS03053 SWMN00XS03054 SWMN00XS03055 SWMN00XS03056 SWMN00XS03057 SWMN00XS03061 SWMN00XS03065 SWMN00XS03066 SWMN00XS03171 SWMN00XT03002 SWMN00xB03146 SWMN00xB03147 SWMN02ZH580G4 swmn02zsan079
+
+
+do
+
+
+#  Gather info from Asset dump on role and purpose of server
+#CMDB=`grep -i "${HOST}" /home/uss/reports/cmdb/TAM_UNIX_Data_Dump.csv|awk -F, '{print $9, $10, $16, $15}'|sed -e 's/" "/ - /g' -e 's/"//g'`
+CMDB=`grep -i "${HOST}" /home/uss/reports/cmdb/TAM_WINTEL_Data_Dump.csv|awk -F, '{print $9, $10, $16, $15}'|sed -e 's/" "/ - /g' -e 's/"//g'`
+                        if [ "`echo ${CMDB}XX`" = "XX" ]; then
+                                CMDB_INFO=""
+                        else
+                                CMDB_INFO=", $CMDB"
+                        fi
+
+ 
+ 
+echo $HOST - $CMDB
+done

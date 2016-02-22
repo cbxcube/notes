@@ -1,0 +1,38 @@
+#/bin/ksh
+
+# Trim /var/stm/logs/os/ccbootlog files down to 5 versions
+# Date = 04/23/01
+# Author = ERC
+
+
+FILES=/var/stm/logs/os/ccbootlog.*
+KEEP=5
+LOG=/tmp/cleanup_ccbootlog.tmp.$$
+
+# Get total number of files
+
+TOTAL=`ls -1r $FILES|wc -l`
+
+# Check to see we are over the desired number to keep
+
+if [ $KEEP -gt $TOTAL ]
+then
+	#Nothing to do, exiting 
+	exit 2	
+fi
+
+# Find out how many to remove
+
+HEAD=`expr $TOTAL - $KEEP`
+
+# Remove the files
+
+for FILE in `ls -1tr $FILES|head -$HEAD`
+do 
+	echo removing file $FILE >> $LOG
+	rm -f $FILE >> $LOG 2>>&1
+done
+
+mailx -s "Clean up of ccbootlog files - `uname -n` FYI from cron job" root < $LOG
+
+rm -f $LOG

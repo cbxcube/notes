@@ -1,0 +1,3599 @@
+UNIX notes
+=============================
+exit 233 #  In case accidentally executed.
+ 
+ export HISTFILE=/home/uss/root/root_history_`date +%m%d%y%H%M%S`;ksh -o vi
+
+vi
+ - a cntl-g shows the current line number and total lines of the file.
+ - d shift g deleted from current to end of file
+ - escape samples
+ - Escape = expands wildcards to show available choices.
+	$ cd ../new*{Esc =}
+	1) new-cal.ps
+	2) new-scripts/
+ - Escape \ - auto-complete to next unique instance
+	$ ls -l new-c{Esc \}    # becomes new-cal.ps
+
+
+gzip -d -c homedir.tar.gz |tar -xvf - u02ix25
+ - Used to unzip a tarred-gzipped file, and extract file under directory u02ix25.
+gunzip < file.tar.gz | tar xvf -
+
+dd dump from disk to tape
+ -  dd if=/opt/actuate50/export.acf of=/dev/rmt/0m
+
+root@ccux99# cd /usr/local/bin; remsh ccux30 "cd /usr/local/emc;find . -depth | cpio -oc" | cpio -icdumav
+ - cpio copy across trusted systems.
+
+- read cpio file content list
+gzip -dc  ssmn00gk00283.cpio.gz|cpio -ivt
+#
+
+Find large files in a file system
+find / -xdev -size +50000 -exec ls -l {} \;
+############
+How to move whole directory structures more efficiently...
+
+Rather than using the (tar cf - * ) | (cd /some_directory ; tar xf -) method for transferring directories use the following:
+ 
+# find . | cpio -pPvdmu /some_directory
+
+It is far more efficient, as it does not involve multiple IO redirections and sending the entire dataset through a pipe. The use of two tars and a pipe causes a high level of context switching and passes all the data through the streams interface ( a pipe is simply two stream heads connected with the input's/output's crossed), the method involving cpio keeps all of the data within the bounds of a single process (and hence within a Lightweight Process) which is much more efficient.
+
+The -pPvdmu options also preserves permissions, directories and ACL's. If using the above method which utilises tar(from a previous tip) then it should be done as root and you should use the -P option to tar to ensure that any ACL's are correctly transferred.
+############
+
+From within 'nslookup', > ls -d carlson.com >> /tmp/dns.ed
+ - DNS listing what is in the domain, can then grep for names.
+
+To get further info on nslookups (such as non-authorative responses)
+ - nslookup
+  > set d2
+  > {hostname}
+  #  This turns on debug and gives more details.
+
+To turn on tracing for DNS to the syslog.
+-  sig_named trace   OR send a kill SIGWINCH {named pid}  
+	- sending the command again toggles it back off.
+
+
+To reload/flush named : reload a single zone
+
+rndc reload carlsonlab.com
+rndc flushname carlsonlab.com
+
+
+
+
+Adding users to sun (shadow pw)-
+ - copy from HP into vipw, do not edit shadow passwd file,
+	then run pwconv.  Watch for format of NIS groups in the 
+	shadow file.  If there is a password it will invalidate
+	the logins.  +@p17gpw:x:11564::::::   
+
+# How to reset inactive flag from shadow file
+# How to print contents of man page.
+# Seventh field of shadow file is INACTIVE.
+# On many CWGT boxes, we had it set to 35 days.  After 35 days, no login, account locked
+# Awk/xargs code below resets any that are locked.
+# 
+# Confirm 7th field is INACTIVE
+#
+# 2> /dev/null  - Dump the "Formatting page..." line.
+# col -b        - helps you parse man page with editors 
+# sed		- Only print lines 24 to 26
+root@ssne01pk00176# man shadow 2> /dev/null | col -b | sed -n '24,26p' | grep -v "^$"
+     Each entry in the shadow file has the form:
+     username:password:lastchg: min:max:warn: inactive:expire:flag
+root@ssne01pk00176#
+
+# Awk explaination
+# -f:           - Field separator is ":"
+# $7!=""        - Only lines that have a value in field 7 (Inactive)
+# &&            - and...  This merges two or more rules to match both
+# $1~/^u/       - Only when first field (UID) starts with letter "u"
+# &&            - and...
+# length($1)==7 - Only when first field is 7 characters long.
+#
+root@ssne01pk00176# awk -F: '$7!="" && $1~/^u/ && length($1)==7 {print $1}' /etc/shadow | xargs -n 1 usermod -f 0
+root@ssne01pk00176# 
+
+
+syslog
+ - syslog is sensitive and needs tabs versus spaces.  local2.debug	@uxloghost
+
+
+
+logger - 
+logger -p user.err timestamper `date`
+
+showmount -a
+ - shows what systems have a mount to an exported filesystem.
+
+uuencode {filename} {desired attachment name} |mailx -s "subject" names@company.com
+
+Note for HP-UX (use -m to not do mime headers) 
+ uuencode {filename} {desired attachment name} |mailx -m -s "subject" names@company.com
+
+# To do multiple files
+$ uuencode r1.tar.gz r1.tar.gz > /tmp/out.mail
+$ uuencode r2.tar.gz r3.tar.gz >> /tmp/out.mail
+$ uuencode r3.tar.gz r3.tar.gz >> /tmp/out.mail
+$ cat email-body.txt >> /tmp/out.mail
+$ mail -s "Reports" user@my.somewhere.com < /tmp/out.mail
+
+
+rmail -t ecarrigan@carlson.com < filename
+ - Emails an attachment using mime headers at beginning of a file.
+ - 
+	Subject: AN EXAMPLE OF AN ATTACHMENT
+	MIME-Version:1.0
+	Content-Type:text/plain
+	Content-Disposition:attachment;
+	Content-Description: example.txt 
+ 
+	THIS IS AN EXAMPLE OF AN ATTACHMENT
+
+Strip out ^M from a DOS edited file
+ - in a vi session from the top of a file;
+ - :.,$s/{cntl-v}{ENTER}//g      - where { } are keystrokes.
+ - :%s/{cntl-v}{ENTER}//g      - where { } are keystrokes.
+
+Veritas (SUN)
+ - /opt/VRTSvmsa/vmsa starts gui.
+
+
+The following shortcut allows you to view your systems list of disks using the format command without actually having to go into the command, choose and disk, and then quit. 
+
+# echo | format 
+
+
+Create directories and set permissions simultaneously
+
+mkdir -m 777 test #would create a ditectory called test with the permission set to 777.
+
+mkdir -p test1/test2/test3  # test1 & test2 Directories would be created before test3, assuming they were not existing.
+
+mkdir -pm 777 test4/test5/test6  # test4 & test5 Directories would be created before test6 assuming they were not existing, and only test6 would have the permission set to 777 assuming your umask is not set to 000.
+
+
+sendmail - 
+ - to check on errors use /var/adm/syslog/mail.log or syslog.log
+ - Check /var/spool/mqueue to see if things are hanging up and the errors in the file
+ - can run /usr/lib/sendmail -v ecarrigan@carlson.com to see errors on a new send.
+
+LVM on HP - 
+ - since you can not create a LV on a specific Physical volume..
+	- lvcreate -l 1 /dev/vg01
+	- pvmove -n /dev/vg01/lvol2 /dev/dsk/c1t0d0 /dev/dsk/c2t0d0
+	 OR
+	- can do at disk level too...
+		- pvmove /dev/dsk/c1t0d0 /dev/dsk/c2t0d0 /dev/dsk/c3t0d0
+pr -t -2
+ - prints output in -# of columns.   ls -1|pr -t -3
+
+nroff -man find.1|less
+ - View a non-formated man page directly.
+htaccess
+ - passwords changed by using htpasswd
+Using htpasswd
+To create a new user file and add the username "martin" with the password "hampster" to the file /usr/local/etc/httpd/users: 
+
+   htpasswd -c /usr/local/etc/httpd/users martin
+The -c argument tells htpasswd to create new users file. When you run this command, you will be prompted to enter a password for martin, and confirm it by entering it again. Other users can be added to the existing file in the same way, except that the -c argument is not needed. The same command can also be used to modify the password of an existing user. 
+After adding a few users, the /usr/local/etc/httpd/users file might look like this: 
+
+martin:WrU808BHQai36
+jane:iABCQFQs40E8M
+art:FAdHN3W753sSU
+The first field is the username, and the second field is the encrypted password. 
+FSWATCH
+ 
+Here is a good way to see what files are may have filled up a file system.
+
+The touch creates a file with the date in the format MMDDhhmm.  I used a filename of time, but make sure it does not exist first.
+
+
+root@ccux08# pwd
+/q17cvp
+root@ccux08# touch -t 12021100 time
+root@ccux08# find . -newer time -type f -exec ll {} \;
+-rw-rw-r--   1 oracle     dba              0 Dec  2 13:47 ./ftp/Focus/VERB-RPT9912021347.TXT
+-rw-rw-r--   1 oracle     dba              0 Dec  2 11:45 ./ftp/Focus/VERB-RPT9912021145.TXT
+-rw-rw-rw-   1 u37pr05    d17cvp          50 Dec  2 14:20 ./ftp/MailStrm/MSFX/Logs/auto_msfx_run_status.log
+-rw-r--r--   1 u37pr05    d17cvp        2682 Dec  2 12:41 ./ftp/MailStrm/MSFX/Logs/auto_CE9912021240.log
+-rw-rw-rw-   1 u37pr05    d17cvp         265 Dec  2 12:28 ./ftp/MailStrm/MSFX/Config/XFER.ctl
+-rw-rw-rw-   1 u37pr05    d17cvp          54 Dec  2 14:25 ./ftp/MailStrm/auto_MSFX.ctl
+-rw-r--r--   1 u37pr05    d17cvp         339 Dec  2 12:41 ./ftp/MailStrm/message2.txt
+-rw-rw-rw-   1 u37pr05    d17cvp     2369024 Dec  2 12:39 ./ftp/MailStrm/casa120299.dat
+-rw-r--r--   1 u37pr05    d17cvp         142 Dec  2 12:41 ./ftp/MailStrm/done_lines2.txt
+-rw-rw-rw-   1 u37pr05    d17cvp     4982208 Dec  2 14:25 ./ftp/MailStrm/ussa120299.dat.gz
+-rw-rw-rw-   1 u37pr05    d17cvp     2668457 Dec  2 12:39 ./ftp/MailStrm/casr120299.dat
+-rw-rw-rw-   1 u37pr05    d17cvp           0 Dec  2 14:25 ./ftp/MailStrm/auto_MSFX.nil
+
+
+
+tar to DLT tape device:
+ - tar cvf /dev/rmt/0ubn filename.
+ ## does without compression as the DLT tape drives do it automatically. faster.
+
+whodo - which users are doing what
+
+Paging output of multiple commands - 
+ (date; netstat -i; whodo;ps -ef)|more
+
+
+HP - print_manifest - print a system manifest
+
+      This utility prints a formatted ASCII system manifest to stdout.  The
+      manifest includes information on hardware and software installed and
+      configured on the system.  It gathers information about the system
+      every time it is run.  A manifest is included with each Instant
+      Ignition system shipped from HP.
+
+Networking - 
+- ifconfig -a   #  List interfaces on a Sun
+- ifconfig hme0 plumb   # plumbs a card so that a system can use it or use unplumb to remove it.
+- ifconfig hme0 172.26.129.132 netmask 255.255.254.0 up -trailers (or -notrailers)  # sets IP address
+- route add default 172.26.129.253
+- route delete default 172.26.129.254
+
+root@ssmn00gk010l1 # dladm show-aggr -s  
+
+key:1           ipackets   rbytes       opackets   obytes       %ipkts  %opkts
+        Total   17370259052 6080782280177 5494102454 3397827629920
+        nxge0   16054239498 5855933192329 1869319085 1175839191601   92.4    34.0  
+        nxge3   635944860  80483411958  1815115366 1117884650184    3.7    33.0  
+        nxge4   680074694  144365675890 1809668003 1104103788135    3.9    32.9  
+
+key:2           ipackets   rbytes       opackets   obytes       %ipkts  %opkts
+        Total   35249701   4303952546   16783405776 12778994482466
+        nxge2   11851395   1440737396   5540548097 4173167202991   33.6    33.0  
+        nxge6   11729814   1433445608   5531751227 4205996130075   33.3    33.0  
+        nxge7   11668492   1429769542   5711106452 4399831149400   33.1    34.0  
+
+
+
+
+ssmn00gk010l1:u28ts04
+$ sudo dladm show-aggr
+u28ts04 password on ssmn00gk010l1:
+key: 1 (0x0001) policy: L4      address: 0:21:28:d:c5:ae (auto)
+           device       address                 speed           duplex  link    state
+           nxge0        0:21:28:d:c5:ae   100   Mbps    full    up      attached
+           nxge3        0:21:28:d:c5:b1   0     Mbps    unknown down    standby
+           nxge4        0:21:28:a:d0:ee   100   Mbps    full    up      attached
+key: 2 (0x0002) policy: L4      address: 0:21:28:d:c5:b0 (auto)
+           device       address                 speed           duplex  link    state
+           nxge2        0:21:28:d:c5:b0   100   Mbps    full    up      attached
+           nxge6        0:21:28:a:d0:f0   100   Mbps    full    up      attached
+           nxge7        0:21:28:a:d0:f1   100   Mbps    full    up      attached
+
+
+ssmn00gk010l1:u28ts04
+$ netstat -i
+Name  Mtu  Net/Dest      Address        Ipkts  Ierrs Opkts  Oerrs Collis Queue
+lo0   8232 loopback      localhost      589154594 0     589154594 0     0      0
+aggr1 1500 ssmn00gk010l1 ssmn00gk010l1  189673932 90372 1198797604 0     0      0
+aggr2 1500 0.0.0.0       0.0.0.0        35237300 0     3898138655 0     0      0
+bge0  1500 ssmn00gk010l1g ssmn00gk010l1g 179629119 0     209163785 0     0      0
+nxge1 1500 ssmn00gk010l1b ssmn00gk010l1b 42844175 10    1153412378 0     0      0
+nxge5 1500 0.0.0.0       0.0.0.0        522757669 10    2782435012 0     0      0
+
+
+
+Sun -
+modinfo - display information about loaded kernel modules
+modload - load a kernel module # modload qfe
+modunload - unload a module #   modunload -i 70  ## from list in modinfo
+ldd - list  dynamic  dependencies  of  executable  files  or shared objects, libraries library 
+
+
+
+# HP LAN interface - log for network cards
+- netfmt -v -f /var/adm/nettl.LOG00|less
+
+#############
+Find file in current directory only, do not traverse.
+
+find *.txt -prune -type f -mtime -15 -exec ls -l {} \;
+###############################
+Sed for find line then change string
+In vi 
+ 
+:g/^dba/s/ujxh009/ujxh079/g
+ 
+# This corrected the ID in the DBA group to be ujxh079 versus ujxh009.
+ 
+sed '/^dba/s/ujxh009/ujxh079/g' /etc/group
+
+######################
+
+sed to change all occurances of a space to a comma
+
+/usr/local/bin/df -Pk| sed "s/ [ ]*/,/g" 
+
+
+ 
+
+# # Data for /
+
+/usr/sbin/vxassist -g rootdg make rootvol 620736b
+#VFSTAB: /dev/vx/dsk/rootvol    /dev/vx/rdsk/rootvol    /       ufs     1       no      -
+#MKFS: mkfs -F ufs -o nsect=424,ntrack=24,bsize=8192,fragsize=1024,cgsize=8,free=10,rps=167,nbpi=2050,opt=t,apc=0,gap=0,nrpos=8,maxcontig=128 /dev/vx/rdsk/rootvol 620736
+#MNT: test -d / || mkdir -p /
+#MNT: mount /
+
+
+# ./vxdisklayout.sh|sed -e 's,^#[^:]*:,,'   #  sed to strip stuff between two characters # and :
+
+# # Data for -
+
+/usr/sbin/vxassist -g rootdg make swapvol 8395200b
+#VFSTAB: /dev/vx/dsk/swapvol    -       -       swap    -       no      -
+
+# Data for /explorer
+
+/usr/sbin/vxassist -g rootdg make explorer 10485760b
+ /dev/vx/dsk/rootdg/explorer        /dev/vx/rdsk/rootdg/explorer       /explorer    vxfs    3       yes     -
+ mkfs -F vxfs -o ninode=unlimited,bsize=1024,version=4,inosize=256,logsize=1024,largefiles /dev/vx/rdsk/rootdg/explorer 10485760
+ test -d /explorer || mkdir -p /explorer
+ mount /explorer
+
+# Show performance or stats on Veritas file system
+/usr/sbin/vxstat [-g <diskgroup>] [-i <interval> ] [ -c <count> ] <volume> <volume>
+
+# Show stats for volumes u01 and iss in appdg disk group three times one second apart.
+root@ssmn00dk00051# /usr/sbin/vxstat -g appdg -i 1 -c 3 u01 iss
+                      OPERATIONS          BLOCKS           AVG TIME(ms)
+TYP NAME              READ     WRITE      READ     WRITE   READ  WRITE 
+
+Wed Sep 23 08:17:13 2009
+vol iss             155172    329510  14470272   2065281    2.3    2.2 
+vol u01           31399375   5105673 692226606  83267547    2.5    1.5 
+
+Wed Sep 23 08:17:14 2009
+vol iss                  0         0         0         0    0.0    0.0 
+vol u01                  0         0         0         0    0.0    0.0 
+
+Wed Sep 23 08:17:15 2009
+vol iss                  0         0         0         0    0.0    0.0 
+vol u01                  0         0         0         0    0.0    0.0 
+root@ssmn00dk00051# 
+
+
+# display inode in df - based on settings newfs mkfs
+
+root@ssmn00pk00181# df -o i /p10pld
+Filesystem             iused   ifree  %iused  Mounted on
+/dev/md/dsk/d47       936111   50513    95%   /p10pld
+
+
+
+###############################
+Sunscreen
+ - files in /etc/opt/SUNWicg/SunScreen
+
+  - to dump info - "ssadm lib/screeninfo > /tmp/filename"
+ssadm edit Initial
+ssadm activate Initial
+ ssadm backup > file
+ssadm restore < file
+
+to deactivate it rename .active to .notactive, in /etc/opt/SUNWicg/SunScreen
+root@ssmn00pk00112# ls -la
+total 32
+drwxr-xr-x  10 root     sys          512 Apr 30 17:58 .
+drwxr-xr-x   3 root     sys          512 Feb 17 11:20 ..
+drwxrwx---   3 root     sys         1536 Apr 22 07:38 .active
+drwxr-xr-x   3 root     sys          512 Feb 17 11:20 .active0
+drwxrwx---   3 root     sys         1536 Apr  9 12:32 .old
+drwxrwx---   2 root     sys          512 Apr 30 17:58 .temp
+-rw-r--r--   1 root     other          0 Feb 17 11:21 AdminSetup.readme
+-r--r--r--   1 root     sys          543 Apr 19  2000 SunScreenEFS.x509
+drwxr-xr-x   4 root     sys          512 Apr 30 16:14 configs
+drwxr-xr-x   2 root     sys          512 Feb 17 11:20 http
+-r--r--r--   1 root     sys           23 Feb 17 11:21 location
+-rw-r--r--   1 root     other         14 Feb 17 11:21 name
+drwxr-xr-x   2 root     sys          512 Feb 17 11:20 proxies
+drwxr-xr-x   2 root     sys          512 Feb 17 11:20 tmpcerts
+-r--r--r--   1 root     sys           31 Apr 19  2000 version.txt
+root@ssmn00pk00112# 
+i
+
+SUN
+
+set-defaults
+setenv local-mac-address? false
+
+boot net1 -v - install
+boot net1 -s     #  Mini boot off of network.
+ 
+boot -s    #  Single user boot
+
+show-nets
+show-devs
+
+reset-all
+printenv  # list env at OBP 
+probe-scsi-all
+
+
+
+# SECURE CONSOLE
+ssh userid@szmn00pk0001 -t -t connect <port#>
+
+
+SUN Disk stuff - 
+
+iostat -En  # gives device info. 
+
+root@ssmn00pk00059# iostat -En
+c0t6d0          Soft Errors: 0 Hard Errors: 0 Transport Errors: 0 
+Vendor: TOSHIBA  Product: DVD-ROM SD-M1401 Revision: 1009 Serial No: 12/20/00 
+Size: 18446744073.71GB <-1 bytes>
+Media Error: 0 Device Not Ready: 0 No Device: 0 Recoverable: 0 
+Illegal Request: 0 Predictive Failure Analysis: 0 
+c1t0d0          Soft Errors: 0 Hard Errors: 1 Transport Errors: 0 
+Vendor: SEAGATE  Product: ST336607FSUN36G  Revision: 0207 Serial No: 0250A0KH8D 
+Size: 36.42GB <36418595328 bytes>
+Media Error: 0 Device Not Ready: 0 No Device: 1 Recoverable: 0 
+Illegal Request: 0 Predictive Failure Analysis: 0 
+c1t1d0          Soft Errors: 0 Hard Errors: 0 Transport Errors: 1643 
+Vendor: SEAGATE  Product: ST336607FSUN36G  Revision: 0207 Serial No: 0242A0A9M4 
+Size: 36.42GB <36418595328 bytes>
+Media Error: 0 Device Not Ready: 0 No Device: 0 Recoverable: 0 
+Illegal Request: 0 Predictive Failure Analysis: 0 
+root@ssmn00pk00059# ^C
+root@ssmn00pk00059# devfsadm -C  #  Scan for devices - Cleanup mode
+root@ssmn00pk00059# format
+Searching for disks...done
+
+
+AVAILABLE DISK SELECTIONS:
+       0. c1t0d0 <SUN36G cyl 24620 alt 2 hd 27 sec 107>
+          /pci@8,600000/SUNW,qlc@4/fp@0,0/ssd@w21000004cfd6c904,0
+       1. c1t1d0 <drive not available: formatting>
+          /pci@8,600000/SUNW,qlc@4/fp@0,0/ssd@w21000004cf6f7280,0
+Specify disk (enter its number): ^C^D
+root@ssmn00pk00059# vxdisk list
+DEVICE       TYPE      DISK         GROUP        STATUS
+c1t0d0s2     sliced    rootdisk     rootdg       online
+c1t1d0s2     sliced    -            -            online
+-            -         rootmirr     rootdg       failed was:c1t1d0s2
+root@ssmn00pk00059# 
+
+
+root@ssmn00pk00276# vxdisk -o alldgs list
+DEVICE       TYPE            DISK         GROUP        STATUS
+c1t0d0s2     auto:none       -            -            online invalid
+c1t1d0s2     auto:none       -            -            online invalid
+c6t0d1s2     auto:none       -            -            online invalid
+c6t0d2s2     auto:none       -            -            online invalid
+c6t0d3s2     auto:none       -            -            online invalid
+c6t0d4s2     auto:none       -            -            online invalid
+c6t0d5s2     auto:none       -            -            online invalid
+c6t0d6s2     auto:none       -            -            online invalid
+c6t0d7s2     auto:none       -            -            online invalid
+c6t1d1s2     auto:none       -            -            online invalid
+c6t1d2s2     auto:none       -            -            online invalid
+c6t1d3s2     auto:none       -            -            online invalid
+c6t1d4s2     auto:none       -            -            online invalid
+c6t1d5s2     auto:none       -            -            online invalid
+c6t1d6s2     auto:none       -            -            online invalid
+c6t1d7s2     auto:none       -            -            online invalid
+c6t1d8s2     auto:none       -            -            online invalid
+c6t1d9s2     auto:none       -            -            online invalid
+c7t0d0s2     auto:none       -            -            online invalid
+c7t1d0s2     auto:none       -            -            online invalid
+
+root@ssmn00pk00276# vxdisk list c7t0d0  # show veritas disk details
+Device:    c7t0d0s2
+devicetag: c7t0d0
+type:      auto
+info:      format=none
+flags:     online ready private autoconfig invalid
+pubpaths:  block=/dev/vx/dmp/c7t0d0s2 char=/dev/vx/rdmp/c7t0d0s2
+guid:      -
+udid:      IBM%5F2145%5F020064004f3cXX00%5F600507680190013CF0000000000006E5
+site:      -
+Multipathing information:
+numpaths:   2
+c7t0d0s2        state=enabled
+c6t1d0s2        state=enabled
+root@ssmn00pk00276# 
+
+
+
+
+
+SYNERGY - synergy
+------------
+Remote keyboard tool.  
+on sun ws.  /opt/synergy/synergy-1.0.12
+
+start-up file in server is start_synergys.
+# pwd
+/opt/synergy/synergy-1.0.12
+# ls -l
+total 4326
+-rw-r--r--   1 5631     100           70 Jul 21  2003 AUTHORS
+-rw-r--r--   1 5631     100          349 Jul 21  2003 BUGS
+-rw-r--r--   1 5631     100        15230 Jul 21  2003 COPYING
+-rw-r--r--   1 5631     100       174594 Jul 21  2003 ChangeLog
+-rw-r--r--   1 5631     100         8575 Jul 21  2003 FAQ
+-rw-r--r--   1 5631     100          686 Jul 21  2003 HISTORY
+-rw-r--r--   1 5631     100        21829 Jul 21  2003 INSTALL
+-rw-r--r--   1 5631     100         6331 Jul 21  2003 NEWS
+-rw-r--r--   1 5631     100        10521 Jul 21  2003 README
+-rw-r--r--   1 5631     100         1947 Jul 21  2003 TODO
+-rwx------   1 root     other        104 Sep 16 10:19 start_synergys
+-rwx------   1 root     other        117 Sep 16 10:19 start_synergys_debug
+-rw-rw-rw-   1 5631     100          784 Sep 16 10:29 synergy.conf
+-rw-r--r--   1 root     other        793 Aug 16 12:11 synergy.conf.081604_121128
+-rw-r--r--   1 root     other        784 Aug 24 08:28 synergy.conf.082404_082809
+-rw-r--r--   1 root     other        784 Sep 16 09:13 synergy.conf.091604_091334
+-rwxr-xr-x   1 5631     100       749348 Jul 21  2003 synergyc
+-rwxr-xr-x   1 5631     100      1173496 Jul 21  2003 synergys
+
+# Find switch config info.
+
+grep  -i {string} /opt/CSCOpx/objects/swim/data/bugtool_parser_archive/cssotcsds00s0*/cssotcsds00s0?.cfg
+
+
+# ALOM stuff
+
+scadm is command for manipulating SC from OS.
+
+See man scadm
+
+typically in platform directory: /usr/platform/SUNW,Sun-Fire-V240/sbin/scadm
+  - add /usr/platform/SUNW,Sun-Fire-V240/sbin to PATH.
+
+ - scadm show
+ - scadm set sc_cliprompt ssmn00pk00144sc
+ - scadm useradd root
+ - scadm userpassword root
+ - scadm userperm cuar
+ - scadm usershow 
+ - scadm usershow root
+ - scadm resetrsc
+ - scadm version
+
+
+
+#  Umounting file system.
+
+If busy;
+
+check if it is managed by VCS # some HA command.
+check if anyone is using it #  fuser -cu {FILE}   fuser -fu {FILE}
+				lsof /{mount}
+
+check if it is shared.  #   share 
+
+
+#  Process check by user
+ps -fu patrol  # lists all processes running as patrol.
+
+
+
+# Sun picld - view with prtpicl {-v} to see man page.
+#   Can get temp thresholds and current reading.
+NAME
+     prtpicl - print PICL tree
+
+SYNOPSIS
+     prtpicl [ -c picl_class ]  [ -v ]
+
+DESCRIPTION
+     The prtpicl command prints the PICL tree maintained  by  the
+     PICL  daemon.  The  output  of prtpicl includes the name and
+     PICL class of the nodes.
+
+OPTIONS
+     The following options are supported:
+
+     -c picl_class
+           Print only the nodes of the named PICL class.
+
+     -v    Print in verbose mode. In verbose mode, prtpicl prints
+           a list of properties and values for each node. Verbose
+           mode is disabled by default.
+
+
+
+
+#############
+vnc - window display sharing
+
+Server setup.  
+Controlled via ${HOME}/.vnc/xstartup
+Added /usr/dt/bin/dtsession to launch with Vue desktop.
+
+client startup, 
+- vncviewer -shared cohiba:2 
+
+
+###################
+
+On Sun to see process limits
+- plimit {pid}
+
+to change limits for a user, edit .profile and add
+
+ulimit -n 512  # number of files
+ulimit -s 16384 # Memory stack size 
+
+root@ssmn00pk00062# plimit 21036 
+21036:  bash
+   resource              current         maximum
+  time(seconds)         unlimited       unlimited
+  file(blocks)          unlimited       unlimited
+  data(kbytes)          unlimited       unlimited
+  stack(kbytes)         8192            unlimited
+  coredump(blocks)      unlimited       unlimited
+  nofiles(descriptors)  256             1024
+  vmemory(kbytes)       unlimited       unlimited
+root@ssmn00pk00062# 
+
+X11 stuff 
+
+# places xclock in upper right corner, box 48 by 48.
+ xclock -geometry 48x48-0+0
+xterm -sb -ls -sl 4000 -display 172...:0 -geom 40x9-0+0 -e /home/uss/u28ts04/rx.sh {display:0} 
+
+
+##################
+logadm for rolling logs starting in Solaris 9
+
+
+########
+Adding additional disks to Solaris 9 servers using Solaris Volume Manager SVM svm.
+
+Add package /jumpstart/Solaris9/config/
+
+Not right as these are supposed to be d5.
+metainit d16 1 1 c1t2d0s6
+ metainit d6 -m 16
+metainit d6 -m d16
+metainit d26 1 1 c1t3d0s6
+ metainit d6 -m d26
+metattach d6 d26
+
+# used to clear volumes from a system.
+root@ssmn00pk00082# metaclear d6
+d6: Mirror is cleared
+root@ssmn00pk00082# metaclear d16
+d16: Concat/Stripe is cleared
+root@ssmn00pk00082# metaclear d26
+d26: Concat/Stripe is cleared
+
+ 
+setup info - 
+root@ssmn00pk00081# echo "DISK1=c1t2d0" >>/var/tmp/optional.custom
+root@ssmn00pk00081# echo "DISK2=c1t3d0" >>/var/tmp/optional.custom
+root@ssmn00pk00081# cat /var/tmp/optional.custom
+DISK1=c1t2d0
+DISK2=c1t3d0
+
+
+root@ssmn00pk00082# ksh -xv ./S01v240_d5_disks.sh
+#!/usr/bin/ksh
+#*****************************************************************************
+#
+# Script: S01Solaris_Vol_Mgr.sh
+# Usage:  Configures Solaris Volume manager for rootdisk and rootmirr.
+#         It is designed to be executed by S92jump_finish which will take care
+#         of mounting and unmounting of the jumpserver build filesystem.
+#*****************************************************************************
+#
+#
+echo "Running S01v240_d5_disks.sh" >> /var/tmp/jumpstart.log
+MOUNT=/jump
+STD_OUT=/var/tmp/svm_log
+BASEDIR=/
+HOSTNAME=ssmn00pk00082
+export MOUNT
+export STD_OUT
+export HOSTNAME 
+#
+# The custom file has host specific information required by this script
+# and is sourced into this script.  If custom is not found the script exits.
+#
+
+if [ -f /var/tmp/optional.custom ]
+        then
+                . /var/tmp/optional.custom
+        else
+                print "Custom file not found!!!!"
+                echo "ERROR-S01v240_d5_disks.sh-Custom File Not Found" >> /var/tmp/jumpstart/log
+                exit 1;
+fi
++ [ -f /var/tmp/optional.custom ]
++ . /var/tmp/optional.custom
++ DISK1=c1t2d0
++ DISK2=c1t3d0
+
+# Clear all Partitions!!
+
+fmthard -d 0:0:00:0:0 /dev/rdsk/c1t2d0s2
+fmthard -d 1:0:00:0:0 /dev/rdsk/c1t2d0s2
+fmthard -d 3:0:00:0:0 /dev/rdsk/c1t2d0s2
+fmthard -d 4:0:00:0:0 /dev/rdsk/c1t2d0s2
+fmthard -d 5:0:00:0:0 /dev/rdsk/c1t2d0s2
+fmthard -d 6:0:00:0:0 /dev/rdsk/c1t2d0s2
+fmthard -d 7:0:00:0:0 /dev/rdsk/c1t2d0s2
+
+
+# Create Slice 7 64 mbs
+typeset -i LASTSECTOR BEGSECTOR SECTBYTES S7SECTORS
+LASTSECTOR=0
+BEGSECTOR=0
+SECTBYTES=0
+S7SECTORS=0
+
+prtvtoc /dev/rdsk/c1t2d0s2 1> /tmp/c1t2d0s2.vtoc
+
+SECTBYTES=`cat /tmp/${DISK1}s2.vtoc | grep bytes | awk ' { print $2 } '`
++ + cat /tmp/c1t2d0s2.vtoc
++ grep bytes
++ awk  { print $2 } 
+SECTBYTES=512
+ACCESSCYL=`cat /tmp/${DISK1}s2.vtoc | grep accessible | awk ' { print $2 } '`
++ + cat /tmp/c1t2d0s2.vtoc
++ grep accessible
++ awk  { print $2 } 
+ACCESSCYL=24620
+CYLSECTORS=`cat /tmp/${DISK1}s2.vtoc | grep sectors/cylinder | awk ' { print $2 } '`
++ + cat /tmp/c1t2d0s2.vtoc
++ grep sectors/cylinder
++ awk  { print $2 } 
+CYLSECTORS=2889
+LASTSECTOR=${ACCESSCYL}*${CYLSECTORS}
++ LASTSECTOR=24620*2889
+S7SIZEMB=67108864
++ S7SIZEMB=67108864
+S7SECTORS=$(( ((((S7SIZEMB/SECTBYTES)/$CYLSECTORS)+1)*$CYLSECTORS) ))
++ S7SECTORS=132894
+BEGSECTOR=${LASTSECTOR}-${S7SECTORS}
++ BEGSECTOR=71127180-132894
+
+echo " Bytes per sector is $SECTBYTES"
++ echo  Bytes per sector is 512
+ Bytes per sector is 512
+echo " Accessible cylinders is $ACCESSCYL"
++ echo  Accessible cylinders is 24620
+ Accessible cylinders is 24620
+echo " Sectors per cylinder is $CYLSECTORS"
++ echo  Sectors per cylinder is 2889
+ Sectors per cylinder is 2889
+echo " S7SECTORS is $S7SECTORS"
++ echo  S7SECTORS is 132894
+ S7SECTORS is 132894
+echo " Lastsector is $LASTSECTOR"
++ echo  Lastsector is 71127180
+ Lastsector is 71127180
+echo " Beginsector is $BEGSECTOR"
++ echo  Beginsector is 70994286
+ Beginsector is 70994286
+
+fmthard -d 7:0:00:${BEGSECTOR}:${S7SECTORS} /dev/rdsk/${DISK1}s2
++ fmthard -d 7:0:00:70994286:132894 /dev/rdsk/c1t2d0s2
+
+# Create Slice 5
+
+S5ENDSECTOR=${BEGSECTOR}-1
++ S5ENDSECTOR=70994286-1
+fmthard -d 5:0:00:0:${S5ENDSECTOR} /dev/rdsk/${DISK1}s2
++ fmthard -d 5:0:00:0:70994286-1 /dev/rdsk/c1t2d0s2
+
+# Copy Partition table to DISK2
+
+prtvtoc /dev/rdsk/${DISK1}s2 | fmthard -s - /dev/rdsk/${DISK2}s2
++ fmthard -s - /dev/rdsk/c1t3d0s2
++ prtvtoc /dev/rdsk/c1t2d0s2
+fmthard:  New volume table of contents now in place.
+
+# Setup Meta DB
+
+metadb -a -f -c 2 ${DISK1}s7 ${DISK2}s7
++ metadb -a -f -c 2 c1t2d0s7 c1t3d0s7
+
+metainit d15 1 1 ${DISK1}s5
++ metainit d15 1 1 c1t2d0s5
+d15: Concat/Stripe is setup
+metainit d25 1 1 ${DISK2}s5
++ metainit d25 1 1 c1t3d0s5
+d25: Concat/Stripe is setup
+metainit d5 -m d15
++ metainit d5 -m d15
+d5: Mirror is setup
+metattach d5 d25
++ metattach d5 d25
+d5: submirror d25 is attached
+
+# Install Package
+
+print "Installing Package $i"
++ print Installing Package 
+Installing Package 
+$DIAL &
+DIAL_PID=$!
++ DIAL_PID=9903
+pkgadd -a ${MOUNT}/packages/noask \
+-d ${MOUNT}/packages/optional/d5/CSSd5-4.1 \
+all >> ${STD_OUT} </dev/null 2>&1
++ pkgadd -a /jump/packages/noask -d /jump/packages/optional/d5/CSSd5-4.1 all
++ 1>> /var/tmp/svm_log 0< /dev/null 2>& 1
+kill $DIAL_PID
++ kill 9903
+kill: 9903: no such process
+
+
+
+
+#############  fix for meta partitions (attempt repair)
+
+From man on metareplace: -e option  Transitions the state of component  to  the  available state  and resyncs the failed component.
+
+root@ssmn00qk00178# metastat d0
+d0: Mirror
+    Submirror 0: d10
+      State: Needs maintenance 
+    Submirror 1: d20
+      State: Okay         
+    Pass: 1
+    Read option: roundrobin (default)
+    Write option: parallel (default)
+    Size: 13635840 blocks (6.5 GB)
+
+d10: Submirror of d0
+    State: Needs maintenance 
+    Invoke: metareplace d0 c0t0d0s0 <new device>
+    Size: 13635840 blocks (6.5 GB)
+    Stripe 0:
+        Device     Start Block  Dbase        State Reloc Hot Spare
+        c0t0d0s0          0     No     Maintenance   Yes 
+
+
+d20: Submirror of d0
+    State: Okay         
+    Size: 13635840 blocks (6.5 GB)
+    Stripe 0:
+        Device     Start Block  Dbase        State Reloc Hot Spare
+        c0t1d0s0          0     No            Okay   Yes 
+
+
+Device Relocation Information:
+Device   Reloc  Device ID
+c0t0d0   Yes    id1,sd@SFUJITSU_MAT3073N_SUN72G_000450B005V0____AAN0P4C005V0
+c0t1d0   Yes    id1,sd@SFUJITSU_MAT3073N_SUN72G_000506B011CV____AAN0P52011CV
+root@ssmn00qk00178#  metareplace -e d0 c0t0d0s0
+d0: device c0t0d0s0 is enabled
+root@ssmn00qk00178# metastat d0                
+d0: Mirror
+    Submirror 0: d10
+      State: Resyncing    
+    Submirror 1: d20
+      State: Okay         
+    Resync in progress: 0 % done
+    Pass: 1
+    Read option: roundrobin (default)
+    Write option: parallel (default)
+    Size: 13635840 blocks (6.5 GB)
+
+d10: Submirror of d0
+    State: Resyncing    
+    Size: 13635840 blocks (6.5 GB)
+    Stripe 0:
+        Device     Start Block  Dbase        State Reloc Hot Spare
+        c0t0d0s0          0     No       Resyncing   Yes 
+
+
+d20: Submirror of d0
+    State: Okay         
+    Size: 13635840 blocks (6.5 GB)
+    Stripe 0:
+        Device     Start Block  Dbase        State Reloc Hot Spare
+        c0t1d0s0          0     No            Okay   Yes 
+
+
+Device Relocation Information:
+Device   Reloc  Device ID
+c0t0d0   Yes    id1,sd@SFUJITSU_MAT3073N_SUN72G_000450B005V0____AAN0P4C005V0
+c0t1d0   Yes    id1,sd@SFUJITSU_MAT3073N_SUN72G_000506B011CV____AAN0P52011CV
+root@ssmn00qk00178# 
+root@ssmn00qk00178# metastat |grep %
+    Resync in progress: 93 % done
+
+###########
+Solaris: How can I find out if the OS has been configured to run in 
+32 bit or 64 bit Mode?
+
+On a 32 bit machine
+-------------------
+# isainfo -v
+32-bit sparc applications
+
+On a 64 bit machine
+-------------------
+# isainfo -v
+64-bit sparcv9 applications
+32-bit sparc applications
+##############
+Veritas Licenses - 
+ - typically stored at /etc/vx/elm/*.lic
+################
+Vi - map key
+:map v ddj   # will map the v key to delete a line (dd) then scroll to the next line.
+######
+vi - enter key # to escape the enter key do cntl-v then {enter key}
+######
+synergy
+- To setup on Sunray as server:
+Config file... and run on a specific port so you do not overlap someone's 
+existing config.  I chose 3067.  On windows client use server name (ssmn00zk00007.carlsonlab.com) 
+and under advanced set the port.
+
+########
+VNC - Default port Servername:5801  # vnc viewer
+
+########
+samba - Default port servername:901
+	# man pdbedit
+	# shares ...
+
+#####
+NFS 
+- must resolve be able to resolve name in DNS or can get permission error.
+  - from destination host ssh/telnet to source host. Run who am i to see what the connection was made as.
+	- Might have gone out a different interface than the one defined in the source share list of servers.
+# Perl to search like grep.
+
+- perl -ne 'print if ! m/sendmail/' syslog*
+
+# 
+
+Sun One WebServer startup password needs password.conf to not prompt for the SSL token.
+
+Path is /opt/SUNWwbsvr/https-identity.dev.carlson.com/config/password.conf. Start worked fine.
+
+If this file is not there, startup asks for pword. Not good on a reboot.
+
+# Online relayout Veritas - 
+
+ vxassist -g appdg01 relayout d17bac layout=stripe ncol=4 stripeunit=128  
+
+ vxtask list
+
+# Veritas extra debug flag - (undocumented - got from support guy
+vxresize -D -F vxfs -g rac_dg p1etsbk 5g   # -D is verbose debugging
+
+# Clear arp table
+- can be done by ifconfig {interface} {IP_address}
+
+
+# network time protocol ntp 
+ ntpq -p  # gather ntp stats 
+
+Our /etc/inet/ntp.conf settings
+server uxtime01.carlson.com # 172.26.128.129
+server uxtime02.carlson.com # 172.26.128.128
+driftfile /etc/inet/ntp.drift
+restrict default ignore
+restrict 127.0.0.1
+restrict 172.26.128.129 noquery
+restrict 172.26.128.128 noquery
+
+# the restrict says that these servers can adjust time on this host.
+
+
+
+#
+
+root@ssmn00pk00043# psrinfo -v                             
+Status of virtual processor 0 as of: 06/07/2005 08:53:24
+  on-line since 06/03/2005 21:26:13.
+  The sparcv9 processor operates at 1280 MHz,
+        and has a sparcv9 floating point processor.
+Status of virtual processor 1 as of: 06/07/2005 08:53:24
+  on-line since 06/03/2005 21:26:11.
+  The sparcv9 processor operates at 1280 MHz,
+        and has a sparcv9 floating point processor.
+
+
+####
+
+Meta commands - solaris Volume manager.
+
+metastat - see status of volumes
+ 
+- Replace a failed disk after format back into system.
+metareplace -e d1 c1t1d0s1
+metareplace -e d0 c1t1d0s0
+metareplace -e d4 c1t1d0s4
+
+
+#########
+
+ iostat - report I/O statistics
+
+	iostat -En
+
+####
+  performance stats -
+
+   	sar
+	vmstat
+	mpstat
+	prstat
+	pfiles
+	trapstat
+	iostat
+	     
+
+A
+A
+
+
+or test in /bin/sh
+
+if [ $interface_name = bge0 ] || [ $interface_name = bge1 ] || [ $interface_name = bge2 ] || [ $interface_name = bge3 ]
+        then
+echo something
+fi
+
+
+###########
+awk - grab certain parts of a field (IE. 1-4 of field 2)
+ cat /etc/passwd | awk -F: '{print $1":"substr ($2,1,4)":"$3":"$4":"$5":"$6":"$7}'
+ u02mbeb:dyXe:652:153:Jim Kastanek,Awardsx3034:/home/uap/u02mbeb:/usr/bin/sh
+
+du -sk *|awk '{TOT+=$1;print $0}END{print TOT/1024,"Mb"}'
+ cleanup -p -c 1 | grep bytes | awk '{total += $3}; END { print "Total is:", total / 1024 /1024, " Mbytes"}'
+
+awk examples:
+#gather division with decimal
+a=13;b=3;echo $a $b | awk '{ printf "%f",$1/$2; }'
+
+# Awk add up columns.
+root@ssmn00pk00071# awk '/Jun 23/ && $7!="0" {TOTAL=TOTAL+$7} END {print TOTAL}'  mminfct.log
+13
+root@ssmn00pk00071# 
+
+To help answer Gerald's questions about disk on ux16. 
+ 
+sar -d 6 10 | awk '$2!="device" && $7 > 20 {print $1}' | sort -u
+Run the sar command against the disk, every six seconds, ten times.
+then only show me the first column ($1) when the second word isn't device (header line), and when the seventh column (AVWAIT) is over 20. 
+
+
+find /tmp -name "*.txt" -depth -exec ls -lad {} \; | awk '{ for (i = 6; i <=NF; i++) printf "%s ",$i} {printf "\n"}
+' | sed -e 's#[0-9][0-9]:[0-9][0-9]#2007#' -e 's#Nov#11#'
+
+# get date and file from a find, also a convert month to a number.  Only does field 6 and on in ls -l with the NF to allow for files with embedded spaces.
+
+# take 3rd field (:) and then drop every character after the last . (\.) and then print the modified $3.
+vamn00pk01004:root> lslpp -Lcq bos.rte
+bos:bos.rte:5.3.8.0: : :C:F:Base Operating System Runtime: : : : : : :0:0:/:0818
+vamn00pk01004:root> lslpp -Lcq bos.rte | awk -F: '{sub( "\.[0-9]+$", "", $3); print $3}'
+5.3.8
+
+
+awk sample
+
+#!/bin/ksh
+nawk -F, '$31 ~ /Sun/ &&
+$4 !~ /^"Z/ &&
+$16 ~ /In Service|Staging/ {gsub(/"/,"");printf("\# %s\nEXP_SERIAL_%s=\"%s\"\nEXP_INSTALL_%s=\"%s\"\n", $4, tolower($40), tolower($11), tolower($40), "03/25/2005")}
+' /home/uss/reports/cmdb/TAM_UNIX_Data_Dump.csv
+#$16 ~ /In Service|Staging/ {gsub(/"/,"");printf "\# %s\nEXP_SERIAL_%s=\"%s\"\nEXP_INSTALL_%s=\"%s\"\n" $4 tolower($40) tolower($11) tolower($40) 03/25/2005}
+
+
+awk -F, 'NF == 88' TAM_UNIX_Data_Dump.csv  # print lines with 88 columns with commas as separators.
+awk -F, 'NF!=87 {print "Fix record for: ,$4}'  # find lines not = 87 and print the hostname ($4)
+
+
+########
+vxedit - rename of volume and plex names.  done online.
+#!/bin/ksh -x
+# rename VXVM volume for oracle_home u01_new to u01 after moving rootdg u01 to u01_old 
+
+vxprint -ht -g appdg
+
+#vxedit -g appdg rename u01 u01_old
+#vxedit -g appdg rename u01-01 u01_old-01
+#vxedit -g appdg rename u01-02 u01_old-02
+vxprint -ht -g appdg 
+
+######
+ps - /usr/ucb/ps -auxwww   Gives long process name list
+#########
+
+ldap stuff
+
+ldaplist -l passwd # lists users but in multi line output.
+ldaplist -l group 
+ldaplist -l netgroup
+
+Carlson ldaps script to list various attributes.
+
+##
+ndd - NDD
+/usr/sbin/ndd -get /dev/tcp    # Get all /dev/tcp parameters
+/usr/sbin/ndd -get /dev/tcp tcp_time_wait_interval # Get specific value for parameter
+/usr/sbin/ndd -set /dev/tcp tcp_time_wait_interval 60000
+ 
+Tip: Use the 'netstat -s -P tcp' command to view all available TCP parameters. 
+###########
+lsof to find ports.
+ 
+# lsof -i    # or lsof -i:80 to check a specific port such as 80.
+lsof: WARNING: created device cache file: /home/uss/u28ts04/.lsof_ssmn00pk00181
+COMMAND     PID   USER   FD   TYPE        DEVICE   SIZE/OFF NODE NAME
+dced        251   root   10u  IPv4 0x300072df9e0        0t0  TCP *:135 (LISTEN)
+dced        251   root   11u  IPv4 0x300072dfb60        0t0  UDP *:135 (Idle)
+dced        251   root   14u  IPv4 0x30007a7e368        0t0  UDP *:32838 (Idle)
+
+# prstat # similar to top but uses less resources.
+prstat -aL
+   PID USERNAME  SIZE   RSS STATE  PRI NICE      TIME  CPU PROCESS/LWPID      
+ 11192 oracle   2880K 2376K sleep   32    0   1:12:59 2.7% ssh/1
+ 28118 root      103M   91M sleep   58    0   0:07:53 0.9% issCSF/12
+  1544 root       26M   19M sleep   55    0  19:08:30 0.4% scopeux/1
+ 11191 oracle    992K  904K sleep   59    0   0:11:57 0.4% scp/1
+  2497 patrol     25M   23M sleep   29   10   5:22:34 0.2% PatrolAgent/1
+ 14236 oracle   1636M 1603M sleep   59    0   0:00:44 0.1% oracle/1
+ 11964 oracle   1637M 1603M sleep   59    0   0:00:41 0.1% oracle/1
+  6742 oracle   1636M 1602M sleep   59    0   3:27:52 0.1% oracle/1
+ 20506 u28ts04  5008K 4816K cpu2    49    0   0:00:00 0.1% prstat/1
+ 25373 oracle   2868M 2832M sleep   59    0   1:39:17 0.1% oracle/1
+ 28118 root      103M   91M sleep   59    0   0:00:37 0.0% issCSF/9
+ 14235 psoft      93M   73M sleep   59    0   0:02:52 0.0% PSPRCSRV/1
+ 28118 root      103M   91M sleep   59    0   0:00:06 0.0% issCSF/11
+ 28118 root      103M   91M sleep   59    0   0:00:20 0.0% issCSF/5
+ 20085 u28ts04  1872K 1416K sleep   59    0   0:00:00 0.0% ksh/1
+  NLWP USERNAME  SIZE   RSS MEMORY      TIME  CPU                             
+  2662 oracle   4929G 4808G   100%  10:33:47 3.5%
+   207 root     2597M 1964M   0.0%  20:20:46 1.4%
+    13 patrol     38M   33M   0.0%   5:22:43 0.2%
+     4 u28ts04    10M 9176K   0.0%   0:00:00 0.1%
+   195 psoft      30G   17G   0.3%   2:24:03 0.1%
+Total: 331 processes, 3095 lwps, load averages: 0.78, 0.84, 0.89
+$ 
+
+
+ 
+prstat -L -p {pid}    
+# lists prstat info at a thread level for a process.
+
+prstat -mL -p {pid}
+# lists prstat process threads as a micro level
+
+   PID USERNAME USR SYS TRP TFL DFL LCK SLP LAT VCX ICX SCL SIG PROCESS/LWPID 
+  4849 p10pld    94 0.0 0.1 0.0 0.0 5.7 0.0 0.3   2 437   5   0 java/2
+  4849 p10pld   5.7 0.0 0.0 0.0 0.0  94 0.0 0.0   2  32  14   0 java/34
+  4849 p10pld   0.2 0.0 0.0 0.0 0.0 100 0.0 0.0  10   2  34   0 java/47
+  4849 p10pld   0.0 0.0 0.0 0.0 0.0 0.0 100 0.1 155   0  86   0 java/10
+  4849 p10pld   0.0 0.0 0.0 0.0 0.0 100 0.1 0.0   3   1  14   0 java/57
+  4849 p10pld   0.0 0.0 0.0 0.0 0.0  99 0.6 0.0  17   0  54   0 java/46
+  4849 p10pld   0.0 0.0 0.0 0.0 0.0  90 9.6 0.0  17   0  38   0 java/44
+  4849 p10pld   0.0 0.0 0.0 0.0 0.0 100 0.0 0.0   2   2   7   0 java/42
+  4849 p10pld   0.0 0.0 0.0 0.0 0.0 100 0.0 0.0   2   1   4   0 java/33
+  4849 p10pld   0.0 0.0 0.0 0.0 0.0  90  10 0.0   1   0   6   0 java/56
+
+###
+top - To control the size or TASK area of the top field.
+# Enter #  and then the number of processes you want to monitor.
+# from: http://unixhelp.ed.ac.uk/CGI/man-cgi?top  (no online man page for top)
+# 
+
+###
+rpcinfo - 
+
+###
+# - used to grab host ip addresses from dnsfind
+#  dnsfind "ccux..,|ssmn00.k00...,"|sed 's#,"",,,,,-1,0,,,-1,#,#'|sed 's#,Server##'|sed 's#,,,3$##'|sed 's#,,,#.#'| tr '[:upper:]' '[:lower:]'|sort -t, -k 2,2
+
+#####
+dfstab entry on sun.  Shares Read-only to users and allows root access.
+
+share -F nfs -o ro=ssmn00dk00118.carlson.com,root=ssmn00dk00118.carlson.com /u03/app/applmgr/11i/p09awa
+
+#######
+map a windows share on windows
+- net use j: \\cmgfnp52\apps
+
+#########
+SD-UX   HP Packaging
+- To remove packages from a depot   # swremove -d { blah }
+- swreg to register a depot
+
+#########
+Connect Direct 
+- to view logs 
+ndmcli
+> sel stat pnumber=46 detail=yes;
+#########
+
+HP-UX
+ - print_manifest - gives detailed information on an HP server.  Part of the
+                    Ignite-UX suite.
+
+# to see what perms Sun laid down with initial load see the following:
+$ grep remsh  /var/sadm/install/contents  
+/usr/bin/remsh=./rsh s none SUNWcsu
+/usr/share/man/sman1/remsh.1 f none 0444 bin bin 167 12076 944774411 SUNWman
+$ 
+
+
+####
+Simple search on CMDB file
+# cd /home/uss/reports/cmdb
+# awk -F, '/SSMN00PK00054/ {print "Hostname:"$4" Serial #" $10}' TAM_UNIX_Data_Dump.csv
+Hostname:"SSMN00PK00054" Serial #"219C6BE7"
+
+#####
+# convert - translate - convert comma separated to one have line per.
+
+grep '172.25.179.' /etc/hosts.*|tr ',' '\012'|grep '172.25.179'
+o
+
+#
+
+Veritas commands to fix DISABLED plexes after disks are working again
+vxmend -g appdg -o force off u12-01
+vxmend -g appdg on u12-01
+vxmend -g appdg fix clean u12-01
+vxvol -g appdg start u12
+
+
+# vxfs restore of a dump file from Solaris 8  - run on another Solaris 8 with veritas.
+unzip -p cssinet.ufs.zip| vxrestore rvf -
+
+# zip of files from STD IN to a file.
+
+find . print|zip Carlson_UNIX_ID_Reval2 -@
+
+
+
+# Awk tricks from Eric and Luke
+Awk, search for CWTOTC and print columns 4,3, and 10.
+$ awk -F, '/CWTOTC/ {print $4,$3,$10}' /home/uss/reports/cmdb/TAM_UNIX_Data_Dump.csv 
+"CWTOTC60"  
+"CWTOTC65" "Sun E450" "043H3AAE"
+"CWTOTC66" "Sun E450" "043H3AB1"
+"CWTOTC67" "Sun E450" "043H3AB5"
+"CWTOTC68" "Sun E450" "043H3AB0"
+"CWTOTC69" "Sun E450" "042H2CEF"
+"CWTOTC70" "Sun E450" "042H2CF3"
+"CWTOTC71" "Sun E250" "042H3EDE"
+"CWTOTC72" "Sun E250" "042H4829"
+"CWTOTC76" "Sun v240" "FN35150160"
+"CWTOTC79" "Sun E3500" "932H2505"
+
+Print where column 4 is contains CWTOTC9
+$ awk -F, '$4 ~ /CWTOTC9/  {print $4,$3,$10}' cmdb.support     
+"CWTOTC90" "Sun v1280" "0350MM2609"
+"CWTOTC91" "Sun v480" "0351AM0257"
+"CWTOTC92" "Sun v480" "0351AM007E"
+"CWTOTC93" "Sun v240" "FN43210325"
+"CWTOTC94" "Sun v240" "FN43210364"
+"CWTOTC95" "Sun v480" "0438AM00C4"
+$ 
+
+Print columns 4,3, and 10 where the 10th column is blank
+$ awk -F, '$10 ==""  {print $4,$3,$10}' cmdb.support
+"CARAIXSM001"  
+"CCSUN42"  
+"CCUX80" "HP RP4440" 
+"CRWHP1" "N4000-36" 
+"CRWHP2" "N4000-36" 
+"CRWHP3" "L2000-36" 
+"CRWVISTA" "L1500" 
+"CWTOTC60"  
+"LABUX77"  
+"SACORPPK00001"  
+
+Show me where column 4 is exactly "CWTOTC95"  (Have to escape the ")
+$ awk -F, '$4 =="\"CWTOTC95\""  {print $4,$3,$10}' cmdb.support
+"CWTOTC95" "Sun v480" "0438AM00C4"
+
+Show column 4 and 65 where 65 equals 1/1/2000 0:00:00
+$ awk -F, '$65 =="1/1/2000 0:00:00"  {print $4,$65}' cmdb.support
+"CCUX37" 1/1/2000 0:00:00
+"SSNE01IO00003" 1/1/2000 0:00:00
+"SZNE01IE00001" 1/1/2000 0:00:00
+"SZNE01IE00002" 1/1/2000 0:00:00
+"SZNE01IE00003" 1/1/2000 0:00:00
+$ 
+
+Show the whole line ($0) when column 65 matches 1/1/2000 0:00:00
+$ awk -F, '$65 =="1/1/2000 0:00:00"  {print $0}' cmdb.support    
+1/30/2007 4:03:26,"Server(s) - UNIX","HP K-580","CCUX37",,"MN03-OTC-DATA CENTER (1C080)","9900-00000-3561","CSS","NT HARDWARE & SOFTWARE (3561)","3841A54565","329122","165258","PRODUCTION",,"In Service","Campus Standard Support","SERVER","9016","TIVOLI / CONTROL-M","CSS","CHANGE/PROBLEM/CONFIG","Enterprise","0001-002-00001-2054-40001-1022-100001","Feb-99","000000000000",,,,,"Tivoli","HP","2.3",,"Yes","4",,,"XP512","OTC / E34","$160241","1855740461",,"24x7 4hr","CCUX37","5631","1/31/2002 0:00:00","000","000000000","HP-UX B.11.00 64 Bit","CSS",,,,,,,"DATABASE",,"CSS Tech","217.12","24/7",,"21000","CCUX37172.24.128.60",1/1/2000 0:00:00,,,,,,
+1/30/2007 4:03:26,"Server(s) - UNIX",,"SSNE01IO00003","10.32.3.16","NEBRASKA",,,,,,,"PRODUCTION",,"In Service","Remote Standard Support","SERVER","417665","CHW Oracle TPM Database","CHW","DATABASE","Dedicated",,,,,,,,,"Sun",,,,,,,,,,,,,,,,,,,,,,,,,,"DATABASE",,,,"24/7",,,"2/28/2006 2:07:01 PMSSNE01IO00003",1/1/2000 0:00:00,,,,,,
+$ 
+
+Show when lines is less than three (NR<3) and the fifth column contains the string 0),
+and print the whole line ($0).
+
+# vxdmpadm getdmpnode enclosure=OTHER_DISKS | awk 'NR<3 || $5 == 0 {print $0}'
+NAME                 STATE     ENCLR-TYPE   PATHS  ENBL  DSBL  ENCLR-NAME
+=========================================================================
+c2t0d60s2            DISABLED  OTHER_DISKS  1      0     1     OTHER_DISKS
+c2t0d61s2            DISABLED  OTHER_DISKS  1      0     1     OTHER_DISKS
+c2t0d62s2            DISABLED  OTHER_DISKS  1      0     1     OTHER_DISKS
+
+
+Show number of columns (it will print for each line
+$ awk -F, '{print NF}' cmdb.support | sort -u
+71
+$ awk -F, '{print NF}' cmdb.support | tail -3
+71
+71
+71
+$ 
+
+Using TR and cat -n to show the # of each column separated by a comma.
+$ head -1 cmdb.support | tr "," "\012" | cat -n | head -10
+     1  "Data Current As Of"
+     2  "CI Category"
+     3  "Model Type"
+     4  "Configuration Item"
+     5  "Alternate Tag"
+     6  "Location"
+     7  "Owning CO-LOC-CC"
+     8  "Owning Operating Group"
+     9  "Cost Center Description"
+    10  "Serial ."
+$ 
+
+Contents of file
+$ head -1 cmdb.support                                    
+"Data Current As Of","CI Category","Model Type","Configuration Item","Alternate Tag","Location","Owning CO-LOC-CC","Owning Operating Group","Cost Center Description","Serial .","CFS Asset Id .","Carlson Asset Tag .","Primary Func Status","Purchase ID","Life Cycle Status","CSS Support Level","Config Item Type","IS_INVENTORY_ID","(C) Business Description","(C) Dedicated Operating Group","(C) Primary Service Role","(C) Resource Allocation","11i GL Coding","Acquisition Date (T)","AFE .","Aliases","Billing Size","Business Recovery Category","Business Recovery Period","Business Software Installed (T)","CI Vendor (T)","CM Release Level (T)","Comments (07/2003 Inventory)","CSS Backup Support","Current CPU Count","DBMS (T)","Expenditure Org","External Storage Type (T)","Grid Location","Hardware Cost (T)","Host Id","Inventory Status","Maintenance Coverage (T)","Maintenance Support ID (T)","Mb Memory","Metrics State Date","Oracle Product .","Oracle Program .","OS Name / Version (T)","Owner / Contact (T)","Owner / Contact Phone . (T)","Project Number","Purchase Order Date (T)","RDBMS Installed (T)","Rebuilt From","Recovery Model","Resource Unit","Service Level","Serviced Client(s) (T)","Storage Disk Array GB","Support Hours","Task Number","TPC","TAM Id","Acquisition Date","Book End Of Life","Service End of Life","Depreciation Months","Acquisition Value","Book Value","Depreciation Method"
+$ 
+
+# Use sed to print only selected lines from a file.
+
+$ wc -l /etc/passwd
+      54 /etc/passwd
+$ cat -n /etc/passwd|sed -n '33,37p'
+    33  +@d00eai:x:::::
+    34  +@tibco:x:::::
+    35  +@p01idsadm:x:::::
+    36  +@ussabk:x:::::
+    37  u02iobd:x:819:152:Daniel Lamont:/home/uss/u02iobd:/usr/bin/ksh
+
+# Find the version of a particular Solaris package by skipping four lines in the pkginfo file.
+
+
+vxdmpadm listenclosure all
+
+
+
+root@ssmn00pk00190# vxdmpadm getdmpnode enclosure=SAN_VC1
+NAME STATE ENCLR-TYPE PATHS ENBL DSBL ENCLR-NAME
+=========================================================================
+c3t0d2s2 ENABLED SAN_VC 2 2 0 SAN_VC1
+c3t0d1s2 ENABLED SAN_VC 2 2 0 SAN_VC1
+c2t1d0s2 ENABLED SAN_VC 2 2 0 SAN_VC1
+root@ssmn00pk00190# vxdmpadm getdmpnode enclosure=SAN_VC0
+NAME STATE ENCLR-TYPE PATHS ENBL DSBL ENCLR-NAME
+=========================================================================
+c2t0d1s2 ENABLED SAN_VC 2 2 0 SAN_VC0
+c3t1d0s2 ENABLED SAN_VC 2 2 0 SAN_VC0
+root@ssmn00pk00190#
+
+# Veritas to show primary and secondary for Veritas 3.5 and 4.0
+root@ssmn00pk00144# vxdmpadm getsubpaths ctlr=c3            
+NAME         STATE[A]   PATH-TYPE[M] DMPNODENAME  ENCLR-TYPE   ENCLR-NAME   ATTRS
+================================================================================
+<SNIP>
+c3t0d11s2    ENABLED    SECONDARY    c5t0d11s2    STK_ARRAY    STK_ARRAY0     -
+c3t0d12s2    ENABLED(A) PRIMARY      c5t0d12s2    STK_ARRAY    STK_ARRAY0     -
+c3t0d13s2    ENABLED    SECONDARY    c5t0d13s2    STK_ARRAY    STK_ARRAY0     -
+c3t0d14s2    ENABLED(A) PRIMARY      c5t0d14s2    STK_ARRAY    STK_ARRAY0     -
+<SNIP>
+root@ssmn00pk00144#
+
+
+
+# Force Veritas to re-read configuration from disks
+vxconfigd -k
+metastat - /var mirror was not created.  Steps to create knowing that the slice was on the second disk as it should match, since we setup disk 1 and prtvtoc|fmthard to disk 2
+root@ssmn00qk00217# metastat d3
+d3: Mirror
+Submirror 0: d13
+State: Okay
+Pass: 1
+Read option: roundrobin (default)
+Write option: parallel (default)
+Size: 12587712 blocks (6.0 GB)
+
+d13: Submirror of d3
+State: Okay
+Size: 12587712 blocks (6.0 GB)
+Stripe 0:
+Device Start Block Dbase State Reloc Hot Spare
+c0t0d0s3 0 No Okay Yes
+
+
+Device Relocation Information:
+Device Reloc Device ID
+c0t0d0 Yes id1,sd@SFUJITSU_MAW3073NCSUN72G_000651B0J5G9____DAN0P6C0J5G9
+root@ssmn00qk00217# metastat -p
+d1 -m d11 d21 1
+d11 1 1 c0t0d0s1
+d21 1 1 c0t1d0s1
+d0 -m d10 d20 1
+d10 1 1 c0t0d0s0
+d20 1 1 c0t1d0s0
+d3 -m d13 1
+d13 1 1 c0t0d0s3
+d47 -p d4 -o 16474272 -b 2048000
+d4 -m d14 d24 1
+d14 1 1 c0t0d0s4
+d24 1 1 c0t1d0s4
+d46 -p d4 -o 8085632 -b 8388608
+d45 -p d4 -o 7061600 -b 1024000
+d44 -p d4 -o 2867264 -b 4194304 -o 24862912 -b 4194304
+d43 -p d4 -o 1638432 -b 1228800
+d41 -p d4 -o 409632 -b 614400
+d42 -p d4 -o 1433603 -b 204800
+d40 -p d4 -o 1 -b 409600
+root@ssmn00qk00217# metainit d23 1 1 c0t1d0s3
+d23: Concat/Stripe is setup
+root@ssmn00qk00217# metattach d3 d23
+d3: submirror d23 is attached
+root@ssmn00qk00217# metastat|grep %
+Resync in progress: 0 % done
+root@ssmn00qk00217# metastat d3
+d3: Mirror
+Submirror 0: d13
+State: Okay
+Submirror 1: d23
+State: Resyncing
+Resync in progress: 2 % done
+Pass: 1
+Read option: roundrobin (default)
+Write option: parallel (default)
+Size: 12587712 blocks (6.0 GB)
+
+d13: Submirror of d3
+State: Okay
+Size: 12587712 blocks (6.0 GB)
+Stripe 0:
+Device Start Block Dbase State Reloc Hot Spare
+c0t0d0s3 0 No Okay Yes
+
+d23: Submirror of d3
+State: Resyncing
+Size: 12587712 blocks (6.0 GB)
+Stripe 0:
+Device Start Block Dbase State Reloc Hot Spare
+c0t1d0s3 0 No Okay Yes
+
+Device Relocation Information:
+Device Reloc Device ID
+c0t0d0 Yes id1,sd@SFUJITSU_MAW3073NCSUN72G_000651B0J5G9____DAN0P6C0J5G9
+c0t1d0 Yes id1,sd@SFUJITSU_MAW3073NCSUN72G_000651B0J53M____DAN0P6C0J53M
+Summary:
+
+determine second half: c0t1d0s3
+root@ssmn00qk00217# metainit d23 1 1 c0t1d0s3
+d23: Concat/Stripe is setup
+root@ssmn00qk00217# metattach d3 d23
+d3: submirror d23 is attached
+root@ssmn00qk00217# metastat|grep %
+Resync in progress: 0 % done
+
+
+#
+# Setup paging to be done by less with -ciMe options (Clear screen {c},
+#    ignore case {i}, verbose prompting {M}, exit at 2nd eof {e})
+PAGER=less
+LESS='-ciMe'
+export PAGER LESS
+
+
+# Smitty 
+smitty user
+ - reset unlock user, then also clear the failed login.
+   or
+ -  chsec -f /etc/security/lastlog -a "unsuccessful_login_count=0" -s  'us1prd'
+
+# List current settings
+---> lsuser -a unsuccessful_login_count account_locked srmdata
+srmdata unsuccessful_login_count=3 account_locked=false
+
+
+
+# OBP
+
+If you are really in a fix to find out which nic is hooked up to the switch, try watch-net-all before show-nets
+
+{1} ok watch-net-all
+/pci@1d,700000/network@2,1
+Timed out waiting for Autonegotation to complete
+Check cable and try again
+Link Down
+
+/pci@1d,700000/network@2
+Timed out waiting for Autonegotation to complete
+Check cable and try again
+Link Down
+
+/pci@1f,700000/network@2,1
+Timed out waiting for Autonegotation to complete
+Check cable and try again
+Link Down
+
+/pci@1f,700000/network@2
+100 Mbps HDX Link up
+Looking for Ethernet Packets.
+'.' is a Good Packet.  'X' is a Bad Packet.
+Type any key to stop.
+.......................................................
+{1} ok show-nets
+a) /pci@1d,700000/network@2,1
+b) /pci@1d,700000/network@2
+c) /pci@1f,700000/network@2,1
+d) /pci@1f,700000/network@2
+q) NO SELECTION
+Enter Selection, q to quit:
+
+
+SVM Rootmirr replacement steps:
+INSTALLATION:
+Logon to server as root
+
+metadetach d0 d20
+
+metadetach d1 d21
+
+metadetach d4 d24
+
+metaclear d20
+
+metaclear d21
+
+metaclear d24
+
+metadb -d c1t1d0s7
+
+metadb | grep c1t1d0
+
+cfgadm -c uncofigure c1::dsk/c1t1d0
+
+if error comes  -- run this dumpadm -d swap ( if nessasary )
+
+After replacing the disk
+
+
+cfgadm -c configure c1::disk/c1t1d0
+
+cfgadm -al
+
+prtvtoc -h - /dev/rdsk/c1t0d0s2 | fmthard -s - /dev/rdsk/c1t1d0s2
+
+
+
+metadb -a -c2 c1t1d0s7
+
+metainit d20 1 1 c1t1d0s0
+
+metainit d21 1 1 c1t1d0s1
+
+metainit d24 1 1 c1t1d0s4
+
+metattach d0 d20
+
+metattach d1 d21
+
+metattach d4 d24
+
+metastat | grep %
+BACKOUT:Replacing with the old disk again
+
+BACKOUT DURATION:4 hours
+
+
+#
+FACL facl setacl
+
+getfacl  {filename}
+
+setfacl -m user:d17pra:rwx {filename}
+
+ acl for zfs ZFS 
+chmod A+user:ujxm108:read_data/write_data/execute:allow directory
+chmod A+user:ujxm108:rwx:allow directory
+
+
+
+#  screen  - multiple ascii window
+
+screen
+	Cntl A what
+	Cntl A Shift A add title
+	Cntl A+c to create new window
+	Cntl A D
+	Cntl A+esc - access scroll buffer - j/k to scroll then esc to end
+	Cntl A ?
+	Cntl+S stops window
+	Cntl+q resumes window
+	Alt+F4 -  dettach but leave running.
+	Cntl+d -  dettach but leave running.
+
+  does have a .screenrc file.
+
+contents of an example are:
+  does have a .screenrc file.
+
+contents of an example are:
+############### start of .screenrc  ######################
+term xterm
+#hardstatus alwayslastline "%{= KC}%-w%{= ck}%50>%n %t%{-}%+w%< %= %m/%d/%y %c "
+#hardstatus alwayslastline "%{=b}%{G} Screen(s): %{b}%w %=%{kG}%c %D, %m-%d-%y "
+bind R screen -t '% |root:' su
+msgwait 5
+startup_message off
+bindkey -k F1 prev
+bindkey -k F2 next
+#defscrollback         1000
+defflow auto
+defscrollback 5000
+altscreen on
+autodetach on
+#change the hardstatus settings to 
+#give an window list at the bottom of the                                                                        
+#screen, with the time and date and with the current window highlighted 
+#term screen-256color
+defutf8 on
+hardstatus alwayslastline                                        
+#hardstatus string '%{gk}[ %{G}%H %{g}][%= %{wk}%?%-Lw%?%{=b kR}(%{W}%n*%f %t%?(%u)%?%{=b kR})%{= kw}%?%+Lw%?%?%= %{g}][%{Y}%l%{g}]%{=b C}[ %m/%d %c ]%{W}'
+hardstatus string '%{gk}[ %{G}%H %{g}][ %m/%d %c ][%= %{wk}%?%-Lw%?%{=b kR}(%{W}%n*%f %t%?(%u)%?%{=b kR})%{= kw}%?%+Lw%?%?%= %{g}][%{Y}%l%{g}]%{=b C}%{W}'
+
+vbell_msg "[[[ ding ]]]"
+vbell off
+
+# scren startups
+screen -t ssmn00pk00144 0
+screen -t ssmn00pk00071 1 ssh ssmn00pk00071
+
+############### end of .screenrc  ######################
+
+$ screen ------
+Use: screen [-opts] [cmd [args]]
+ or: screen -r [host.tty]
+
+Options:
+-a            Force all capabilities into each window's termcap.
+-A -[r|R]     Adapt all windows to the new display width & height.
+-c file       Read configuration file instead of '.screenrc'.
+-d (-r)       Detach the elsewhere running screen (and reattach here).
+-dmS name     Start as daemon: Screen session in detached mode.
+-D (-r)       Detach and logout remote (and reattach here).
+-D -RR        Do whatever is needed to get a screen session.
+-e xy         Change command characters.
+-f            Flow control on, -fn = off, -fa = auto.
+-h lines      Set the size of the scrollback history buffer.
+-i            Interrupt output sooner when flow control is on.
+-l            Login mode on (update /var/adm/utmpx), -ln = off.
+-list         or -ls. Do nothing, just list our SockDir.
+-L            Turn on output logging.
+-m            ignore $STY variable, do create a new screen session.
+-O            Choose optimal output rather than exact vt100 emulation.
+-p window     Preselect the named window if it exists.
+-q            Quiet startup. Exits with non-zero return code if unsuccessful.
+-r            Reattach to a detached screen process.
+-R            Reattach if possible, otherwise start a new session.
+-s shell      Shell to execute rather than $SHELL.
+-S sockname   Name this session <pid>.sockname instead of <pid>.<tty>.<host>.
+-t title      Set title. (window's name).
+-T term       Use term as $TERM for windows, rather than "screen".
+-U            Tell screen to use UTF-8 encoding.
+-v            Print "Screen version 4.00.02 (FAU) 5-Dec-03".
+-wipe         Do nothing, just clean up SockDir.
+-x            Attach to a not detached screen. (Multi display mode).
+-X            Execute <cmd> as a screen command in the specified session.
+
+QIP qip object update - 
+
+Use the following command to get the profile of an object
+    qip-getobjectprof -a 10.16.6.95 -u qipman -p passwordgoeshere -f /tmp/dnstest6.txt
+This creates a file called /tmp/dnstest6.txt.  You update this file with the changes you want to make to the object profile
+
+Run this command against the file you just changed and it will update the object in the database:
+    qip-setobject -u qipman -p passwordgoeshere -d /tmp/dnstest6.txt
+You could run the first command today on all the objects you need to modify and create the profile files, make your changes, and then create a file with the qip-setobject commands for all those objects.
+
+
+Sudo - sudo
+
+sudo -u userid command     #  execute command as userid.
+sudo su - userid	   #  execute command 
+
+
+- Using adb to interpret what process created a core file.
+
+$ file /var/core/core.exp.7320
+/var/core/core.exp.7320:        ELF 64-bit MSB core file SPARCV9 Version 1, from 'exp'
+$ adb /var/core/core.exp.7320
+core file = /var/core/core.exp.7320 -- program ``/u01/app/oracle/product/9.2.0.7/bin/exp'' on platform 
+SUNW,Sun-Fire-V890
+SIGQUIT: Quit
+
+
+
+ - Expanding a Veritas clustered Diskgroup, already built
+Locate the primary node vxdctl -c mode
+
+Run the following commands on the primary node
+vxdg -g rac_dg adddisk c2t1d231 c2t1d232 c2t1d233 c2t1d234 c2t1d235
+vxresize -g rac_dg u03 +30g
+verify the size by df -k /u03
+
+
+
+
+REFERENCE/HOW TO:
+
+
+REFERENCE: How to kick a QLogic 2340 Card to see LUNS (Dan Tan)
+as root
+
+# cd /opt/QL*/*CLI
+# ./scli -do all rs ... THIS IS KEY, IT KICKS THE QLA CARD without adverse effect to the system, might run a while
+# devfsadm
+# format (to label disks)
+# vxdctl enable
+# vxdisk list
+
+vxdiskadm as required thereafter.
+
+
+REFERENCE:  scli qlogic
+
+scli -z all  - gives all detailed output from scli to stdout.
+
+
+
+
+ot@ssmn00pk00144# scli -z all
+ --------------------------------------------------------------------------------
+Host Name                        : ssmn00pk00144
+OS Type                          : SunOS:sun4u
+OS Version                       : 5.9
+FO API Version                   : 1.5.3.0 qlfoapi.a
+SDM API Version                  : 4.08 Build 9
+--------------------------------------------------------------------------------
+HBA Model QLA2340 (SN B02920):
+  Port   1 WWPN 21-00-00-E0-8B-81-08-92 (HBA/OS instance  0/ 0) Online
+HBA Model QLA2340 (SN N35086):
+  Port   1 WWPN 21-00-00-E0-8B-14-2E-5F (HBA/OS instance  1/ 1) Online
+HBA Model QLA2340 (SN T14511):
+  Port   1 WWPN 21-00-00-E0-8B-9D-8F-36 (HBA/OS instance  2/ 2) Loop Down
+--------------------------------------------------------------------------------
+Total QLogic HBA(s) : 3
+
+Time and date:                  Mon Apr  6 09:38:54 2009
+
+--------------------------------------------------------------------------------
+
+HBA General Information 
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+Host Name                        : ssmn00pk00144
+HBA Instance                     : 0
+OS Instance                      : 0
+HBA Model                        : QLA2340
+HBA Description                  : QLA2340/QLA2340L (PCI to FC single channel)
+HBA ID                           : 0-QLA2340
+HBA Alias                        : 
+HBA Port                         : 1
+<snip>   Much more details including lun list.
+
+
+# Control-m control-m Control-M - sysout permissions.
+- the default on log output from Control-M is to have it locked down to the user. 
+  in order for group members to see the files that control-m copies to the logs directory 
+ of the application (IE /p17abc/logs) the SYSOUT_MODE 666 needs to be a part of the
+ /opt/controlm/ctmagent/ctm/data/OS.dat on Solaris for CTM version 6.1.0
+ /opt/controlm/ctmagent/ctm/data/agconfig.dat on HP-UX.
+
+# Check netgroup for length over 1,000
+#
+# Print netgroup listing with netgroup at start (-k), when length of whole string ($0) is over
+# 1,000; print whole line ($0) or print just the netgroup (first word or $1).
+root@ccux65# ypcat -k netgroup | awk 'length($0) > 1000 {print $0}'
+d09awa (-,neon, ), (-,u02ci37, ), (-,u02cm74, ), (-,u02ixdt, ), (-,u02iy49, ), (-,u02iz40, ), (-,u02mb04, ), (-,u02mb10, ), (-,u02mb19, ), (-,u02mb20, ), (-,u02mbar, ), (-,u02mbca, ), (-,u02mbdm, ), (-,u02mbeb, ), (-,u10ef55, ), (-,u10os30, ), (-,u17cpzk, ), (-,ubjb001, ), (-,ubxk065, ), (-,udxj031, ), (-,ugmw001, ), (-,ugxb072, ), (-,ugxt002, ), (-,ujwm001, ), (-,umrd001, ), (-,urws001, ), (-,usxm026, ), (-,utxw003, ), (-,utxd020, ), (-,usxi021, ), (-,usxg187, ), (-,u18cc41, ), (-,usxd173, ), (-,upxc131, ), (-,urxh167, ), (-,urxd146, ), (-,usab109, ), (-,ubxb272, ), (-,ujkl001, ), (-,uxxs002, ), (-,ujlb001, ), (-,ukhl000, ), (-,usxa054, ), (-,uexd128, ), (-,ujrh003, ), (-,umxs599, ), (-,u02iz84, ), (-,ujxw329, ), (-,ujxw332, ), (-,u02ci52, ), (-,ucxd204, ), (-,ugxu004, ), (-,ucxm410, ), (-,utra013, ), (-,usxk279, ), (-,uixy003, ), (-,u02ixav, ), (-,urxb046, ), (-,urxg377, ), (-,uexs277, ), (-,u02ci64, ), (-,umep058, ), (-,utxs304, ), (-,uval010, ), (-,u10mkhx, ), (-,urxb416, ), (-,umxy020, )
+allhp1 (ccux01.carlson.com,-, ), (ccux04.carlson.com,-, ), (ccux06.carlson.com,-, ), (ccux08.carlson.com,-, ), (ccux09.carlson.com,-, ), (ccux13.carlson.com,-, ), (ccux14,-, ), (ccux16.carlson.com,-, ), (ccux16sf.carlson.com,-, ), (ccux18.carlson.com,-, ), (ccux19.carlson.com,-, ), (ccux21.carlson.com,-, ), (ccux22.carlson.com,-, ), (ccux23.carlson.com,-, ), (ccux23ol.carlson.com,-, ), (ccux25.carlson.com,-, ), (ccux30.carlson.com,-, ), (ccux32.carlson.com,-, ), (ccux33.carlson.com,-, ), (ccux34.carlson.com,-, ), (ccux35.carlson.com,-, ), (ccux36.carlson.com,-, ), (ccux37.carlson.com,-, ), (ccux38.carlson.com,-, ), (ccux43.carlson.com,-, ), (ccux44.carlson.com,-, ), (ccux51.carlson.com,-, ), (ccux52.carlson.com,-, ), (ccux53.carlson.com,-, ), (ccux54.carlson.com,-, ), (ccux55.carlson.com,-, ), (ccux56.carlson.com,-, ), (ccux57.carlson.com,-, ), (ccux58.carlson.com,-, ), (ccux59.carlson.com,-, ), (ccux60.carlson.com,-, ), (ccux64.carlson.com,-, ), (ccux65.carlson.com,-, ), (ccux66.carlson.com,-, )
+# Only print the netgroup when line is over 1,000 characters.
+root@ccux65# ypcat -k netgroup | awk 'length($0) > 1000 {print $1}'
+d09awa
+allhp1
+root@ccux65# 
+# Show the length of the offending line as well.
+root@ccux65# ypcat -k netgroup | awk 'length($0) > 1000 {print length($0),$1}'
+1007 d09awa
+1011 allhp1
+
+# Show the 5 most full netgroups.
+root@ccux65# ypcat -k netgroup | awk '{print $1,length($0)}' | sort -n -k 2 | tail -5 
+d17gpc 903
+d01ets 905
+d17sascm 921
+d09awa 1007
+allhp1 1011
+root@ccux65# 
+
+## End of netgroup length example ##
+
+
+
+#  HP pre-change tasks - from india change records
+
+1) Before starting the Installation capture the following outputs, which helps in verify the status after the server had been installed.
+
+cd /home/uss/mig
+mkdir `hostname`
+cd `hostname`
+bdf > bdf.out . capturethe list of filesystems
+bdf |wc -l > bdfwc.out . count the total filesystems
+ioscan -fn > ioscan.out . captures the hardware information
+ioscan -funC disk > diskcount.out . captures the total disk configured on the server.
+vgdisplay-v > vgdisplay.out . captures the volume group information.
+lvlnboot -v > lvlnboot.out . captures the boot area information.
+setboot > setboot.out . captures the boot device and boot options information
+echo boot_string/S | adb /stand/vmunix /dev/kmem > bootdevice.txt . gives the boot device from which system booted.
+cp -p /etc/lvmtab lvmtab . contains disks assigned to a volume group.
+cp -p /etc/lvmconf/* . . configuration backup of volume group.
+cp -p /stand/vmunix /var/vmunix.`date +%d%m%Y` - backup of the kernel
+vgcfgbackup -f /home/uss/mig/`hostname`/vg00.backup vg00 . configuration backup of root volume
+xpinfo -il > /tmp/xpinfo.`date +%d%m%Y` - captures luns information.
+# Memory Details.
+#------------------
+echo "selclass qualifier memory;info;wait;infolog" |/usr/sbin/cstm | grep 'Total Configured' . captures total memory configured on the server.
+
+# CPU Details.
+#------------------
+
+echo "selclass qualifier cpu;infolog" | /usr/sbin/cstm | grep "CPU Module" . captures cpu details on the server.
+
+
+#
+
+Memory sizes for Oracle with ipcs -am
+
+$ ipcs -am
+IPC status from <running system> as of Wed Oct 31 13:03:35 CDT 2007
+T         ID      KEY        MODE        OWNER    GROUP  CREATOR   CGROUP NATTCH      SEGSZ  CPID  LPID   ATIME    DTIME    CTIME
+Shared Memory:
+m       2560   0xd06cd4b0 --rw-r-----   oracle      dba   oracle      dba     30  557842432 13042 16292  9:29:16  9:29:16 20:24:21
+m       2561   0x61186ad0 --rw-r-----   oracle      dba   oracle      dba     11  557842432 13379 27033 11:43:10 11:43:10 20:27:22
+m        514   0x88d87960 --rw-r-----   oracle      dba   oracle      dba     58  239075328  2490  2199 12:44:29 12:44:30 18:01:32
+m        515   0x254ffd78 --rw-r-----   oracle      dba   oracle      dba      7  255852544  2522  4070  7:05:04  7:05:05 18:01:38
+m      17924   0x9be9bdc4 --rw-r-----   oracle      dba   oracle      dba     59 1002455040 15841  3757 13:03:30 13:03:30  4:21:40
+m      16901   0xdb4e6d30 --rw-r-----   oracle      dba   oracle      dba    177 1002455040 20355  3266 13:03:20 13:03:34  4:39:22
+m      16390   0x9720c758 --rw-r-----   oracle      dba   oracle      dba     23 1002455040 22008  3734 13:02:50 13:02:50  4:45:26
+m      16903   0x57bc17ec --rw-r-----   oracle      dba   oracle      dba     23 1002455040 23247  3512 13:00:17 13:00:22  4:51:30
+
+- where SEGSZ is bytes so 1002455040 is 1 GB, 557842432 is .5 GB, etc
+
+
+- notes on SCP hang - pmap, pstack, gcore as diagnostics tools
+
+
+> >> 1. We tried to scp a sample file from the server
+> >> ssne01io00002:/export/home/scripts/nbu to /opt filesystem, but
+> >> the scp process didn't got release after copying the file. File
+> >> got copied successfully from /export/home/scripts/nbu/ud0.p012
+> >> to /opt/ud0.p012.
+> >>
+> >>
+> >> *ssne01io00002-SUPER* /export/home/scripts/nbu> ls -l /opt/ud0.p012
+> >> -rw-r--r-- 1 root other 1440 Nov 1 23:30 /opt/ud0.p012
+> >> *ssne01io00002-SUPER* /export/home/scripts/nbu> ls -l ud0.p012
+> >> -rw-r--r-- 1 root other 1440 Nov 1 23:30 ud0.p012
+> >>
+> >> *ssne01io00002-SUPER* /export/home/scripts/nbu> df -k /export/home /opt
+> >> Filesystem kbytes used avail capacity Mounted on
+> >> /dev/md/dsk/d4 6198606 928534 5208086 16% /export/home
+> >> /dev/md/dsk/d3 16140362 2668467 13310492 17% /opt
+> >>
+> >> *ssne01io00002-SUPER* /export/home/scripts/nbu> pwd
+> >> /export/home/scripts/nbu
+> >> *ssne01io00002-SUPER* /export/home/scripts/nbu> scp -p ud0.p012
+> >> ssne01io00002:/opt
+> >> root@ssne01io00002's password:
+> >> ud0.p012 100% |*****************************| 1440 00:00
+> >> *ssne01io00002-SUPER* /export/home/scripts/nbu>
+> >>
+> >> *ssne01io00002-SUPER* /export/home/scripts/nbu> ps -ef|grep -i scp |
+> >> more
+> >> root 1940 1 0 09:33:06 pts/22 0:00 /usr/bin/ssh -x -oFallBackToRsh no
+> >> ssne01io00002 scp
+> >> -p -t /opt
+> >>
+> >> * GCORE output of a hung process
+> >>
+> >>
+> >> *ssne01io00002-SUPER* /tmp> gcore 23673
+> >> gcore: core.23673 dumped
+> >> *ssne01io00002-SUPER* /tmp> ls -l core.23673
+> >> -rw-r--r-- 1 root other 416756 Nov 2 09:48 core.23673
+> >>
+> >> * PSTACK output of a hung process
+> >>
+> >> *ssne01io00002-SUPER* /tmp> pstack core.23673
+> >> core 'core.23673' of 23673: /usr/bin/ssh -x -oFallBackToRsh no
+> >> sunbkup01 scp -t /export/home/scrip
+> >> ff21dfdc poll (ffbff888, 1, ffffffff)
+> >> 0003074c ???????? (ffbffb18, ffbffa98, 0, ffbffb18, 8, 10000)
+> >> 00031488 client_loop (0, ffffffff, 0, efa88, 0, 0) + 218
+> >> 0002ae94 main (f5400, ab240, edd78, f8e20, 0, edd5c) + e28
+> >> 00029ab0 _start (0, 0, 0, 0, 0, 0) + 108
+> >> *ssne01io00002-SUPER* /tmp>
+> >>
+> >> * PMAP Output of a hung process
+> >>
+> >> *ssne01io00002-SUPER* /tmp> pmap 23673
+> >> 23673: /usr/bin/ssh -x -oFallBackToRsh no sunbkup01 scp -t
+> >> /export/home/scrip
+> >> 00010000 784K r-x-- /usr/bin/ssh
+> >> 000E2000 56K rwx-- /usr/bin/ssh
+> >> 000F0000 144K rwx-- [ heap ]
+> >> FF140000 24K r-x-- /usr/lib/nss_files.so.1
+> >> FF156000 8K rwx-- /usr/lib/nss_files.so.1
+> >> FF160000 16K r-x-- /usr/lib/libmp.so.2
+> >> FF174000 8K rwx-- /usr/lib/libmp.so.2
+> >> FF180000 688K r-x-- /usr/lib/libc.so.1
+> >> FF23C000 32K rwx-- /usr/lib/libc.so.1
+> >> FF260000 8K r-x-- /usr/lib/libmd5.so.1
+> >> FF272000 8K rwx-- /usr/lib/libmd5.so.1
+> >> FF280000 568K r-x-- /usr/lib/libnsl.so.1
+> >> FF31E000 40K rwx-- /usr/lib/libnsl.so.1
+> >> FF328000 24K rwx-- /usr/lib/libnsl.so.1
+> >> FF340000 8K rwx-- [ anon ]
+> >> FF350000 40K r-x-- /usr/lib/libsocket.so.1
+> >> FF36A000 8K rwx-- /usr/lib/libsocket.so.1
+> >> FF370000 48K r-x-- /usr/lib/libz.so.1
+> >> FF38A000 16K rwx-- /usr/lib/libz.so.1
+> >> FF3A0000 8K r-x-- /usr/platform/sun4u-us3/lib/libc_psr.so.1
+> >> FF3B0000 184K r-x-- /usr/lib/ld.so.1
+> >> FF3EE000 8K rwx-- /usr/lib/ld.so.1
+> >> FF3F0000 8K rwx-- /usr/lib/ld.so.1
+> >> FF3FA000 8K rwx-- /usr/lib/libdl.so.1
+> >> FFBFA000 24K rw--- [ stack ]
+> >> total 2768K
+> >> *ssne01io00002-SUPER* /tmp>
+
+# set net work speed on sun boot
+
+ ok boot net1:speed=100,duplex=full -v - install
+
+
+
+# Solaris 10 service list
+inetadm |grep online
+
+ENABLED   STATE          FMRI
+enabled   online         svc:/application/x11/xfs:default
+disabled  disabled       svc:/application/font/stfsloader:default
+enabled   offline        svc:/application/print/rfc1179:default
+enabled   online         svc:/network/rpc/gss:default
+disabled  disabled       svc:/network/rpc/cde-calendar-manager:default
+disabled  disabled       svc:/network/rpc/cde-ttdbserver:tcp
+disabled  disabled       svc:/network/rpc/ocfserv:default
+enabled   online         svc:/network/rpc/smserver:default
+disabled  disabled       svc:/network/rpc/mdcomm:default
+disabled  disabled       svc:/network/rpc/meta:default
+disabled  disabled       svc:/network/rpc/metamed:default
+
+
+Excel tricks:
+Use countif to show count of stuff in cells:	=countif(start_cell:end_cell,criteria)
+Show how many empty cells between A1 and A100:	=countif(a1:a100,"")
+Show how many cells contain the word server:	=countif(a1:a100,"*server*")
+Show how many cells end with database:		=countif(a1:a100,"*database")
+
+
+
+# Password, how to get formatted last output with year fwtmp
+
+/usr/lib/acct/fwtmp < /var/adm/wtmpx
+
+I finally found the info on the last login:  /usr/lib/acct/fwtmp < /var/adm/wtmpx
+
+That will dump the wtmp info to text format.  If you redirect that to a file, I have a script that will read the file and list users that have not logged in for over 90 days  (in this case the file is called /tmp/wt):
+
+#!/usr/bin/ksh
+
+#  Get accounts 
+ID=$1
+
+LOGININFO=`grep $ID /tmp/wt | tail -1 | awk '{print $10" "$11" "$13}'`
+YDT=`echo $LOGININFO | awk '{print $3}`
+DDT=`echo $LOGININFO | awk '{print $2}`
+MDT=`echo $LOGININFO | awk '{print $1}`
+
+MO=`echo $MDT | sed -e "
+s/Jan/01/
+s/Feb/02/
+s/Mar/03/
+s/Apr/04/
+s/May/05/
+s/Jun/06/
+s/Jul/07/
+s/Aug/08/
+s/Sep/09/
+s/Oct/10/
+s/Nov/11/
+s/Dec/12/"`
+
+DT=${YDT}-${MO}-${DDT}
+FDT=`gdate --date=$DT +%s`
+
+let ODT=$FDT/86400
+
+TODAY=`./day_now`
+let MINUS=$TODAY-$ODT
+
+if [ $MINUS -gt 90 ]; then
+        echo Not logged in for over 90 days
+else
+        echo ID complies
+fi
+
+4:35:12 PM: Joe Majerus: The script could probably improved, but it was a start back when I put it together then lack of time put it on hold.  You could probably through the command to create the file right into the script.
+
+
+#####
+
+Redhat load procedure sample:
+
+on of course,
+
+Pre
+insert DVD
+press Power Button
+
+Installation
+Skip Media Test <Next>
+English <Next>
+"U.S. English", <Next>
+"Skip Entering Installation Number", <OK>, <Skip>, <Yes> on "cciss/c0d0"
+<Check> Review & modify partition layout
+LogVol00		/		100GB
+LogVol01		swap		2G
+LogVol02		/var		2G
+<Next>
+Use "GRUB" boot loader, <Next>
+Network Devices, both eth0 and eth1 "Active on Boot", configure accordingly if IP addr available, <Next>
+Region, GMT-6, <Next>
+Root Passwd, "jump**", <Next>
+incl. support for,
+<Check> Web Server
+<Check> Customize Now
+<Next>
+
+~ DesktopEnv
+KDE
+
+~ Applications
+Editors
+Graphical Internet
+Office Productivity
+Sound & Video
++ xcdroast
+
+~ Devt
++ Java Devt
+
+~ Servers
++ MySQL DB
+Printing Support
++ Server Config Tools
+Web Server
++ mod_auth_mysql
++ mod_authz_ldap
++ php_mysql
++ tomcat5
++ tomcat5_admin_webapps
++ tomcat5_webapps
+
+~ Base System
+Admin Tools
++ system_config_kickstart
+Base
+Java
+X Window System
+
+~ Languages
+ALL UNCHECKED HERE
+
+<Next>, <Next> to start the Installation, Completion and Reboot
+
+Post
+<Forward>, <Yes>, <Forward>
+Firewall Enabled
+SSH
+SecureWWW (HTTPS)
+WWW (HTTP)
+SELinux Disabled
+Do to enable kdump, <Forward>
+Set NTP
+uxtime01.carlson.com
+uxtime02.carlson.com
+Do not connect to RHN, No s/w Updates, <Forward>
+Do not setup any additional users, <Forward>, <Continue>
+Sound, <Forward>
+Add CDs, <Finish>, <Reboot>, <OK>
+
+On reboot, configure necessary IBM tools, user accounts, LDAP, NIS etc
+
+Kickstart file saved to /root for further use & reference.
+
+
+
+###  Math math with awk
+
+echo "773" | awk '{print int($1/870*100)"% complete"}'
+88% Complete
+
+
+
+#
+AIX aix software package commands
+
+To find out the fileset (package) that aixmibd belongs to:
+
+ccaix16:root> lslpp -w /usr/sbin/aixmibd  
+  File                                        Fileset               Type
+  ----------------------------------------------------------------------------
+  /usr/sbin/aixmibd                           bos.net.tcp.client    File
+
+To find out the version of the fileset:
+
+ccaix16:root> lslpp -L  bos.net.tcp.client
+  Fileset                      Level  State  Type  Description (Uninstaller)
+  ----------------------------------------------------------------------------
+  bos.net.tcp.client        5.2.0.10    C     F    TCP/IP Client Support 
+
+
+# Single line code to create directories if they do or do not exist (replace echo with mkdir)
+For posix---
+$ (( test -d foo.23232323 && echo "found" ))
+$ (( test -d /tmp && echo "found" ))
+found
+$ (( test ! -d foo.23232323 && echo "does not exist" ))
+does not exist
+$ 
+ for KSH and posix
+# $ [ ! -d foo.23232323 ] && echo "does not exist"
+does not exist
+$ [ -d foo.23232323 ] && echo "exists"
+$ [ -d /tmp ] && echo "exists"
+exists
+
+
+
+need awk/grep help
+Luke J. Moses: regex
+Edwin R. (Ed) Carrigan:  grep LGTOclnt /uss/bin/explorer/servers/*/explo*/patch+pkg/pkginfo-l.out
+Edwin R. (Ed) Carrigan: need it so get version of LGTOclnt on the line with VERSION: a few lines below
+Edwin R. (Ed) Carrigan:   PKGINST:  LGTOclnt
+      NAME:  NetWorker for Solaris (Backup/Recover) Client
+  CATEGORY:  application
+      ARCH:  sparc
+   VERSION:  6.1.1.Build.238
+   BASEDIR:  /usr
+    VENDOR:  Legato Systems, Inc.
+      DESC:  NetWorker for Solaris (Backup/Recover) Client
+    PSTAMP:  gelato0110152227
+  INSTDATE:  Oct 02 2002 11:55
+   HOTLINE:  Please contact your local service provider
+    STATUS:  completely installed
+     FILES:       63 installed pathnames
+                   1 directories
+                  40 executables
+               57972 blocks used (approx)
+
+Luke J. Moses: for FILE in `ls -1 /uss/bin/explorer/servers/*/explorer.*/patch+pkg/pkginfo-l.out`
+do
+        SHORT_NAME=`echo $FILE | sed -e 's#.*servers/##' -e 's#/explorer.*##' `
+        echo "$SHORT_NAME\\t\\c"
+        awk '/LGTOclnt/ {printf $2"\t";getline;getline;getline;getline;print $2}' $FILE
+done
+Luke J. Moses: awk '/LGTOclnt/ {printf $2"-";getline;getline;getline;getline;print $2}' /uss/bin/explorer/servers/ssmn00pk00071/explorer.832bce14.ssmn00pk00071-2008.01.05.11.45/patch+pkg/pkginfo-l.out
+LGTOclnt-6.1.1.Build.238
+
+# Show total size in Gb of allocated md volumes.
+# Allocated is the second column (in kybyes) from df -k output.
+$ df -k | grep "/dev/md/dsk" | head -3 
+/dev/md/dsk/d0       6714989 5969131  678709    90%    /
+/dev/md/dsk/d40       191543    1886  170503     2%    /perfdata
+/dev/md/dsk/d55      4130542 2696586 1392651    66%    /migration
+$ df -k | awk '/dev\/md\/dsk/ { total +=$2 }
+END {print "Total MD used is:",total/1024/1024," Gb."}'
+Total MD used is: 62.4717  Gb.
+$ 
+
+
+Sun Release info:
+- cat /etc/release 
+
+                       Solaris 8 2/02 s28s_u7wos_08a SPARC
+           Copyright 2002 Sun Microsystems, Inc.  All Rights Reserved.
+                           Assembled 18 December 2001
+
+
+sed example
+- strip leading stuff before a .
+$ uname -r 
+5.8
+$ /usr/bin/uname -r | sed 's#.*\.##'
+8
+
+
+# New recover process with flash.
+
+ boot net1:speed=100,duplex=full - recover.4.1.x
+
+
+#  ftp example  netrc and inline pw
+Here is what you can do.  
+
+Create a .netrc file in your $HOME directory.
+.netrc
+==========================
+machine milmac 	login f09awa1	password yourpw
+machine ccws01	login f09awa1	password yourpw
+
+machine dmzsun02 login f00lgt password BuddyBoy
+macdef getsrfiles
+lcd /home/f00lgt
+cd /home/f00lgt
+get dmzsun02.success_rate.header
+get dmzsun02.success_rate.detail
+bye
+
+#EOF
+
+Create a script such as the one below.
+
+FTP.script
+========================
+#!/bin/ksh
+
+FILE=/tmp/motd
+FTP=/tmp/ed_ftp
+
+cat <<@eof >${FTP}
+open ccws01
+ascii
+put ${FILE} /tmp/motd.ccux02
+@eof
+
+ftp -v < ${FTP} >> ${FILE}.out
+
+
+Or here is another way to do it... but this is a bad way as it requires the password to be hardcoded.
+
+
+#! /bin/posix/sh
+#
+# Job:  p09awas1
+#
+# Dependencies:  
+#
+# Description:
+
+cd $HOME/data
+
+ftp -i -n hostname <<EOF
+user U09AWA PASSWORD
+put  source_filename destination_file_with_path_if_needed
+quit
+EOF
+# end of job.
+
+check of Sun network - NIC
+- netstat -i
+*ssne01ib00013-SUPER* /> netstat -i
+Name  Mtu  Net/Dest      Address        Ipkts  Ierrs Opkts  Oerrs Collis Queue
+lo0   8232 loopback      localhost      572    0     572    0     0      0
+eri0  1500 ssne01ib00013 ssne01ib00013  3182   2605  2657   45    0      0
+ge0   1500 arpanet       ssne01ib00013-netbackup 274151 0     520435 0     0      0
+
+**** notice err columns and change in numbers.   In this case bad cable on eri0
+
+- netstat -s   # then check err columns.  In case above with bad cable, netstat -s was clean. 
+
+kstat to check sun network
+*ssne01ib90004-SUPER* /> kstat -p bge |grep :link_speed
+bge:0:parameters:link_speed     1000
+bge:1:parameters:link_speed     1000
+bge:2:parameters:link_speed     0
+bge:3:parameters:link_speed     0
+
+
+# stop and start AIX services
+
+vamn00pk01005:root> ps -ef|grep ssh
+    root 131136 159834   0   Apr 02      -  0:10 /usr/sbin/sshd 
+    root 331920 131136   0 08:26:16      -  0:00 sshd: root@pts/1 
+    root 405614 131136   0   Apr 03      -  0:00 sshd: root@pts/0 
+vamn00pk01005:root> lssrc -s sshd
+Subsystem         Group            PID          Status 
+ sshd             ssh              131136       active
+vamn00pk01005:root> stopsrc -s sshd
+0513-044 The sshd Subsystem was requested to stop.
+vamn00pk01005:root> lssrc -s sshd  
+Subsystem         Group            PID          Status 
+ sshd             ssh                           inoperative
+vamn00pk01005:root> startsrc -s sshd
+0513-059 The sshd Subsystem has been started. Subsystem PID is 262190.
+vamn00pk01005:root> lssrc -s sshd   
+Subsystem         Group            PID          Status 
+ sshd             ssh              262190       active
+
+# logadm update to zip old copies. -p now used to execute the entry immediately.
+
+root@ssmn00pk00207# diff /etc/logadm.conf /etc/logadm.conf.123108_162002    
+22c22
+< /var/adm/messages -C 4 -P 'Wed Dec 31 22:29:14 2008' -a 'kill -HUP `cat /var/run/syslog.pid`' -z 0
+---
+> /var/adm/messages -C 4 -P 'Sat Dec 27 09:10:21 2008' -a 'kill -HUP `cat /var/run/syslog.pid`'
+root@ssmn00pk00207# logadm -p now /var/adm/messages                         
+root@ssmn00pk00207# 
+root@ssmn00pk00207# ls -latr /var/adm/message*
+-rw-r--r--   1 root     other    20627885 Dec 13 03:10 /var/adm/messages.3.gz
+-rw-r--r--   1 root     other    22572737 Dec 20 03:10 /var/adm/messages.2.gz
+-rw-r--r--   1 root     other    21643764 Dec 27 03:10 /var/adm/messages.1.gz
+-rw-r--r--   1 root     other    26558831 Dec 31 16:30 /var/adm/messages.0.gz
+-rw-r--r--   1 root     other     100559 Dec 31 16:32 /var/adm/messages
+root@ssmn00pk00207# df -k /var
+Filesystem            kbytes    used   avail capacity  Mounted on
+/dev/md/dsk/d0       6714989 3807588 2840252    58%    /
+root@ssmn00pk00207#
+
+
+# Sun package packaging
+
+For this example will be used apache web server, compiled from source and created as package 
+
+Create directory structure for package. For me /usr/src sound's good, but you can do it using your home directory 
+# cd /usr/src
+# mkdir RTNapache InfoPath
+Create in InfoPath directory file pkginfo with content 
+ARCH=i386
+CATEGORY=application
+NAME=Apache httpd server
+PKG=RTNapache
+VERSION=2.2.4
+DESC=The Apache Project is a collaborative software development effort aimed at creating a robust, commercial-grade, featureful, and freely-available source code implementation of an HTTP (Web) server.
+VENDOR=Apache License Version 2.0, January 2004 http://www.apache.org/licenses/
+
+
+
+- ARCH is architecture you build this package. Can be sparc, i386 or ppc
+- CATEGORY describe with keywords in which category is the package
+- NAME define brief name of our package
+- PKG is the name of package. Here is interest the fact 1st 4 letters should be unique
+- VERSION is the version of package. In this case this is the version of Apache httpd server
+- DESC is extensive text about the package
+- VENDOR describe the copyright of the package
+
+
+
+Configure, compile and install the software on original place 
+# ./configure --prefix=/opt/RTNapache --enable-so ?enable-mods-shared=most
+# make
+# make install
+# cd /opt/RTNapache/
+# mv  * /usr/src/RTNapache/
+# cd ..
+# rmdir RTNapache
+Do some changes to be sure server will work fine 
+Change index.html in /usr/src/RTNapache/htdocs to represent the situation with compiled software
+Change in /usr/src/RTNapache/conf/httpd.conf: 
+- comment ServerAdmin line
+- set ErrorLog to be /var/adm/httpd because /opt is not the proper place for log files
+- set CustomLog to be /var/adm/httpd (same reason as above)
+Change permition of /usr/src/RTNapache/htdocs to be 755 to let user daemon to read web server content
+Change ownership of /usr/src/RTNapache to be root:root
+Create in InfoPath directory file, named prototype. To make it by hand is very hard, so we will use tool, named pkgproto executing 
+# pkgproto ./RTNapache > InfoFiles/prototype
+Add record to prototype file for creation of /var/adm/httpd directory 
+# echo "d none /var/adm/httpd 0644 root root" >> InfoFiles/prototype
+Add record to prototype file with information about pkginfo file 
+# echo "i pkginfo=/usr/src/InfoFiles/pkginfo" >>InfoFiles/prototype
+Create the package 
+#  pkgmk -f InfoFiles/prototype -b /usr/src
+Let's get little info about this new package 
+# cd /var/spool/pkg
+# pkginfo -d .
+application RTNapache Apache httpd server
+Now in directory /var/spool/pkg we get our package and we can pack it as tar, transfer somewhere and install 
+
+
+ZFS zfs
+===============
+root@ssmn00pk00268# format
+Searching for disks...done
+
+
+AVAILABLE DISK SELECTIONS:
+       0. c1t0d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@0,0
+       1. c1t1d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@1,0
+       2. c1t2d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@2,0
+       3. c1t3d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@3,0
+       4. c1t4d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@4,0
+       5. c1t5d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@5,0
+       6. c1t6d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@6,0
+       7. c1t7d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@7,0
+       8. c1t8d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@8,0
+       9. c1t9d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@9,0
+      10. c1t10d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@a,0
+      11. c1t11d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@b,0
+      12. c1t12d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@c,0
+      13. c1t13d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@d,0
+      14. c1t14d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@e,0
+      15. c1t15d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@400/pci@0/pci@8/scsi@0/sd@f,0
+Specify disk (enter its number): ^D
+root@ssmn00pk00268# zpool creat -f ^H^H^H^C
+root@ssmn00pk00268# stty erase ^H
+root@ssmn00pk00268# zpool create -f p268-1 raidz c1t4d0 c1t5d0 c1t6d0 c1t7d0 raidz b c1t8d0 c1t9d0 c1t10d0 c1t11d02d0 c1t13d0
+cannot open 'b': no such device in /dev/dsk
+must be a full path or shorthand device name
+root@ssmn00pk00268# zpool create -f p268-1 raidz c1t4d0 c1t5d0 c1t6d0 c1t7d0 raidz c1t8d0 c1t9d0 c1t10d0 c1t11d0 spare c1t12d0 c1t13d0
+root@ssmn00pk00268# zfslist
+ksh: zfslist:  not found
+root@ssmn00pk00268# zpool status
+  pool: p268-1
+ state: ONLINE
+ scrub: none requested
+config:
+
+        NAME         STATE     READ WRITE CKSUM
+        p268-1       ONLINE       0     0     0
+          raidz1     ONLINE       0     0     0
+            c1t4d0   ONLINE       0     0     0
+            c1t5d0   ONLINE       0     0     0
+            c1t6d0   ONLINE       0     0     0
+            c1t7d0   ONLINE       0     0     0
+          raidz1     ONLINE       0     0     0
+            c1t8d0   ONLINE       0     0     0
+            c1t9d0   ONLINE       0     0     0
+            c1t10d0  ONLINE       0     0     0
+            c1t11d0  ONLINE       0     0     0
+        spares
+          c1t12d0    AVAIL   
+          c1t13d0    AVAIL   
+
+errors: No known data errors
+
+root@ssmn00pk00268# zpool list
+NAME                    SIZE    USED   AVAIL    CAP  HEALTH     ALTROOT
+p268-1                 1.06T    155K   1.06T     0%  ONLINE     -
+root@ssmn00pk00268# echo "146*8"|bc
+1168
+root@ssmn00pk00268# zfs create -o mountpoint=/opt/nsr -o quota=100G -o reservation=100G p268-1/nsr
+ - Or to do quota or reservation separate
+root@ssmn00pk00268# zfs create -o mountpoint=/opt/nsr p268-1/nsr
+root@ssmn00pk00268# zfs set quota=100G p268-1/nsr
+root@ssmn00pk00268# zfs set reservation=100G p268-1/nsr
+root@ssmn00pk00268# df -h
+Filesystem             size   used  avail capacity  Mounted on
+/dev/md/dsk/d0          16G   3.7G    12G    24%    /
+/devices                 0K     0K     0K     0%    /devices
+ctfs                     0K     0K     0K     0%    /system/contract
+proc                     0K     0K     0K     0%    /proc
+mnttab                   0K     0K     0K     0%    /etc/mnttab
+swap                    21G   1.5M    21G     1%    /etc/svc/volatile
+objfs                    0K     0K     0K     0%    /system/object
+/platform/SUNW,T5240/lib/libc_psr/libc_psr_hwcap2.so.1
+                        16G   3.7G    12G    24%    /platform/sun4v/lib/libc_psr.so.1
+/platform/SUNW,T5240/lib/sparcv9/libc_psr/libc_psr_hwcap2.so.1
+                        16G   3.7G    12G    24%    /platform/sun4v/lib/sparcv9/libc_psr.so.1
+fd                       0K     0K     0K     0%    /dev/fd
+swap                    21G    64K    21G     1%    /tmp
+swap                    21G    32K    21G     1%    /var/run
+nfsserv01.carlson.com:/uap
+                        32G    30G   2.0G    94%    /home/uap
+nfsserv01.carlson.com:/uss
+                       168G   127G    41G    76%    /home/uss
+/dev/md/dsk/d41        234M    84M   127M    40%    /opt/Tivoli
+/dev/md/dsk/d42        374M   1.5M   335M     1%    /var/adm/perfmgr
+/dev/md/dsk/d43        141M    12M   114M    10%    /etc/vsa
+/dev/md/dsk/d44         93M    22M    61M    27%    /opt/controlm
+p268-1                 801G    36K   801G     1%    /p268-1
+p268-1/nsr             100G    37K   100G     1%    /opt/nsr
+root@ssmn00pk00268# zfs list
+NAME         USED  AVAIL  REFER  MOUNTPOINT
+p268-1       162K   801G  36.7K  /p268-1
+p268-1/nsr  36.7K   100G  36.7K  /opt/nsr
+root@ssmn00pk00268#
+root@ssmn00pk00268# zfs status
+unrecognized command 'status'
+usage: zfs command args ...
+where 'command' is one of the following:
+
+        create [[-o property=value] ... ] <filesystem>
+        create [-s] [-b blocksize] [[-o property=value] ...]
+            -V <size> <volume>
+        destroy [-rRf] <filesystem|volume|snapshot>
+
+        snapshot [-r] <filesystem@name|volume@name>
+        rollback [-rRf] <snapshot>
+        clone <snapshot> <filesystem|volume>
+        promote <clone filesystem>
+        rename <filesystem|volume|snapshot> <filesystem|volume|snapshot>
+
+        list [-rH] [-o property[,property]...] [-t type[,type]...]
+            [-s property [-s property]...] [-S property [-S property]...]
+            [filesystem|volume|snapshot] ...
+
+        set <property=value> <filesystem|volume> ...
+        get [-rHp] [-o field[,field]...] [-s source[,source]...]
+            <all | property[,property]...> [filesystem|volume|snapshot] ...
+        inherit [-r] <property> <filesystem|volume> ...
+
+        mount
+        mount [-o opts] [-O] -a
+        mount [-o opts] [-O] <filesystem>
+
+        unmount [-f] -a
+        unmount [-f] <filesystem|mountpoint>
+
+        share -a
+        share <filesystem>
+
+        unshare [-f] -a
+        unshare [-f] <filesystem|mountpoint>
+
+        send [-i <snapshot>] <snapshot>
+        receive [-vnF] <filesystem|volume|snapshot>
+        receive [-vnF] -d <filesystem>
+
+Each dataset is of the form: pool/[dataset/]*dataset[@name]
+
+For the property list, run: zfs set|get
+
+root@ssmn00gk020l2 # zfs get all cwtapp/test
+NAME         PROPERTY         VALUE                  SOURCE
+cwtapp/test  type             filesystem             -
+cwtapp/test  creation         Thu Apr  2  8:25 2009  -
+cwtapp/test  used             18K                    -
+cwtapp/test  available        2.00G                  -
+cwtapp/test  referenced       18K                    -
+cwtapp/test  compressratio    1.00x                  -
+cwtapp/test  mounted          yes                    -
+cwtapp/test  quota            2G                     local
+cwtapp/test  reservation      2G                     local
+.
+
+root@ssmn00pk00268# cat /etc/vfstab
+#device         device          mount           FS      fsck    mount   mount
+#to mount       to fsck         point           type    pass    at boot options
+#
+fd      -       /dev/fd fd      -       no      -
+/proc   -       /proc   proc    -       no      -
+/dev/md/dsk/d1  -       -       swap    -       no      -
+/dev/md/dsk/d0  /dev/md/rdsk/d0 /       ufs     1       no      -
+/devices        -       /devices        devfs   -       no      -
+ctfs    -       /system/contract        ctfs    -       no      -
+objfs   -       /system/object  objfs   -       no      -
+swap    -       /tmp    tmpfs   -       yes     -
+nfsserv01.carlson.com:/uss      -       /home/uss       nfs     -       yes     rw,nosuid,soft,intr,bg,timeo=7,rety=1
+nfsserv01.carlson.com:/uap      -       /home/uap       nfs     -       yes     rw,nosuid,soft,intr,bg,timeo=7,rety=1
+/dev/md/dsk/d41        /dev/md/rdsk/d41       /opt/Tivoli    ufs    3       yes     logging
+/dev/md/dsk/d42        /dev/md/rdsk/d42       /var/adm/perfmgr    ufs    3       yes     logging
+/dev/md/dsk/d43        /dev/md/rdsk/d43       /etc/vsa    ufs    3       yes     logging
+/dev/md/dsk/d44        /dev/md/rdsk/d44       /opt/controlm    ufs    3       yes     logging
+root@ssmn00pk00268# umount /opt/nsr
+root@ssmn00pk00268# df -k
+Filesystem            kbytes    used   avail capacity  Mounted on
+/dev/md/dsk/d0       16525754 3828094 12532403    24%    /
+/devices                   0       0       0     0%    /devices
+ctfs                       0       0       0     0%    /system/contract
+proc                       0       0       0     0%    /proc
+mnttab                     0       0       0     0%    /etc/mnttab
+swap                 21526184    1528 21524656     1%    /etc/svc/volatile
+objfs                      0       0       0     0%    /system/object
+/platform/SUNW,T5240/lib/libc_psr/libc_psr_hwcap2.so.1
+                     16525754 3828094 12532403    24%    /platform/sun4v/lib/libc_psr.so.1
+/platform/SUNW,T5240/lib/sparcv9/libc_psr/libc_psr_hwcap2.so.1
+                     16525754 3828094 12532403    24%    /platform/sun4v/lib/sparcv9/libc_psr.so.1
+fd                         0       0       0     0%    /dev/fd
+swap                 21524720      64 21524656     1%    /tmp
+swap                 21524688      32 21524656     1%    /var/run
+nfsserv01.carlson.com:/uap
+                     33554432 31493128 2013682    94%    /home/uap
+nfsserv01.carlson.com:/uss
+                     176430080 132981636 42925476    76%    /home/uss
+/dev/md/dsk/d41       239239   85709  129607    40%    /opt/Tivoli
+/dev/md/dsk/d42       383103    1603  343190     1%    /var/adm/perfmgr
+/dev/md/dsk/d43       144015   12756  116858    10%    /etc/vsa
+/dev/md/dsk/d44        95207   23005   62682    27%    /opt/controlm
+p268-1               840075264      36 840075101     1%    /p268-1
+root@ssmn00pk00268# mount /opt/nsr
+mount: Mount point cannot be determined
+root@ssmn00pk00268# zfs mount /opt/nsr
+cannot open '/opt/nsr': invalid dataset name
+root@ssmn00pk00268# zfs mount p268-1/nsr
+root@ssmn00pk00268# df -k
+Filesystem            kbytes    used   avail capacity  Mounted on
+/dev/md/dsk/d0       16525754 3828102 12532395    24%    /
+/devices                   0       0       0     0%    /devices
+ctfs                       0       0       0     0%    /system/contract
+proc                       0       0       0     0%    /proc
+mnttab                     0       0       0     0%    /etc/mnttab
+swap                 21526184    1528 21524656     1%    /etc/svc/volatile
+objfs                      0       0       0     0%    /system/object
+/platform/SUNW,T5240/lib/libc_psr/libc_psr_hwcap2.so.1
+                     16525754 3828094 12532403    24%    /platform/sun4v/lib/libc_psr.so.1
+/platform/SUNW,T5240/lib/sparcv9/libc_psr/libc_psr_hwcap2.so.1
+                     16525754 3828094 12532403    24%    /platform/sun4v/lib/sparcv9/libc_psr.so.1
+fd                         0       0       0     0%    /dev/fd
+swap                 21524720      64 21524656     1%    /tmp
+swap                 21524688      32 21524656     1%    /var/run
+nfsserv01.carlson.com:/uap
+                     33554432 31493128 2013682    94%    /home/uap
+nfsserv01.carlson.com:/uss
+                     176430080 132981636 42925476    76%    /home/uss
+/dev/md/dsk/d41       239239   85709  129607    40%    /opt/Tivoli
+/dev/md/dsk/d42       383103    1603  343190     1%    /var/adm/perfmgr
+/dev/md/dsk/d43       144015   12756  116858    10%    /etc/vsa
+/dev/md/dsk/d44        95207   23005   62682    27%    /opt/controlm
+p268-1               840075264      36 840075101     1%    /p268-1
+root@ssmn00pk00268# mount /opt/nsr
+mount: Mount point cannot be determined
+root@ssmn00pk00268# zfs mount /opt/nsr
+cannot open '/opt/nsr': invalid dataset name
+root@ssmn00pk00268# zfs mount p268-1/nsr
+root@ssmn00pk00268# df -k
+Filesystem            kbytes    used   avail capacity  Mounted on
+/dev/md/dsk/d0       16525754 3828102 12532395    24%    /
+/devices                   0       0       0     0%    /devices
+ctfs                       0       0       0     0%    /system/contract
+proc                       0       0       0     0%    /proc
+mnttab                     0       0       0     0%    /etc/mnttab
+swap                 21520200    1528 21518672     1%    /etc/svc/volatile
+objfs                      0       0       0     0%    /system/object
+/platform/SUNW,T5240/lib/libc_psr/libc_psr_hwcap2.so.1
+                     16525754 3828102 12532395    24%    /platform/sun4v/lib/libc_psr.so.1
+/platform/SUNW,T5240/lib/sparcv9/libc_psr/libc_psr_hwcap2.so.1
+                     16525754 3828102 12532395    24%    /platform/sun4v/lib/sparcv9/libc_psr.so.1
+fd                         0       0       0     0%    /dev/fd
+swap                 21518736      64 21518672     1%    /tmp
+swap                 21518704      32 21518672     1%    /var/run
+nfsserv01.carlson.com:/uap
+                     33554432 31497224 2009714    95%    /home/uap
+nfsserv01.carlson.com:/uss
+                     176430080 132981636 42925476    76%    /home/uss
+/dev/md/dsk/d41       239239   85710  129606    40%    /opt/Tivoli
+/dev/md/dsk/d42       383103    1603  343190     1%    /var/adm/perfmgr
+/dev/md/dsk/d43       144015   12756  116858    10%    /etc/vsa
+/dev/md/dsk/d44        95207   23005   62682    27%    /opt/controlm
+p268-1               840075264      36 840075101     1%    /p268-1
+p268-1/nsr           104857600      37 104857563     1%    /opt/nsr
+root@ssmn00pk00268# man zfs
+
+zpool create -m /bkup bkuppool c5t600507680194812D60000000000007A0d0   # create pool with a mount point.
+
+# zpool reanme via export / import
+
+root@ssmn00gk00288# zpool export p288      
+root@ssmn00gk00288# zpool import p288 p288-1                                           
+root@ssmn00gk00288# zpool status                                                                                                    
+  pool: p288-1                                                                                                                      
+ state: ONLINE                              
+scrub: none requested 
+config:              
+NAME        STATE     READ WRITE CKSUM                                                                                      
+        p288-1      ONLINE       0     0     0
+	  raidz1    ONLINE       0     0     0
+	    c1t2d0  ONLINE       0     0     0                                                                                      
+            c1t3d0  ONLINE       0     0     0                                                                                      
+            c1t4d0  ONLINE       0     0     0                                                                                      
+            c1t5d0  ONLINE       0     0     0                                                                                      
+            c1t6d0  ONLINE       0     0     0                                                                                      
+        spares                                                                                                                      
+          c1t7d0    AVAIL                                                                                                           
+                                                                                                                                    
+errors: No known data errors                                                                                                        
+root@ssmn00gk00288#              
+
+# Mounting/unmounting zfs and loop back lofs without reboot.
+# 
+# Need to execute the commands on global via the full
+# absolute path to the mount points as they are on
+# zones.
+
+# Create the mount point
+mkdir -m 0755 /zones/vsmn00dk00117/root/u01
+# /u01-117 is the ZFS mountpoint on global.
+mount -F lofs /u01-117 /zones/vsmn00dk00117/root/u01
+
+# unmount via the full path to the file system
+umount /zones/vsmn00dk00117/root/opt/cobol
+
+# How to tell name of global server from virtual.
+$ uname -a
+SunOS vsmn00dk00118 5.10 Generic_142900-04 sun4v sparc SUNW,SPARC-Enterprise-T5120
+$ arp -a | grep SP
+e1000g0 ssmn00gk00331.carlson.com 255.255.255.255 SPLA     00:21:28:58:b6:fe
+e1000g1 ssmn00gk00331b.carlson.com 255.255.255.255 SPLA     00:21:28:58:b6:ff
+e1000g0 vsmn00dk00118        255.255.255.255 SPLA     00:21:28:58:b6:fe
+$ 
+
+# How to connect to console of zone
+# 
+# the -e @ specifies @. is the escape sequence
+# When you want to exit, type @. to leave console.
+root@ssmn00gk00332 # zlogin -C -e @ vsmn00qk00129
+[Connected to zone 'vsmn00qk00129' console]
+@.
+[Connection to zone 'vsmn00qk00129' console closed]
+root@ssmn00gk00332 # 
+
+
+redhat RedHat Redhat REDHAT
+==============================
+
+ rhn_register - Check/register redhat license.
+
+ yum install mysql-server  - example of installing mysql from Redhat network
+
+yum update - setup for auto update of redhat patches.
+
+
+
+zoneadm list -cv
+
+zoneadm -z vsmn00pk00003 [ready|boot|halt]
+
+zonecfg -z vsmn00pk00003 
+
+
+
+
+force solaris dump on live server - no reboot
+savecore -L ....
+
+
+####
+IBM SVC script location to gather vdisk info
+/home/uss/san/svc/svc_bin/svc_solaris.sh
+/dev/rdsk entry      SCU
+==================   ===
+/dev/rdsk/c2t0d0s2   6005-0768-0194-812d-6000-0000-0000-0261
+/dev/rdsk/c2t0d1s2   6005-0768-0194-812d-6000-0000-0000-0262
+/dev/rdsk/c2t1d0s2   6005-0768-0190-013c-f000-0000-0000-02e9
+/dev/rdsk/c2t1d1s2   6005-0768-0190-013c-f000-0000-0000-02ea
+/dev/rdsk/c2t1d2s2   6005-0768-0190-013c-f000-0000-0000-02eb
+/dev/rdsk/c2t1d3s2   6005-0768-0190-013c-f000-0000-0000-0503
+/dev/rdsk/c2t1d4s2   6005-0768-0190-013c-f000-0000-0000-0504
+/dev/rdsk/c2t1d5s2   6005-0768-0190-013c-f000-0000-0000-0505
+
+###
+
+# Get Vertias disk size from vxprint.  Show VG, Disk, size GB
+for DG_Name in `vxprint -ht|grep ^dg`
+do
+vxprint -ht -g $DG_Name | awk '/^dm/ {print "Disk",$2,"-",$6/1024/2048," Gb."}'
+done
+
+
+#
+
+use Kstat to count the received bytes over a 60 second period:
+
+$ kstat | grep rbytes64 | head -1 && sleep 60 && kstat | grep rbytes64 | head -1
+
+(This gets granular kernel statistics, rbytes64 is the received bytes since boot up, and I take a difference over a 60 second period)
+
+        rbytes64                        3963003745746
+        rbytes64                        3965117257742
+
+The delta is 2113511996, which amounts to 33MB/s, so it is not a simple at the two Gige-E ports are running at 100Mb/s.
+
+
+Change Description
+Updating the partition tables for the rootdisks so the disk space in slice 5 is added to slice 4 thus enabling the growth of the /u01 file system by 16Gb.
+
+Installation Instructions:
+1) Add outage to OpenNMS
+
+2) Confirm recent successful OSBackup
+if not, run /usr/local/bin/backupos.sh
+
+3) Test mirror disk to verify it works in case we need to back out
+init 0
+boot rootmirr
+if server doesnot come up, repair mirror boot before continuing
+init 6 - to boot off root disk
+
+4) Break Mirror
+metadetach d1 d21
+metadetach d0 d20
+metadetach d3 d23
+metadetach d4 d24
+
+5) Boot to single user mode to update the partition table
+init 0
+boot -s
+format c1t0d0
+select partition
+select print
+select 5 -> <enter> -> <enter> -> 0 <enter> -> 0 <enter>
+select 4 -> <enter> -> <enter> -> <enter> -> 14073e <enter>
+select label and respond y
+
+6) reboot, verify changes are successful, and grow u01
+init 0
+boot
+metastat d4 to verify size - block size should be 89711616
+metattach d45 16g
+df -k /u01 - verify the new size has taken affect, should show /u01 at 32Gb.
+
+7) Update the partition table on the mirror disk
+prtvtoc /dev/rdsk/c1t0d0s2 | fmthard -s - /dev/rdsk/c1t1d0s2
+
+8) Reattach mirror
+metattach d1 d21
+metattach d0 d20
+metattach d3 d23
+
+
+9) Recreate slice 4 metadevice on c1t1d0s2 if necessary
+metaclear d24
+metainit d24 1 1 c1t1d0s4
+
+10) Reattach slice 4 mirror
+metattach d4 d24
+
+BACKOUT:
+1) Reboot using the root mirror
+init 0
+boot rootmirr
+
+2) recreate old partition table
+prtvtoc /dev/rdsk/c1t1d0s2 | fmthard -s /dev/rdsk/c1t0d0s2
+
+3) recreate boot sector
+installboot /usr/platform/`uname -i`/lib/fs/ufs/bootblk /dev/rdsk/c1t0d0s0
+
+4) reboot to the mirror
+init 0
+boot
+
+5) Reattach mirrors
+metattach d1 d21
+metattach d0 d20
+metattach d3 d23
+metattach d4 d24
+
+Backout Duration:
+1 hour
+
+
+
+# Linux network port speed change - ethtool or mii-tool
+     mii-tool -F media, --force=media
+              Disable autonegotiation, and force the MII to either  100baseTx-
+              FD, 100baseTx-HD, 10baseT-FD, or 10baseT-HD operation.
+     ethtool 
+
+# sudo SUDO - 
+- note sudo can have logginf overrode in sudoers files.
+# Override builtin defaults
+#Defaults       syslog=auth
+#Defaults       log_year, logfile=/var/log/sudo.log
+
+- strings on sudo can show location of sudoers.
+root@ssmn00pk00071# strings `which sudo`|grep sudoe
+user NOT in sudoers ; 
+%s is not in the sudoers file.  %s
+/usr/local/etc/sudoers
+
+ - sudo -V will show further config info such as 
+root@ssmn00pk00071# sudo -V
+Sudo version 1.6.3p5
+
+Authentication methods: 'passwd'
+Syslog facility if syslog is being used for logging: local2
+Syslog priority to use when user authenticates successfully: notice
+Syslog priority to use when user authenticates unsuccessfully: alert
+Send mail if the user is not in sudoers
+Lecture user the first time they run sudo
+Require users to authenticate by default
+Root may run sudo
+Allow some information gathering to give useful error messages
+Set the LOGNAME and USER environment variables
+Length at which to wrap log file lines (0 for no wrap): 80
+Authentication timestamp timeout: 5 minutes
+Password prompt timeout: 5 minutes
+Number of tries to enter a password: 3
+Umask to use or 0777 to use user's: 022
+Path to mail program: /usr/lib/sendmail
+Flags for mail program: -t
+Address to send mail to: root
+Subject line for mail messages: *** SECURITY information for %h ***
+Incorrect password message: Sorry, try again.
+Path to authentication timestamp dir: /var/run/sudo
+Default password prompt: Password:
+Default user to run commands as: root
+Path to the editor for use by visudo: /usr/bin/vi
+When to require a password for 'list' pseudocommand: any
+When to require a password for 'verify' pseudocommand: all
+
+
+
+# Disk stuff mpxio
+
+root@ssmn00gk010l1 # mpathadm list lu
+        /dev/rdsk/c9t600507680190013CF000000000000740d0s2
+                Total Path Count: 4
+                Operational Path Count: 4
+        /dev/rdsk/c9t600507680190013CF00000000000073Fd0s2
+                Total Path Count: 4
+                Operational Path Count: 4
+        /dev/rdsk/c9t600507680190013CF00000000000073Ed0s2
+                Total Path Count: 4
+                Operational Path Count: 4
+        /dev/rdsk/c9t600507680190013CF000000000000714d0s2
+                Total Path Count: 4
+                Operational Path Count: 4
+        /dev/rdsk/c9t600507680190013CF000000000000713d0s2
+                Total Path Count: 4
+                Operational Path Count: 4
+        /dev/rdsk/c9t600507680190013CF00000000000073Dd0
+
+root@ssmn00gk010l1 # cfgadm -al -o show_SCSI_LUN         
+Ap_Id                          Type         Receptacle   Occupant     Condition
+c1                             fc-fabric    connected    configured   unknown
+c1::5005076801305657,0         disk         connected    configured   unknown
+c1::5005076801305657,1         disk         connected    configured   unknown
+c1::5005076801305657,2         disk         connected    configured   unknown
+c1::5005076801305657,3         disk         connected    configured   unknown
+c1::5005076801305657,4         disk         connected    configured   unknown
+c1::5005076801305657,5         disk         connected    configured   unknown
+c1::5005076801305657,6         disk         connected    configured   unknown
+c1::5005076801305657,7         disk         connected    configured   unknown
+c1::5005076801305657,8         disk         connected    configured   unknown
+c1::5005076801305657,9         disk         connected    configured   unknown
+c1::500507680130566c,0         disk         connected    configured   unknown
+c1::500507680130566c,1         disk         connected    configured   unknown
+c1::500507680130566c,2         disk         connected    configured   unknown
+c1::500507680130566c,3         disk         connected    configured   unknown
+c1::500507680130566c,4         disk         connected    configured   unknown
+c1::500507680130566c,5         disk         connected    configured   unknown
+c1::500507680130566c,6         disk         connected    configured   unknown
+c1::500507680130566c,7         disk         connected    configured   unknown
+c1::500507680130566c,8         disk         connected    configured   unknown
+c1::500507680130566c,9         disk         connected    configured   unknown
+c1::50050768013056d7,0         disk         connected    configured   unknown
+c1::50050768013056d7,1         disk         connected    configured   unknown
+c1::50050768013056d7,2         disk         connected    configured   unknown
+c1::50050768013056d7,3         disk         connected    configured   unknown
+c1::50050768013056d7,4         disk         connected    configured   unknown
+c1::50050768013056d7,5         disk         connected    configured   unknown
+c1::50050768013056d7,6         disk         connected    configured   unknown
+c1::50050768013056d7,7         disk         connected    configured   unknown
+c1::50050768013056d7,8         disk         connected    configured   unknown
+c1::50050768013056d7,9         disk         connected    configured   unknown
+c1::50050768013056d7,10        disk         connected    configured   unknown
+
+
+root@ssmn00gk010l1 # luxadm probe                        
+No Network Array enclosures found in /dev/es
+
+Found Fibre Channel device(s):
+  Node WWN:500507680100566c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680190013CF00000000000073Cd0s2
+  Node WWN:500507680100566c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680190013CF00000000000073Dd0s2
+  Node WWN:500507680100566c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680190013CF00000000000073Ed0s2
+  Node WWN:500507680100566c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680190013CF00000000000073Fd0s2
+  Node WWN:500507680100566c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680190013CF000000000000713d0s2
+  Node WWN:500507680100566c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680190013CF000000000000714d0s2
+  Node WWN:500507680100566c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680190013CF000000000000736d0s2
+  Node WWN:500507680100566c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680190013CF000000000000737d0s2
+  Node WWN:500507680100566c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680190013CF000000000000738d0s2
+  Node WWN:500507680100566c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680190013CF000000000000740d0s2
+  Node WWN:500507680100578c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680194812D60000000000007A2d0s2
+  Node WWN:500507680100578c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680194812D600000000000084Ad0s2
+  Node WWN:500507680100578c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680194812D600000000000079Ed0s2
+  Node WWN:500507680100578c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680194812D600000000000079Fd0s2
+  Node WWN:500507680100578c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680194812D6000000000000844d0s2
+  Node WWN:500507680100578c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680194812D6000000000000843d0s2
+  Node WWN:500507680100578c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680194812D6000000000000852d0s2
+  Node WWN:500507680100578c  Device Type:Disk device
+    Logical Path:/dev/rdsk/c9t600507680194812D6000000000000851d0s2
+
+
+root@ssmn00gk010l1 # stmsboot -L                         
+non-STMS device name                    STMS device name
+------------------------------------------------------------------
+/dev/rdsk/c5t500507680140566Cd6 /dev/rdsk/c9t600507680190013CF000000000000714d0
+/dev/rdsk/c5t500507680140566Cd5 /dev/rdsk/c9t600507680190013CF000000000000713d0
+/dev/rdsk/c5t500507680140578Cd4 /dev/rdsk/c9t600507680194812D600000000000079Ed0
+/dev/rdsk/c5t500507680140578Cd3 /dev/rdsk/c9t600507680194812D600000000000079Fd0
+/dev/rdsk/c5t500507680140578Cd0 /dev/rdsk/c9t600507680194812D60000000000007A2d0
+/dev/rdsk/c5t50050768014056D7d4 /dev/rdsk/c9t600507680194812D600000000000079Ed0
+/dev/rdsk/c5t50050768014056D7d3 /dev/rdsk/c9t600507680194812D600000000000079Fd0
+/dev/rdsk/c5t50050768014056D7d0 /dev/rdsk/c9t600507680194812D60000000000007A2d0
+/dev/rdsk/c5t5005076801405657d6 /dev/rdsk/c9t600507680190013CF000000000000714d0
+/dev/rdsk/c5t5005076801405657d5 /dev/rdsk/c9t600507680190013CF000000000000713d0
+/dev/rdsk/c1t500507680130566Cd6 /dev/rdsk/c9t600507680190013CF000000000000714d0
+/dev/rdsk/c1t500507680130566Cd5 /dev/rdsk/c9t600507680190013CF000000000000713d0
+/dev/rdsk/c1t5005076801305657d6 /dev/rdsk/c9t600507680190013CF000000000000714d0
+/dev/rdsk/c1t5005076801305657d5 /dev/rdsk/c9t600507680190013CF000000000000713d0
+/dev/rdsk/c1t500507680130578Cd4 /dev/rdsk/c9t600507680194812D600000000000079Ed0
+/dev/rdsk/c1t500507680130578Cd3 /dev/rdsk/c9t600507680194812D600000000000079Fd0
+/dev/rdsk/c1t500507680130578Cd0 /dev/rdsk/c9t600507680194812D60000000000007A2d0
+/dev/rdsk/c1t50050768013056D7d4 /dev/rdsk/c9t600507680194812D600000000000079Ed0
+/dev/rdsk/c1t50050768013056D7d3 /dev/rdsk/c9t600507680194812D600000000000079Fd0
+/dev/rdsk/c1t50050768013056D7d0 /dev/rdsk/c9t600507680194812D60000000000007A2d0
+/dev/rdsk/c1t500507680130566Cd9 /dev/rdsk/c9t600507680190013CF000000000000740d0
+/dev/rdsk/c1t500507680130566Cd8 /dev/rdsk/c9t600507680190013CF00000000000073Fd0
+/dev/rdsk/c1t500507680130566Cd7 /dev/rdsk/c9t600507680190013CF00000000000073Ed0
+/dev/rdsk/c1t500507680130566Cd4 /dev/rdsk/c9t600507680190013CF00000000000073Dd0
+/dev/rdsk/c1t500507680130566Cd3 /dev/rdsk/c9t600507680190013CF00000000000073Cd0
+/dev/rdsk/c1t5005076801305657d9 /dev/rdsk/c9t600507680190013CF000000000000740d0
+/dev/rdsk/c1t5005076801305657d8 /dev/rdsk/c9t600507680190013CF00000000000073Fd0
+/dev/rdsk/c1t5005076801305657d7 /dev/rdsk/c9t600507680190013CF00000000000073Ed0
+/dev/rdsk/c1t5005076801305657d4 /dev/rdsk/c9t600507680190013CF00000000000073Dd0
+/dev/rdsk/c5t500507680140566Cd9 /dev/rdsk/c9t600507680190013CF000000000000740d0
+/dev/rdsk/c5t500507680140566Cd8 /dev/rdsk/c9t600507680190013CF00000000000073Fd0
+/dev/rdsk/c5t500507680140566Cd7 /dev/rdsk/c9t600507680190013CF00000000000073Ed0
+/dev/rdsk/c1t5005076801305657d3 /dev/rdsk/c9t600507680190013CF00000000000073Cd0
+/dev/rdsk/c5t500507680140566Cd4 /dev/rdsk/c9t600507680190013CF00000000000073Dd0
+/dev/rdsk/c5t500507680140566Cd3 /dev/rdsk/c9t600507680190013CF00000000000073Cd0
+/dev/rdsk/c5t5005076801405657d9 /dev/rdsk/c9t600507680190013CF000000000000740d0
+/dev/rdsk/c5t5005076801405657d8 /dev/rdsk/c9t600507680190013CF00000000000073Fd0
+/dev/rdsk/c5t5005076801405657d7 /dev/rdsk/c9t600507680190013CF00000000000073Ed0
+/dev/rdsk/c5t5005076801405657d4 /dev/rdsk/c9t600507680190013CF00000000000073Dd0
+/dev/rdsk/c5t5005076801405657d3 /dev/rdsk/c9t600507680190013CF00000000000073Cd0
+root@ssmn00gk010l1 # 
+o
+
+root@ssmn00gk010l1 # zpool iostat                        
+               capacity     operations    bandwidth
+pool         used  avail   read  write   read  write
+----------  -----  -----  -----  -----  -----  -----
+arch         124K   995G      0      0      5      3
+cwtapp      7.04G   391G      0      0    151    208
+u01pool     52.9G  46.6G      0      0    404    194
+u500pool     154K   298G      0      0      3      4
+u700pool     355G   242G      0      0      8      9
+----------  -----  -----  -----  -----  -----  -----
+root@ssmn00gk010l1 # 
+
+
+
+root@ssmn00gk010l1 # zpool status -v                     
+  pool: arch
+ state: ONLINE
+ scrub: none requested
+config:
+
+        NAME                                     STATE     READ WRITE CKSUM
+        arch                                     ONLINE       0     0     0
+          c9t600507680194812D6000000000000844d0  ONLINE       0     0     0
+          c9t600507680194812D6000000000000845d0  ONLINE       0     0     0
+          c9t600507680194812D6000000000000846d0  ONLINE       0     0     0
+          c9t600507680194812D6000000000000847d0  ONLINE       0     0     0
+          c9t600507680194812D6000000000000843d0  ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: cwtapp
+ state: ONLINE
+ scrub: none requested
+config:
+
+        NAME                                     STATE     READ WRITE CKSUM
+        cwtapp                                   ONLINE       0     0     0
+          c9t600507680190013CF000000000000714d0  ONLINE       0     0     0
+          c9t600507680194812D6000000000000850d0  ONLINE       0     0     0
+          c9t600507680194812D6000000000000851d0  ONLINE       0     0     0
+          c9t600507680194812D6000000000000852d0  ONLINE       0     0     0
+
+errors: No known data errors
+
+root@ssmn00gk010l1 # zpool iostat -v                     
+                                           capacity     operations    bandwidth
+pool                                     used  avail   read  write   read  write
+--------------------------------------  -----  -----  -----  -----  -----  -----
+arch                                     124K   995G      0      0      5      3
+  c9t600507680194812D6000000000000844d0  13.5K   199G      0      0      1      0
+  c9t600507680194812D6000000000000845d0    12K   199G      0      0      1      1
+  c9t600507680194812D6000000000000846d0    38K   199G      0      0      1      0
+  c9t600507680194812D6000000000000847d0  37.5K   199G      0      0      1      0
+  c9t600507680194812D6000000000000843d0  23.5K   199G      0      0      0      0
+--------------------------------------  -----  -----  -----  -----  -----  -----
+cwtapp                                  7.04G   391G      0      0    151    208
+  c9t600507680190013CF000000000000714d0  7.03G  92.5G      0      0    116     42
+  c9t600507680194812D6000000000000850d0  2.76M  99.5G      0      0     12     56
+  c9t600507680194812D6000000000000851d0  2.99M  99.5G      0      0     13     59
+  c9t600507680194812D6000000000000852d0  2.27M  99.5G      0      0      9     49
+--------------------------------------  -----  -----  -----  -----  -----  -----
+u01pool                                 52.9G  46.6G      0      0    404    194
+  c9t600507680190013CF000000000000713d0  52.9G  46.6G      0      0    404    194
+--------------------------------------  -----  -----  -----  -----  -----  -----
+u500pool                                 154K   298G      0      0      3      4
+  c9t600507680194812D600000000000084Ad0  42.5K  99.5G      0      0      1      1
+  c9t600507680194812D6000000000000849d0    56K  99.5G      0      0      1      1
+  c9t600507680194812D6000000000000848d0    56K  99.5G      0      0      1      1
+--------------------------------------  -----  -----  -----  -----  -----  -----
+u700pool                                 355G   242G      0      0      8      9
+  c9t600507680190013CF000000000000736d0   118G  80.8G      0      0      3      3
+  c9t600507680190013CF000000000000737d0   118G  80.7G      0      0      2      2
+  c9t600507680190013CF000000000000738d0   118G  80.6G      0      0      2      3
+--------------------------------------  -----  -----  -----  -----  -----  -----
+
+
+Example 1 Listing all HBA ports
+
+     The following command lists all fibre channel HBA  ports  on
+     the host:
+
+       # fcinfo hba-port
+
+       HBA Port WWN: 210000e08b074cb5
+              OS Device Name: /dev/cfg/c1
+              Manufacturer: QLogic Corp.
+              Model: 375-3108-xx
+              Firmware Version: 3.3.116
+              FCode/BIOS Version: 1.13.08
+              Type: N-port
+              State: online
+              Supported Speeds: 1Gb 2Gb
+              Current Speed: 2Gb
+
+
+ Example 2 Listing HBA ports and link statistics
+
+     The following command lists information for  the  HBA  ports
+     and the link statistics for those ports:
+
+       # fcinfo hba-port -l 210000e08b074cb5 210100e08b274cb5
+ HBA Port WWN: 210000e08b074cb5
+              OS Device Name: /dev/cfg/c1
+              Manufacturer: QLogic Corp.
+              Model: 375-3108-xx
+              Firmware Version: 3.3.116
+              FCode/BIOS Version: 1.13.08
+              Type: N-port
+              State: online
+              Supported Speeds: 1Gb 2Gb
+              Current Speed: 2Gb
+              Node WWN: 200000e08b074cb5
+              Link Error Statistics:
+                      Link Failure Count: 0
+                      Loss of Sync Count: 0
+                      Loss of Signal Count: 0
+                      Primitive Seq Protocol Error Count: 0
+                      Invalid Tx Word Count: 0
+                      Invalid CRC Count: 0
+       HBA Port WWN: 210100e08b274cb5
+              OS Device Name: /dev/cfg/c2
+              Manufacturer: QLogic Corp.
+              Model: 375-3108-xx
+              Firmware Version: 3.3.116
+              FCode/BIOS Version: 1.13.08
+              Type: N-port
+              State: online
+              Supported Speeds: 1Gb 2Gb
+              Current Speed: 2Gb
+              Node WWN: 200100e08b274cb5
+              Link Error Statistics:
+                      Link Failure Count: 0
+                      Loss of Sync Count: 0
+                      Loss of Signal Count: 0
+                      Primitive Seq Protocol Error Count: 0
+                      Invalid Tx Word Count: 0
+                      Invalid CRC Count: 0
+
+ Example 3 Listing all remote ports
+
+     The following command lists all remote ports that are  visi-
+     ble through the given HBA port:
+
+       # fcinfo remote-port -p 210100e08b274cb5
+
+       Remote Port WWN: 50020f230000b4af
+              Active FC4 Types: SCSI
+              SCSI Target: yes
+              Node WWN: 50020f200000b4af
+       Remote Port WWN: 210000e08b07daa6
+              Active FC4 Types: SCSI
+              SCSI Target: no
+              Node WWN: 200000e08b07daa6
+       Remote Port WWN: 20030003ba27c788
+              Active FC4 Types: SCSI
+              SCSI Target: yes
+              Node WWN: 10000003ba27c788
+       Remote Port WWN: 210000e08b096a60
+              Active FC4 Types: SCSI,IP
+              SCSI Target: no
+              Node WWN: 200000e08b096a60
+
+
+     Example 4 Listing remote ports and link statistics
+
+     The following command lists information for the remote ports
+     and the link statistics for those ports:
+
+       # fcinfo remote-port -l -p 210100e08b272ab5
+
+       Remote Port WWN: 210100e08b296a60
+              Active FC4 Types: SCSI,IP
+              SCSI Target: no
+              Node WWN: 200100e08b296a60
+              Link Error Statistics:
+                      Link Failure Count: 0
+                      Loss of Sync Count: 0
+                      Loss of Signal Count: 0
+                      Primitive Seq Protocol Error Count: 0
+                      Invalid Tx Word Count: 0
+                      Invalid CRC Count: 0
+       Remote Port WWN: 20030003ba27d56d
+              Active FC4 Types: SCSI
+              SCSI Target: yes
+              Node WWN: 10000003ba27d56d
+              Link Error Statistics:
+                      Link Failure Count: 0
+
+Example 5 Listing all SCSI targets and link statistics
+
+     The following command lists all remote ports as well as  the
+     link statistics and scsi-target information:
+
+       # fcinfo remote-port  -sl -p 210100e08b272ab5
+
+       Remote Port WWN: 210100e08b296a60
+              Active FC4 Types: SCSI,IP
+              SCSI Target: no
+              Node WWN: 200100e08b296a60
+              Link Error Statistics:
+                      Link Failure Count: 0
+                      Loss of Sync Count: 0
+                      Loss of Signal Count: 0
+                      Primitive Seq Protocol Error Count: 0
+                      Invalid Tx Word Count: 0
+                      Invalid CRC Count: 0
+       Remote Port WWN: 20030003ba27d56d
+              Active FC4 Types: SCSI
+              SCSI Target: yes
+              Node WWN: 10000003ba27d56d
+              Link Error Statistics:
+                      Link Failure Count: 0
+                      Loss of Sync Count: 4765165
+                      Loss of Signal Count: 4765165
+                      Primitive Seq Protocol Error Count: 0
+                      Invalid Tx Word Count: 0
+                      Invalid CRC Count: 0
+              LUN: 0
+                Vendor: SUN
+                Product: T4
+                OS Device Name: /dev/rdsk/c4t20030003BA27D56Dd0s2
+              LUN: 1
+                Vendor: SUN
+                Product: T4
+                OS Device Name: /dev/rdsk/c4t20030003BA27D56Dd1s2
+       Remote Port WWN: 210100e08b27f7a6
+              Active FC4 Types: SCSI
+              SCSI Target: no
+              Node WWN: 200100e08b27f7a6
+              Link Error Statistics:
+
+
+
+Installation Instructions / Backout Plan / Backout Duration
+Incident 21883075 Fix metadb and metadevices on SSMN00DK00196.
+
+The following errors need to be corrected on the server to ensure data integrity and duplicity.
+SDS replica problem report for Sat Sep 12 2009 on ssmn00dk00196
+
+Database replicas are not active:
+
+flags first blk block count
+a m p luo 16 8192 /dev/dsk/c1t0d0s7
+a p luo 8208 8192 /dev/dsk/c1t0d0s7
+M p 16 unknown /dev/dsk/c1t1d0s7
+M p 8208 unknown /dev/dsk/c1t1d0s7
+r - replica does not have device relocation information o - replica active prior to last mddb configuration change u - replica is up to date l - locator for this replica was read successfully c - replica's location was in /etc/lvm/mddb.cf p - replica's location was patched in kernel m - replica is master, this is replica selected as input W - replica has device write errors a - replica is active, commits are occurring to this replica M - replica had problem with master blocks D - replica had problem with data blocks F - replica had format problems S - replica is too small to hold current data base R - replica had device read errors
+
+SDS metadevice problem
+
+SDS metadevice problem report for Sat Sep 12 2009 on ssmn00dk00196
+
+Metadevices are not Okay:
+
+d21: needs help
+
+d20: needs help
+
+d24: needs help
+
+
+
+
+INSTALLATION:
+#As root on ssmn00dk00196
+
+#remove and recreate the metadb on
+metadb -d /dev/dsk/c1t1d0s7
+metadb -a -c 2 c1t1d0s7
+
+#verify metadb creation
+metadb -i
+
+#reassign submirrors to their disk partitions
+metareplace -e d21 c1t1d0s1
+metareplace -e d20 c1t1d0s0
+metareplace -e d24 c1t1d0s4
+
+#verify that metadevices are okay
+metastat | grep State:
+
+
+BACKOUT:
+#As root on ssmn00dk00196
+
+#remove and recreate the metadb on
+metadb -d /dev/dsk/c1t1d0s7
+metadb -a -c 2 c1t1d0s7
+
+#verify metadb creation
+metadb -i
+
+#reassign submirrors to their disk partitions
+metareplace -e d21 c1t1d0s1
+metareplace -e d20 c1t1d0s0
+metareplace -e d24 c1t1d0s4
+
+#verify that metadevices are okay
+metastat | grep State:
+
+
+BACKOUT DURATION: 2 hour
+
+
+
+RELEVANT INFO:
+root@ssmn00dk00196# metastat -p | grep c1t1
+d21 1 1 c1t1d0s1
+d20 1 1 c1t1d0s0
+d24 1 1 c1t1d0s4
+
+root@ssmn00dk00196# iostat -En | grep Hard | grep c1t1
+c1t1d0 Soft Errors: 0 Hard Errors: 0 Transport Errors: 0
+
+root@ssmn00dk00196# uptime
+11:13am up 5 day(s), 9:10, 2 users, load average: 0.03, 0.03, 0.04
+
+#from /var/adm/messages
+Sep 9 02:04:08 ssmn00dk00196 metadevadm: [ID 209699 daemon.error] Invalid device relocation information detected in Solaris Vol
+ume Manager
+Sep 9 02:04:08 ssmn00dk00196 metadevadm: [ID 912841 daemon.error] Please check the status of the following disk(s):
+Sep 9 02:04:08 ssmn00dk00196 metadevadm: [ID 702911 daemon.error] c1t1d0
+ 
+Test Plan
+TEST PLAN:standard Solaris Volume Manager commands
+ 
+Customer Impact (if applicable Customer Communications)
+CUSTOMER: no impact
+OPERATIONS:no impact
+HELPDESK:no impact
+ 
+Business And Technical Assessment
+BUSINESS: Ensure data integrity by maintaining multiple metadb's and submirrors.
+TECHNICAL:Ensure data integrity by maintaining multiple metadb's and submirrors.
+
+
+
+# redhat  - fiber card scan
+
+[root@srmn00pk00016 ~]# systool -c fc_host -va
+Class = "fc_host"
+
+  Class Device = "host0"
+  Class Device path = "/sys/class/fc_host/host0"
+    fabric_name         = "0x100008e3881595"
+    issue_lip           = <store method only>
+    node_name           = "0x2000001b320fb08d"
+    port_id             = "0x671113"
+    port_name           = "0x2100001b320fb08d"
+    port_state          = "Online"
+    port_type           = "NPort (fabric via point-to-point)"
+    speed               = "4 Gbit"
+    supported_classes   = "Class 3"
+    symbolic_name       = "QLE2462 FW:v4.03.02 DVR:v8.02.00-k5-rhel5.2-04"
+    system_hostname     = ""
+    tgtid_bind_type     = "wwpn (World Wide Port Name)"
+    uevent              = <store method only>
+
+
+
+####  Redhat linux  SAN info WWN
+
+WWNs highlighted in ID_SERIAL and in Device file info.
+
+[root@srmn00pk00016 qla2xxx]# udevinfo info -q all -n /dev/nst0
+P: /class/scsi_tape/nst0
+N: nst0
+S: tape/by-id/scsi-3500104f00051d03c-nst
+E: ID_VENDOR=IBM
+E: ID_MODEL=ULTRIUM-TD4
+E: ID_REVISION=82F0
+E: ID_SERIAL=3500104f00051d03c
+E: ID_TYPE=tape
+E: ID_BUS=scsi
+
+[root@srmn00pk00016 qla2xxx]# udevinfo info -q all -n /dev/nst1
+P: /class/scsi_tape/nst1
+N: nst1
+S: tape/by-id/scsi-3500104f00051d039-nst
+E: ID_VENDOR=IBM
+E: ID_MODEL=ULTRIUM-TD4
+E: ID_REVISION=85V3
+E: ID_SERIAL=3500104f00051d039
+E: ID_TYPE=tape
+E: ID_BUS=scsi
+
+
+For future reference, they are also world readable here:
+
+# ls -al /dev/tape/by-id/
+lrwxrwxrwx 1 root root 10 Oct 13 16:09 scsi-3500104f00051d039-nst -> ../../nst1
+lrwxrwxrwx 1 root root 10 Oct 13 16:09 scsi-3500104f00051d03c-nst -> ../../nst0
+
+#
+Show size of Veritas luns on a box.
+$ /usr/sbin/vxprint -ht | awk '/^dm/ {print $2,$3,int($6 /2097152),"Gb"}'
+appdg0149 c2t0d49s2 49 Gb
+appdg0201 c2t0d2s2 49 Gb
+appdg0202 c2t0d3s2 49 Gb
+appdg0203 c2t0d4s2 49 Gb
+** Can be run as non-root :)
+
+
+
+#  linux redhat network speed
+
+Check with:
+# dmesg | grep -i duplex
+
+  or
+
+ # validate 100 Full 
+ ethtool eth0
+
+   or 
+
+[root@srmn00zk00014 ~]# mii-tool
+eth0: 100 Mbit, full duplex, link ok
+eth1: 100 Mbit, full duplex, link ok
+
+This utility is useful for forcing specific Ethernet speed and duplex settings too, setup 100Mbps full duplex speed under Linux:
+# mii-tool -F 100baseTx-FD
+
+Setup 10Mbps half duplex:
+# mii-tool -F 10baseT-HD
+
+
+# Change ethernet settings to 100/Full no autoneg
+ ethtool -s eth0 speed 100 duplex full autoneg off
+ 
+
+# ldap LDAP ldaplist ldapsearch
+
+$ ldaplist -l passwd u28ts04
+dn: uid=U28TS04,ou=people,ou=corporate,dc=carlson,dc=com
+        mail: ecarrigan@carlson.com
+        carlsonAccountStatus: ACTIVE
+        carlsonAccountType: EMPLOYEE
+        cn: Edwin Carrigan
+        givenName: Edwin
+        sn: Carrigan
+        gecos: Carrigan.Ed
+        loginShell: /usr/bin/ksh
+        gidNumber: 152
+        uid: u28ts04
+        homeDirectory: /home/uss/u28ts04
+        uidNumber: 201
+        carlsonunixstatus: ACTIVE
+        objectClass: top
+        objectClass: person
+        objectClass: organizationalPerson
+        objectClass: inetOrgPerson
+        objectClass: carlsonPerson
+        objectClass: shadowaccount
+        objectClass: posixaccount
+        objectClass: carlsonunixuser
+        objectClass: oblixPersonPwdPolicy
+        objectClass: passwordobject
+        objectClass: carlsonAdminControl
+        objectClass: oblixorgperson
+        uid: U28TS04
+
+# Check and update permission and ownership of system files
+# root@ssmn00pk00254# ls -la /etc/passwd
+# -r--------   1 root     other       1638 Mar 30 12:28 /etc/passwd
+# root@ssmn00pk00254# pkgchk -f -n -p /etc/passwd
+# root@ssmn00pk00254# ls -la /etc/passwd         
+# -rw-r--r--   1 root     sys         1638 Mar 30 12:28 /etc/passwd
+# root@ssmn00pk00254# 
+
+# sun fiber hba info san  SAN FC
+root@ssmn00gk00329# fcinfo hba-port      
+HBA Port WWN: 2100001b32944e11
+        OS Device Name: /dev/cfg/c3
+        Manufacturer: QLogic Corp.
+        Model: 375-3355-02
+        Firmware Version: 05.01.02
+        FCode/BIOS Version:  BIOS: 2.02; fcode: 2.01; EFI: 2.00;
+        Serial Number: 0402H00-0942776236
+        Driver Name: qlc
+        Driver Version: 20090929-2.32
+        Type: N-port
+        State: online
+        Supported Speeds: 1Gb 2Gb 4Gb 
+        Current Speed: 4Gb 
+        Node WWN: 2000001b32944e11
+HBA Port WWN: 2100001b32942f0a
+        OS Device Name: /dev/cfg/c2
+        Manufacturer: QLogic Corp.
+        Model: 375-3355-02
+        Firmware Version: 05.01.02
+        FCode/BIOS Version:  BIOS: 2.02; fcode: 2.01; EFI: 2.00;
+        Serial Number: 0402H00-0942776358
+        Driver Name: qlc
+        Driver Version: 20090929-2.32
+        Type: N-port
+        State: online
+        Supported Speeds: 1Gb 2Gb 4Gb 
+        Current Speed: 4Gb 
+        Node WWN: 2000001b32942f0a
+

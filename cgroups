@@ -1,0 +1,19 @@
+# displays cpu shares for httpd service (default CPU is 1024 shares per service)
+systemctl show -p CPUShares httpd
+
+# Set cpu shares for httpd service
+systemctl set-property httpd CPUShares=500
+systecmtl daemon-reload
+systemctl set-property httpd MemoryLimit=500M
+systemctl daemon-reload
+
+# /etc/systemd/system/httpd.service.d contains edits of resources for httpd
+
+# Display cgroups resources use live
+systemd-cgtop
+
+# Display cgroups in a full hierarchy
+systemd-cgls
+
+
+

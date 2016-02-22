@@ -1,0 +1,26 @@
+default images/rhel/6/x86_64/vesamenu.c32
+prompt 0
+timeout 600
+ONTIMEOUT local
+
+MENU TITLE Red Hat Enterprise Linux 6 Menu
+
+LABEL local
+  MENU LABEL Boot from ^local drive
+  LOCALBOOT 0xffff
+
+LABEL RHEL 6 32bit Servers
+  MENU LABEL RHEL 6 32bit Servers
+  KERNEL images/rhel/6/x86_64/vesamenu.c32
+  APPEND pxelinux.cfg/RHEL6-x86-Servers
+
+LABEL RHEL 6 64bit Servers
+  MENU LABEL RHEL 6 64bit Servers
+  KERNEL images/rhel/6/x86_64/vesamenu.c32
+  APPEND pxelinux.cfg/RHEL6-x86_64-Servers
+
+LABEL Memtest86
+  MENU LABEL ^Memory test
+  KERNEL images/rhel/6/x86_64/memtest
+  APPEND -
+

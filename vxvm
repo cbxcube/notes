@@ -1,0 +1,130 @@
+#udid_mismatch
+vxdisk list | egrep "udid_mismatch|clone_disk"
+vxdg deport dgname -> of any dg's that have disks in that state
+vxdisk updateudid $DISK -> of any disk with the udid_mismatch
+vxdisk set $DISK clone=off -> of any disk with udid_mismatch
+vxdg import dgname
+example script:
+for DISK in `vxdisk list | grep udid_mismatch | awk '{print $1}'`
+do
+vxdisk updateudid $DISK
+vxdisk set $DISK clone=off
+done
+
+
+# Growing from 4 to 5 way striped volume
+vxassist -g oracledg relayout dba_work layout=stripe ncol=+1 existDISKNAME1 existDISKNAME2 existDISKNAME3 existDISKNAME4 newDISKNAME1
+
+#Troubleshooting:
+VCS umount file system has been mount locked:
+  /opt/VRTS/bin/umount -o mntunlock=VCS </mount-point>
+
+VxVM vxplex ERROR V-5-1-809 Plex plex in volume volume is locked by another utility.
+    vxmend -g diskgroup clear all <volumename> <plexname>
+	example:
+		vxmend -g ux429z1_dg clear all db01 db01-02
+
+To set ownership for raw volumes:
+vxedit -g diskgroup set user=owner group=ownergrp volume
+
+To mirror LUNs:
+vxassist -g diskgroup -U fsgen mirror volumename layout=stripe stripeunit=128k nstripe=4 newdisk1 newdisk2 newdisk3 newdisk4
+
+to break mirrored diskgroup:
+vxplex -g diskgroup dis oldplex-01
+vxedit -g diskgroup -rf rm oldplex-01
+
+to change disk name in a diskgroup:
+vxedit -g diskgroup rename oldname newname
+
+to change a plex name in a diskgroup:
+vxedit -g diskgroup rename oldname newname
+
+To repare broken boot sector on rootdisk or rootmirror
+/etc/vx/bin/vxbootsetup rootdisk - will recreate the eeprom boot-device
+
+To view current progress of vxvm mirroring/relayout
+vxtask list
+
+To increase volume using VXVM
+/etc/vx/bin/vxresize -g diskgroup volume +sizeg (or +sizem)
+  Ex.  /etc/vx/bin/vxresize -g rac_dg u03 +10g 
+
+To decrease volume using VXVM
+/etc/vx/bin/vxresize -g diskgroup volume -sizeg (or -sizem)
+  Ex.  /etc/vx/bin/vxresize -g rac_dg u03 -10g
+
+Make new volume on rootdg
+vxassist -g rootdg make core layout=concat nmirror=2
+
+Mirror existing volume on rootdg
+vxassist -g rootdg mirror volumename mirrordisk
+
+vxprint -hrtg rootdg - displays status of rootdg
+
+if plex is offline:
+vxmend -g diskgroup on plex
+vxmend -g rootdg on home-02
+
+If plex is "DISABLED STALE":
+vxmend -g diskgroup fix clean plex
+vxmend -g rootdg fix clean home-02
+
+If volume is in NEEDSYNC status
+vxvol -g diskgroup resync volume
+vxvol -g rootdg resync home
+
+
+To start all volumes of a specific diskgroup:
+vxvol -g diskgroup startall
+
+
+Reattach Failed Disks:
+dbsd0003:/etc/default #vxdisk list
+DEVICE       TYPE            DISK         GROUP        STATUS
+GENESIS1_0   auto:cdsdisk    ptorashrdg59  ptorashrdg   online
+GENESIS1_1   auto:cdsdisk    orasvc04715  orasvc047    online
+GENESIS1_2   auto:cdsdisk    orasvc04714  orasvc047    online
+-	     -		     mydg01	  mydg	       failed was: GENESIS1_3
+-	     -		     mydg02	  mydg	       failed was: GENESIS1_4
+
+After correcting the path faults, the disks can be reattached by rescanning (vxdctl enable) followed by a vxreattach (vxreattach will fail if the original fault still exists):
+/etc/vx/bin/vxreattach
+
+vxdisk list shows DGDISABLED (dgdisabled):
+vxdg deport diskgroup
+vxdg import diskgroup
+   Veritas may have lost one or all paths to the disk causing it to disable the disk groups.  Once the path(s) came back Veritas didn't know to 
+     re-enable the disk groups.  Deporting and re-Importing the disk groups forces Veritas to enable the dg.
+To clean up plexes that are labelled "DISABLED RECOVER":
+
+/ #vxprint -hrtg oradg | grep DIS
+v  u01_v01      -            DISABLED ACTIVE   58684672 SELECT    -        fsgen
+pl u01_v01-02   u01_v01      DISABLED RECOVER  58684672 CONCAT    -        RW
+
+/ #vxmend -g oradg fix stale u01_v01-02
+/ #vxmend -g oradg fix clean u01_v01-02
+/ #vxvol -g oradg start u01_v01
+
+/ #vxprint -hrtg oradg
+<...>
+v  u01_v01      -            ENABLED  ACTIVE   58684672 SELECT    -        fsgen
+pl u01_v01-02   u01_v01      ENABLED  ACTIVE   58684672 CONCAT    -        RW
+<...>
+
+
+To deport/import renaming diskgroup
+vxdg deport diskgroup
+vxdg -n newname import diskgroup
+vxrecover -g newname -s
+vxvol -g newname startall
+
+
+Relayout stripes:
+(NOTE: If you have a large number of disks, it's better to run these from a script)
+# vxassist -g diskgroup -o bg relayout volume layout=stripe ncol=+#ofnewdisks new_disk1 new_disk2 new_disk3
+# vxtask -l list (shows status of relayout, among other tasks)
+# vxassist -g diskgroup maxgrow volume existing_disk1 existing_disk2 existing_disk3 new_disk1 new_disk2 new_disk3
+Volume volume_name can be extended by numberA to: Number_Total (529355Mb)
+# vxassist -g diskgroup growto volume Number_Total existing_disk1 existing_disk2 existing_disk3 new_disk1 new_disk2 new_disk3
+# /usr/lib/fs/ufs/mkfs -F ufs -M /mountpoint /dev/vx/rdsk/diskgroup/volume_name Number_Total

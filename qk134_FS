@@ -1,0 +1,104 @@
+Installation:
+1) Log onto ssmn00qk00134 and switch to root user:
+2) Verify appdg07 and appdg08 disk groups are not in use:
+    vxprint -hrtg appdg07
+    vxprint -hrtg appdg08
+	No volumes will be displayed as associated with the disk groups
+3) Destroy the unused disk groups:
+    vxdg destroy appdg07
+    vxdg destroy appdg08
+4) Add the unused LUNs to appdg02:
+    DISK=10
+    for i in `vxdisk list | grep c2t2d | grep "-" | awk '{print $1}'`
+    do
+    echo adding $i to appdg02
+    vxdg -g appdg02 adddisk appdg02_${DISK}=${i}
+    DISk=`expr $DISK + 1`
+    done
+5) Create dbafiles volume and mount it:
+    vxassist -g appdg02 make dbafiles 200g
+    mkfs -F vxfs -o largefiles /dev/vx/rdsk/appdg02/dbafiles
+    mkdir -m 755 /dbafiles
+    cpv /etc/vfstab - add the following line to the end:
+	/dev/vx/dsk/appdg02/dbafiles     /dev/vx/rdsk/appdg02/dbafiles    /dbafiles vxfs   3       yes     -
+    mount /dbafiles
+    chown oracle:dba /dbafiles
+6) Create /q17rpt_arch on appdg06:
+    vxassist -g appdg06 make q17rpt_arch 10g
+    mkfs -F vxfs -o largefiles /dev/vx/rdsk/appdg06/q17rpt_arch
+    mkdir -m 755 /q17rpt_arch
+    cpv /etc/vfstab - add the following line to the end:
+	/dev/vx/dsk/appdg06/q17rpt_arch     /dev/vx/rdsk/appdg06/q17rpt_arch    /q17rpt_arch vxfs   3       yes     -
+    mount /q17rpt_arch
+    chown oracle:dba /q17rpt_arch
+7) Create /d17rpt_arch on appdg03:
+    vxassist -g appdg03 make d17rpt_arch 3g
+    mkfs -F vxfs -o largefiles /dev/vx/rdsk/appdg03/d17rpt_arch
+    mkdir -m 755 /d17rpt_arch
+    cpv /etc/vfstab - add the following line to the end:
+	/dev/vx/dsk/appdg03/d17rpt_arch     /dev/vx/rdsk/appdg03/d17rpt_arch    /d17rpt_arch vxfs   3       yes     -
+    mount /d17rpt_arch
+    chown oracle:dba /d17rpt_arch
+8) Update FSwatch on ssmn00qk00134:
+    cpv /opt/local/fswatch/etc/fswatch.cfg - add the following lines to the end:
+        ssmn00qk00134,/dbafiles,100,SEV3,CRC-C-CMWORA,
+	ssmn00qk00134,/q17rpt_arch,100,SEV3,CRC-C-CMWORA,
+	ssmn00qk00134,/d17rpt_arch,100,SEV3,CRC-C-CMWORA,
+
+1) Log onto ssmn00qk00188 and switch to root user:
+2) Create /q17com_arch on appdg:
+    vxassist -g appdg make q17com_arch 10g
+    mkfs -F vxfs -o largefiles /dev/vx/rdsk/appdg/q17com_arch
+    mkdir -m 755 /q17com_arch
+    cpv /etc/vfstab - add the following line to the end:
+	/dev/vx/dsk/appdg/q17com_arch     /dev/vx/rdsk/appdg/q17com_arch    /q17com_arch vxfs   3       yes     -
+    mount /q17com_arch
+    chown oracle:dba /q17com_arch
+3) Create /d17com_arch on appdg
+    vxassist -g appdg make d17com_arch 3g
+    mkfs -F vxfs -o largefiles /dev/vx/rdsk/appdg/d17com_arch
+    mkdir -m 755 /d17com_arch
+    cpv /etc/vfstab - add the following line to the end:
+	/dev/vx/dsk/appdg/d17com_arch     /dev/vx/rdsk/appdg/d17com_arch    /d17com_arch vxfs   3       yes     -
+    mount /d17com_arch
+    chown oracle:dba /d17com_arch
+4) Update FSwatch on ssmn00qk00188:
+    cpv /opt/local/fswatch/etc/fswatch.cfg - add the following lines to the end:
+	ssmn00qk00188,/q17com_arch,100,SEV3,CRC-C-CMWORA,
+	ssmn00qk00188,/d17com_arch,100,SEV3,CRC-C-CMWORA,
+
+Backout:
+1) log onto ssmn00qk00134 and switch to root user
+2) Remove /dbafiles file system:
+    umount /dbafiles
+    rmdir /dbafiles
+3) Remove the dbafiles volume and release the disks for reuse:
+    vxassist -g appdg02 remove volume dbafiles
+    for DISK in 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
+    do
+      vxdg -g appdg02 rmdisk appdg02_${DISK}
+    done
+4) Remove /d17rpt_arch file system:
+    umount /d17rpt_arch
+    rmdir /d17rpt_arch
+    vxassist -g appdg03 remove volume d17rpt_arch
+5) Remove /q17rpt_arch file system:
+    umount /q17rpt_arch
+    rmdir /q17rpt_arch
+    vxassist -g appdg06 remove volume q17rpt_arch
+6) Revert to original vfstab and fswatch:
+    mv /etc/vfstab.date /etc/vfstab
+    mv /opt/local/fswatch/etc/fswatch.cfg.date /opt/local/fswatch/etc/fswatch.cfg
+
+1) log onto ssmn00qk00188 and switch to root user
+2) Remove /d17com_arch file system:
+    umount /d17com_arch
+    rmdir /d17com_arch
+    vxassist -g appdg remove volume d17com_arch
+3) Remove /q17com_arch cile system:
+    umount /q17com_arch
+    rmdir /q17com_arch
+    vxassist -g appdg remove volume q17com_arch
+4) Rever to original vfstab and fswatch:
+    mv /etc/vfstab.date /etc/vfstab
+    mv /opt/local/fswatch/etc/fswatch.cfg.date /opt/local/fswatch/etc/fswatch.cfg

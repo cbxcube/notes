@@ -1,0 +1,60 @@
+INSTALLATION:
+1) Import the new luns to both ssmn00pk00083 and ssmn00pk00084 using the JNI procedures in the attached document
+2) Add the new luns to rac_dg and create the prodcopy volume and file system:
+    on ssmn00pk00083:
+     vxassist -g rac_dg make prodcopy `vxassist -g rac_dg maxsize | awk '{print $4}'`
+     mkfs -F vxfs /dev/vx/rdsk/rac_dg/prodcopy
+3) Make the mount point:
+    on both nodes:
+     mkdir -m 755 /p1ets_prodcopy
+4) Make the new mount resource in the VCS cluster:
+    on ssmn00pk00083:
+     haconf -makerw
+     hares -add p1ets_prodcopy_mnt CFSMount cvm
+     hares -modify p1ets_prodcopy_mnt BlockDevice /dev/vx/dsk/rac_dg/prodcopy
+     hares -modify p1ets_prodcopy_mnt MountPoint /p1ets_prodcopy
+     hares -modify Enabled 1
+5) Update the rac_dg resource in the VCS cluster:
+    on ssmn00pk00083:
+     hares -modify rac_dg CVMVolume u02 u03 u04 u05 u06 p01ets p01ets_arch p1etsbk p02ets_arch p02etsbk p02ets p1ets_ftp r1etsbk r1ets_arch p01ets_arch2 prodcopy
+     hares -display rac_dg | grep CVMVolume - verify prodcopy has been added to the end
+6) Bring the mount point resource online in the VCS cluster:
+    on ssmn00pk00083:
+     hares -online p1ets_prodcopy_mnt -sys ssmn00pk00083
+     hares -online p1ets_prodcopy_mnt -sys ssmn00pk00084
+7) Create the dependencies in the VCS cluster:
+    on ssmn00pk00083:
+     hares -link p1ets_prodcopy_mnt rac_dg
+     hares -link p1ets_prodcopy_mnt vxfsckd
+8) Save and close the changes to the VCS cluster:
+    on ssmn000pk00083:
+     haconf -dump -makero
+9) Change ownership of the file system:
+    on both nodes:
+     chown oracle:dba /p1ets_prodcopy
+
+BACKOUT:
+1) Stop the new mount point resources:
+    on ssmn00pk00083:
+     haconf -makerw
+     hares -offline p1ets_prodcopy_mnt -sys ssmn00pk00083
+     hares -offline p1ets_prodcopy_mnt -sys ssmn00pk00084
+2) Remove the mount point resource:
+    on ssmn00pk00083:
+     hares -delete p1ets_prodcopy_mnt
+3) Remove the prodcopy volume from the rac_dg resouce:
+    on ssmn00pk00083:
+     hares -modify rac_dg CVMVolume u02 u03 u04 u05 u06 p01ets p01ets_arch p1etsbk p02ets_arch p02etsbk p02ets p1ets_ftp r1etsbk r1ets_arch p01ets_arch2
+4) Remove the volume from rac_dg:
+    on ssmn00pk00083:
+     vxassist -g rac_dg remove volume prodcopy
+5) Remove the mount point:
+    on both nodes:
+     rmdir /p1ets_prodcopy
+6) Follow the JNI procedures in the attached document to remove the new LUNs on both nodes
+7) Clean up the device tree:
+    on both nodes:
+     devfsadm -Cv
+
+BACKOUT DURATION:
+30 minutes

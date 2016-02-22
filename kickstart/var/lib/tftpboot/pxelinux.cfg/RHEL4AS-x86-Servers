@@ -1,0 +1,25 @@
+#default images/rhel/6/x86_64/vesamenu.c32
+#default images/rhel/6/x86_64/menu.c32
+#prompt 0
+#timeout 300
+#ONTIMEOUT local
+
+MENU TITLE RHEL 4 32bit Server Menu
+
+LABEL Main Menu
+  MENU LABEL Main Menu
+  KERNEL images/rhel/6/x86_64/vesamenu.c32
+  APPEND pxelinux.cfg/default
+LABEL linux
+  MENU LABEL ^Install or upgrade an existing system
+  MENU default
+  KERNEL images/rhel/4as/i386/vmlinuz
+  APPEND initrd=images/rhel/4as/i386/initrd.img ip=dhcp ks=http://10.40.32.25/ks/ks4as-32.cfg lang=en_US keymap=us
+LABEL vesa
+  MENU LABEL Install system with ^basic video driver
+  KERNEL images/rhel/4as/i386/vmlinuz
+  APPEND initrd=images/rhel/4as/i386/initrd.img ip=dhcp ks=http://10.40.32.25/install/i386/rhel4as lang=en_US keymap=us xdriver=vesa nomodeset
+LABEL rescue
+  MENU LABEL ^Rescue installed system
+  KERNEL images/rhel/4as/i386/vmlinuz
+  APPEND initrd=images/rhel/4as/i386/initrd.img rescue

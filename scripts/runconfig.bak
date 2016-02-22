@@ -1,0 +1,24 @@
+df -k >df.out
+df -k|wc -l > dfwc.out
+prtdiag -v > prtdiag.out
+metastat > metastat.out
+metastat -p > metastatp.out
+metadb > metadb.out
+vxdisk list > vxdisk.out
+vxprint -ht > vxprintht.out
+vxdmpadm listctlr all > vxdmpadm_list.out
+vxdmadm getdmpnode enclosure="disk array name"
+uname -a > uname_a.out
+cp -p /etc/path_to_inst .
+cp -p /etc/vfstab .
+echo |format > format.out
+ifconfig -a > ifconfig.out
+#cd /home/uap/uhkc003
+#perl checkcable > /home/uss/mig/patch-july2008/`hostname`/duplex_speed.out
+cd /home/uss/mig/patch-july2008/`hostname`
+psrinfo > no_of_cpus.out
+prtconf -vp |grep Memory > total_memory.out
+cp -p /kernel/drv/jni*.conf .
+cp -p /kernel/drv/ql*.conf .
+eeprom > eeprom.out
+

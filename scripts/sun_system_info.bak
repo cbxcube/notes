@@ -1,0 +1,30 @@
+
+
+
+
+
+
+exit
+
+Server Configuration as of Fri Jan 25 13:35:32 EST 2008
+
+Server:          ssmn00pk00071
+Machine Type:    Sun-Fire-880
+Solaris Level:   5.9
+Number of CPUs:  8
+Total Memory:    16384 Mb
+
+Attached Hdisk:
+===============
+6 x 73 GB
+68 x 18 GB
+
+Consult /tmp/diskinfo.txt for more info.
+
+Network Configuration:
+======================
+lo0:             127.0.0.1/ff000000
+ce0:             172.28.0.16/ffffffc0
+ce1:             172.16.5.10/ffff0000
+eri0:            172.27.2.88/fffffe00
+

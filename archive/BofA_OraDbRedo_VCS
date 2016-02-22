@@ -1,0 +1,40 @@
+# Removal of old /dbredo# file systems and addition of /dbredo
+hagrp -freeze oracle
+
+haconf -makerw
+
+hares -delete oracle_mnt_dbredo1
+hares -delete oracle_mnt_dbredo2
+hares -delete oracle_mnt_dbredo3
+hares -delete oracle_mnt_dbredo4
+hares -delete oracle_mnt_dbredo5
+hares -delete oracle_mnt_dbredo6
+
+hares -delete oracle_v_dbredo1
+hares -delete oracle_v_dbredo2
+hares -delete oracle_v_dbredo3
+hares -delete oracle_v_dbredo4
+hares -delete oracle_v_dbredo5
+hares -delete oracle_v_dbredo6
+
+hares -add oracle_v_dbredo Volume oracle
+hares -modify oracle_v_dbredo Volume dbredo
+hares -modify oracle_v_dbredo DiskGroup oracledg
+hares -modify oracle_v_dbredo Enabled 1
+
+hares -add oracle_mnt_dbredo Mount oracle
+hares -modify oracle_mnt_dbredo BlockDevice /dev/vx/dsk/oracledg/dbredo
+hares -modify oracle_mnt_dbredo FSType vxfs
+hares -modify oracle_mnt_dbredo FsckOpt %-y
+hares -modify oracle_mnt_dbredo MountPoint /dbredo
+hares -modify oracle_mnt_dbredo MountOpt rw
+hares -modify oracle_mnt_dbredo Enabled 1
+
+hares -link oracle_boap5 oracle_mnt_dbredo
+hares -link oracle_mnt_dbredo oracle_v_dbredo
+hares -link oracle_v_dbredo oracle_dg_oracledg
+
+haconf -dump -makero
+
+# Post Carol's work
+hagrp -unfreeze oracle

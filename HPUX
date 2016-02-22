@@ -1,0 +1,349 @@
+HPUX
+###/var/tombstone###
+To investigate crashes
+
+###Commands:
+    model - displays server model
+    swinstall - install software
+    cstm - support tools manager
+	print "selclass qualifier cpu;info;wait;infolog" | /usr/sbin/cstm | grep PDC 
+		(displays PDC level)
+
+
+### HBA WWN's
+    Discover the HBA's: 
+        ioscan -funC fc        
+        fcmsutil /dev/fcd# - will show WWN's
+
+
+
+###Extend a filesystem:
+    lvdisplay - determine if the volume is striped
+	if not striped:
+		lvextend -L new_total_size_in_MB /dev/vg/lv
+		fsadm -b new_total_size_in_KB /mountpoint
+			lvextend -L 30720 /dev/ste01/p28infbk
+			fsadm -b 31457280 /p28infbk
+		if "-b" option is invalid:
+			umount /mountpoint
+			lvextend -L new_total_size_in_MB /dev/vg/lv
+			extendfs -F hfs /dev/vg/raw_lv
+			mount /mountpoint
+	if striped:
+		number of available PV's has to equal the stripe.
+
+
+###Update platform firmware
+    download latest revision of PHSS_##### for your platform
+    cp /tmp
+    sh /tmp/PHSS_#####
+    swinstall -x autoreboot=true -x patch_match_target=true -s /tmp/PHSS_#####.depot
+	Server will reboot and install current firmwares.
+
+
+###Update HBA firmware
+    Discover the HBA's:
+	ioscan -funC fc
+	fcmsutil /dev/fcd# - will show WWN's
+    fcmsutil /dev/td0 - displays HBA information for HBA td0 including WWN
+    download latest revision, unzip/untar to a safe location (/var/tmp,/tmp)
+    First:
+	update efi level to current level:
+		fcmsutil /dev/fcd# efi_drv_update /var/tmp/efi_drv.bin (ex. ql2312ef.bin)
+    Second:
+	update firmware to current level:
+		fcmsutil /dev/fcd# rom_fw_update /var/tmp/RISC_fw.bin (ex. ql2312fw.bin)
+
+
+###Syetem and application start/stop scripts: 
+    /sbin/init.d/
+    ie: 
+    feta:/sbin/init.d #./xntpd
+    usage: ./xntpd {start|stop}
+
+###System OS files 
+    /etc/nsswitch.conf
+    /etc/resolv.conf
+    /etc/rc.config.d/ 
+ (this directory contains many config files like the network config in the netconf  file, many are used by the startup file in the /sbin/init.d/ directory)
+
+
+###What are the devices on my system? 
+	To list only what the system knows about at that moment (what the kernel knows about):
+	    ioscan -fun  (shows all devices)
+	    ioscan -funCdisk (shows all disk devices)
+	    ioscan -funCfc ( shows fiber channel )
+		The C is the description in the first column ie. tty lan disk fc à
+		###What does claimed mean in the ioscan? 
+		    CLAIMED is a good thing, it means the system see the device in the kernel and also recognizes it.  
+		    UNCLAIMED means that it see a device, but it is not recognized by the kernel and probably needs a driver loaded.
+		    NO_HW  the hardware at this address is no longer responding The NO_HW from ioscan means that when the box was booted the device was responding but now it is not.  The NO_HW can come from either a device that is bad or from a device that has been moved/removed.
+		###If I have UNCLAIMED devices what should I do.
+		    insf ûe will install special device files, this has to be done for instance when additional EMC disks are added if that doesnÆt fix the problem you may need a driver.
+
+
+###Steps for new devices (disks in this example): 
+    ioscan -fn ioscan -funCdisk insf -e ioscan -fnCdisk
+	Disks should now show as claimed.
+
+
+HPUX LVM basics:
+
+###pvdisplay /dev/dsk/<diskname> 
+	Shows specific LUN or disk information, use -v for verbose.
+	  feta:/ #pvdisplay /dev/dsk/c29t4d7
+	  Device file path "/dev/dsk/c29t4d7" is an alternate path
+	  to the Physical Volume. Using Primary Link "/dev/dsk/c28t4d7".
+	  --- Physical volumes ---
+	  PV Name                     /dev/dsk/c28t4d7
+	  PV Name                     /dev/dsk/c29t4d7    Alternate Link
+	  VG Name                     /dev/vg45
+	  PV Status                   available
+	  Allocatable                 yes
+	  VGDA                        2
+	  Cur LV                      3
+	  PE Size (Mbytes)            4
+	  Total PE                    2876
+	  Free PE                     23
+	  Allocated PE                2853
+	  Stale PE                    0
+	  IO Timeout (Seconds)        default
+	  Autoswitch                  On
+
+
+###diskinfo /dev/rdsk/<diskname> 
+	Shows specific disk infor model size etc.
+	  feta:/ #diskinfo /dev/rdsk/c29t4d7
+	  SCSI describe of /dev/rdsk/c29t4d7:
+	            vendor: EMC
+	            product id: SYMMETRIX
+	            type: direct access
+	            size: 11784960 Kbytes
+	  bytes per sector: 512
+
+
+
+###vgdisplay or vgdisplay <vgname> 
+	shows basic information on each volume group: (vgdisplay |grep ôVG Nameö for only the VG names)
+	  feta:/ #vgdisplay
+	  --- Volume groups ---
+	  VG Name                     /dev/vg00
+	  VG Write Access             read/write
+	  VG Status                   available
+	  Max LV                      255
+	  Cur LV                      19
+	  Open LV                     19
+	  Max PV                      16
+	  Cur PV                      2
+	  Act PV                      2
+	  Max PE per PV               4350
+	  VGDA                        4
+	  PE Size (Mbytes)            8
+	  Total PE                    8680
+	  Alloc PE                    7719
+	  Free PE                     961
+	  Total PVG                   0
+	  Total Spare PVs             0
+	  Total Spare PVs in use      0
+
+###To get a verbose list vgdisplay ûv or vgdisplay ûv <vgname>
+vgdisplay information:
+Free PE 961 = amount of free physical extent space in the VG.
+          To get the amount in MB you must take the (number of free PEs) * (PE size).
+             In this case:
+               961 PE *  8 PE size =  7688 MB free
+
+###If you have mirrored disk (mainly vg00) you will have twice as much PE space. To get the non mirrored size take » the total.
+
+
+###lvdisplay or lvdisplay <lvname> 
+	shows basic information on each logical volume: (lvdisplay |grep ôLV Nameö for only the LV names)
+	  apsh0003:/ #vgdisplay -v vg00
+	  --- Volume groups ---
+	  VG Name                     /dev/vg00
+	  VG Write Access             read/write
+	  VG Status                   available
+	  Max LV                      255
+	  Cur LV                      10
+	  Open LV                     10
+	  Max PV                      16
+	  Cur PV                      2
+	  Act PV                      2
+	  Max PE per PV               4384
+	  VGDA                        4
+	  PE Size (Mbytes)            16
+	  Total PE                    8748
+	  Alloc PE                    1961
+	  Free PE                     6787
+	  Total PVG                   0
+	  Total Spare PVs             0
+	  Total Spare PVs in use      0
+  
+	  --- Logical volumes ---
+	  LV Name                     /dev/vg00/lvol1
+	  LV Status                   available/syncd
+	  LV Size (Mbytes)            304
+	  Current LE                  19
+	  Allocated PE                19
+	  Used PV                     1
+	  LV Name                     /dev/vg00/lvol2
+	  LV Status                   available/syncd
+	  LV Size (Mbytes)            4096
+	  Current LE                  256
+	  Allocated PE                256
+	  Used PV                     1
+
+
+	  apsh0003:/ #lvdisplay /dev/vg00/lvol1
+	  --- Logical volumes ---
+	  LV Name                     /dev/vg00/lvol1
+	  VG Name                     /dev/vg00
+	  LV Permission               read/write
+	  LV Status                   available/syncd
+	  Mirror copies               0
+	  Consistency Recovery        MWC
+	  Schedule                    parallel
+	  LV Size (Mbytes)            304
+	  Current LE                  19
+	  Allocated PE                19
+	  Stripes                     0
+	  Stripe Size (Kbytes)        0
+	  Bad block                   off
+	  Allocation                  strict/contiguous
+	  IO Timeout (Seconds)        default
+
+###To get a verbose list lvdisplay -v or lvdisplay -v <vgname>
+
+
+###[edit] CONSOLE basics:
+	GSP login: Admin
+	GSP password: Admin
+ 
+	(c)Copyright 2000 Hewlett-Packard Co.,  All Rights Reserved.
+ 
+ 
+                            Welcome to
+ 
+              Superdome's Guardian Service Processor
+ 
+ 
+ 
+	   GSP MAIN MENU:
+ 
+	Utility Subsystem FW Revision Level: 7.30
+
+        	CO: Consoles
+	       VFP: Virtual Front Panel
+	        CM: Command Menu
+	        CL: Console Logs
+	        SL: Show chassis Logs
+	        HE: Help
+	         X: Exit Connection
+ 
+	GSP>
+
+###From here you can type cm and that will give you a bunch of stuff that can be done including powering on / off the system. 
+	GSP> cm
+
+
+	Enter HE to get a list of available commands
+
+
+	GSP:CM> he
+
+###here is the help menu that will give you more details on what commands can be done. 
+
+	Guardian Service Processor (GSP) - FW Revision 7.30, May 14 2003 at 14:11:55
+
+	Utility Subsystem FW Revision Level: 7.30
+
+
+	The following are the service commands that are available
+
+	 BO      : Boot a partition.
+	 DF      : Display FRU information of an Entity.
+	 MA      : Return to the Main menu.
+	 MR      : Modem Reset
+	 PE      : Power entities on or off.
+	 RE      : Reset entity.
+	 RR      : Reset a partition for reconfiguration.
+	 RS      : Reset a partition.
+	 TC      : Send a TOC signal to a partition.
+	 TE      : Broadcast a message to all users of the GSP Command Handler.
+	 VM      : Margin the voltage in a cabinet
+	 WHO     : Display a list of GSP connected users
+	 CP      : Display partition cell assignments
+	 HE      : Display the list of available commands
+	 IO      : Display IO chassis/cell connectivity
+	 LS      : Display LAN connected console status
+	 MS      : Display the status of the Modem
+	 PS      : Display detailed power and hardware configuration status.
+	 SYSREV  : Display revisions of all firmware entities in the complex.
+	 AR      : Configure the Automatic System Restart
+	 CA      : Configure Asynchronous and Modem parameters
+	 CC      : Initiate a Complex Configuration
+	 CP      : Display partition cell assignments
+	 DATE    : Set the time and date
+	 DC      : Reset parameters to default configuration
+	 DI      : Disconnect Remote or LAN Console
+	 DL      : Disable Lan console access
+	 EL      : Enable Lan console access
+	 ER      : Configure remote/modem port access options
+	 ID      : Change certain stable complex configuration profile fields
+	 IO      : Display IO chassis/cell connectivity
+	 IT      : Modify command interface inactivity timeout
+	 LC      : Configure LAN connections
+	 LS      : Display LAN connected console status
+	 ND      : Enable/Disable Network Diagnostics
+	 PD      : Modify default Partition for this login session.
+	 RL      : Rekey Complex Profile Lock
+	 SO      : Configure Security Options and Access Control
+	 XD      : GSP Diagnostics and Reset
+ 
+ 
+ 
+	 Press q to quit or <CR> to continue...
+
+
+	GSP:CM> ma
+
+	ma will get you back to the main menu.
+
+	GSP:CM>
+
+	   GSP MAIN MENU:
+
+	        CO: Consoles
+	       VFP: Virtual Front Panel
+	        CM: Command Menu
+	        CL: Console Logs
+	        SL: Show chassis Logs
+	        HE: Help
+	         X: Exit Connection
+
+	GSP>
+
+	co will bring you to a console prompt, in this case since it is a partitioned system, you will have several selections.
+	GSP> co
+
+	   Partitions available:
+
+	    #   Name
+	   ---  ----
+	    0)  gouda
+	    1)  swiss
+	    2)  colby
+	    3)  brie
+	    4)  goat
+	    5)  feta
+	    6)  gvp2ano1
+	    Q)  Quit
+
+	   Please select partition number:0
+
+
+	       Connecting to Console: gouda
+
+	       (Use ^B to return to main menu.)
+
+	       [A few lines of context from the console log:]

@@ -1,0 +1,43 @@
+Installation:
+1) Follow instructions in attached document to import the new LUNs
+2) Label the LUNs:
+    for DISK in 106 107 108 109 110 111 112 113 114 115
+    do
+      format c3t0d${DISK} < /tmp/q - /tmp/q contains 2 letters, l y
+    done
+3) Import the new LUNs into Veritas control:
+    vxdisk scandisks
+    for DISK in 106 107 108 109 110 111 112 113 114 115
+    do
+      /etc/vx/bin/vxdisksetup -i c3t0d${DISK}
+    done
+4) Add the new disks into the existing disk groups
+    vxdg -g prod_copy_dg adddisk prod_copy_dg07=c3t0d106s2
+    vxdg -g prod_copy_dg adddisk prod_copy_dg08=c3t0d107s2
+    for DISK in 108 109 1110 111 112 113 114 115
+    do
+      vxdg -g iwin_prod adddisk iwin_prod_${DISK}=c3t0d${DISK}s2
+    done
+5) Grow Volumes
+    /usr/lib/vxvm/bin/vxresize -g prod_copy_dg prod_copy_d01 +`vxassist -g prod_copy_dg maxsize c3t0d106s2|awk '{print $4}'`
+    /usr/lib/vxvm/bin/vxresize -g prod_copy_dg prod_copy_d06 +`vxassist -g prod_copy_dg maxsize c3t0d107s2|awk '{print $4}'`
+    /usr/lib/vxvm/bin/vxresize -g iwin_prod iwin_b01 +200g
+
+
+Backout:
+1) Shrink volumes to their original size:
+    /usr/lib/vxvm/bin/vxresize -g prod_copy_dg prod_copy_d01 -25g
+    /usr/lib/vxvm/bin/vxresize -g prod_copy_dg prod_copy_d06 -25g
+    /usr/lib/vxvm/bin/vxresize -g iwin_prod iwin_b01 -200g
+2) Remove the new disks from the disk groups and remove from Veritas control:
+    for DISK in 108 109 110 111 112 113 114 115
+    do
+      vxdg -g iwin_prod rmdisk iwin_prod_${DISK}
+    done
+    vxdg -g prod_copy_dg rmdisk prod_copy_dg07
+    vxdg -g prod_copy_dg rmdisk prod_copy_dg08
+    for DISK in 106 107 108 109 110 111 112 113 114 115
+    do
+      /etc/vx/bin/vxdiskunsetup c3t0d${DISK}
+    done
+3) Follow the instructions in the attached document to remove the LUNs from the server

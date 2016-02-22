@@ -1,0 +1,89 @@
+Add the 2 extra internal disks into SVM control and create the mirrors:
+metainit d15 1 1 c1t2d0s2
+metainit d25 1 1 c1t3d0s2
+metainit d5 -m d15
+metattach d5 d25
+
+Create new file systems on the internal disks for the existing file systems:
+
+/u01 = 5Gb
+/opt/tuxedo81 = 2Gb
+/opt/ISS = 512Mb
+/opt/psoft = 10Gb
+
+metainit d51 -p d5 512m
+metainit d52 -p d5 5g
+metainit d53 -p d5 2g
+metainit d54 -p d5 10g
+
+newfs /dev/md/rdsk/d51
+newfs /dev/md/rdsk/d52
+newfs /dev/md/rdsk/d53
+newfs /dev/md/rdsk/d54
+
+vi /etc/vfstab
+ - add the following lines (will be commented out until changes are completed):
+	#/dev/md/dsk/d51		/dev/md/rdsk/d51	/opt/ISS	ufs	3	yes	-
+	#/dev/md/dsk/d52		/dev/md/rdsk/d52	/u01		ufs	3	yes	-
+	#/dev/md/dsk/d53		/dev/md/rdsk/d53	/opt/tuxedo81	ufs	3	yes	-
+	#/dev/md/dsk/d54		/dev/md/rdsk/d54	/opt/psoft	ufs	3	yes	-
+
+
+#/opt/ISS
+df -h /opt/ISS - to verify the existing size of /opt/ISS
+mount /dev/md/dsk/d51 /mnt
+cp -pr /opt/ISS/* /mnt
+umount /mnt
+umount /opt/ISS
+vi /etc/vfstab
+ - comment out the following line:
+	/dev/vx/dsk/stkdg01/iss         /dev/vx/rdsk/stkdg01/iss       /opt/ISS       vxfs  3   yes  -
+ - uncomment the following line:
+	#/dev/md/dsk/d51		/dev/md/rdsk/d51	/opt/ISS	ufs	3	yes	-
+mount /opt/ISS
+df -h /opt/ISS - to verify /dev/md/dsk/d51 is mounted at /opt/ISS and is the same size as before the change
+
+
+#u01
+df -h /u01 - to verify the existing size of /u01
+mount /dev/md/dsk/d52 /mnt
+cp -pr /u01/* /mnt
+umount /mnt
+umount /u01
+vi /etc/vfstab
+ - comment out the following line:
+	/dev/vx/dsk/stkdg01/u01         /dev/vx/rdsk/stkdg01/u01       /u01           vxfs  3   yes  -
+ - uncomment the following line:
+	#/dev/md/dsk/d52		/dev/md/rdsk/d52	/u01		ufs	3	yes	-
+mount /u01
+df -h /u01 - to verify /dev/md/dsk/d52 is mounted at /u01 and is the same size as before the change
+
+
+#/opt/tuxedo81
+df -h /opt/tuxedo81 - to verify the existing size of /opt/tuxedo81
+mount /dev/md/dsk/d53 /mnt
+cp -pr /opt/tuxedo81/* /mnt
+umount /mnt
+umount /opt/tuxedo81
+vi /etc/vfstab
+ - comment out the following line:
+	/dev/vx/dsk/stkdg01/tuxedo81    /dev/vx/rdsk/stkdg01/tuxedo81  /opt/tuxedo81  vxfs  3   yes  -
+ - uncomment the following line:
+	#/dev/md/dsk/d53		/dev/md/rdsk/d53	/opt/tuxedo81	ufs	3	yes	-
+mount /opt/tuxedo81
+df -h /opt/tuxedo81 - to verify /dev/md/dsk/d53 is mounted at /opt/tuxedo81 and is the same size as before the change
+
+
+#/opt/psoft
+df -h /opt/psoft - to verify the existing size of /opt/psoft
+mount /dev/md/dsk/d54 /mnt
+cp -pr /opt/psoft/* /mnt
+umount /mnt
+umount /opt/psoft
+vi /etc/vfstab
+ - comment out the following line:
+	/dev/vx/dsk/stkdg01/psoft       /dev/vx/rdsk/stkdg01/psoft     /opt/psoft     vxfs  3   yes  -
+ - uncomment the following line:
+	#/dev/md/dsk/d54		/dev/md/rdsk/d54	/opt/psoft	ufs	3	yes	-
+mount /opt/psoft
+df -h /opt/psoft - to verify /dev/md/dsk/d54 is mounted at /opt/psoft and is the same size as before the change.

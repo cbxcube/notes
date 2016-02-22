@@ -1,0 +1,256 @@
+#\n!/bin/sh
+
+# This script executes all of the vxfs and system commands
+# to import and mount up metro-mirrored (SVC) volumes for
+# Veritas systems.
+
+# Config file format:
+# $ cat ../etc/mmirror_dg.tab
+# #instance_name:orig_dg_name:new_dg_name:volume_name:mount_point
+# p17rpt:appdg02:p17rptdg:u20:/p17rptdg/u20
+# p17com:p17comdg:p17comdg:u09_new:/p17combk/u09
+# $ 
+# 
+# 
+
+# Binary locations
+ECHO="/usr/bin/echo"
+AWK="/usr/bin/nawk"
+GREP="/usr/bin/grep"
+FSCK="/usr/sbin/fsck"
+MOUNT="/usr/sbin/mount"
+UMOUNT="/usr/sbin/umount"
+FUSER="/usr/sbin/fuser"
+PS="/usr/bin/ps"
+DF="/usr/sbin/df"
+RM="/usr/bin/rm"
+RMDIR="/usr/bin/rmdir"
+CAT="/usr/bin/cat"
+SORT="/usr/bin/sort"
+MKDIR="/usr/bin/mkdir"
+DATE="/usr/bin/date"
+
+#
+VXDISK="/usr/sbin/vxdisk"
+VXDG="/usr/sbin/vxdg"
+VXVOL="/usr/sbin/vxvol"
+VXPRINT="/usr/sbin/vxprint"
+VXDMPADM="/usr/sbin/vxdmpadm"
+
+# Script Variables
+BASE_DIR="/opt/storage"
+CONFIG_FILE="${BASE_DIR}/etc/mmirror_dg.tab"
+ERROR_FILE="/var/tmp/mmirror_export.err.$$"
+
+# Show script start time
+${ECHO} "Starting $0 with arguments $* at `${DATE}`"
+
+# This script runs Veritas commands and mounts file systems.
+# It needs to be run as root.
+RUNAS=`${ECHO} ${LOGNAME}`
+
+if [ "${RUNAS}" != "root" ] ; then
+	${ECHO} "USAGE: $0 needs to be run as root user.\\n"
+	exit 255
+fi
+
+# Script Assumes that the name of the instance is passed as first argument:
+if [ $# -lt 1 ]; then
+	${ECHO} "USAGE: $0 <instance_to_umount/export>\\n"
+	exit 255
+else
+	INSTANCE="${1}"
+fi
+
+# Check that we can read our config file.
+if [ ! -r "${CONFIG_FILE}" ] ; then
+	${ECHO} "Cannot read config file ${CONFIG_FILE}\\n"
+	exit 255
+fi
+
+# Confirm that the config file is in correct syntax.
+# If it does not have 5 fields per line, print the offending lines and exit
+# If all of the lines have 5 fields, BAD_SYNTAX will be blank.
+BAD_SYNTAX=`${AWK} -F: 'NF!=5 {print}' ${CONFIG_FILE}`
+
+# From the test man page:
+# -z string True if the length of string  string is zero.
+#
+if [ ! -z "${BAD_SYNTAX}" ] ; then
+	${ECHO} "Config file ${CONFIG_FILE} has errors in it."
+	${ECHO} "Errors are: ${BAD_SYNTAX}\\n"
+fi
+
+# Confirm that the passed instance exists in the file.
+INSTANCE_EXISTS=`${GREP} "^${INSTANCE}:" ${CONFIG_FILE} > /dev/null 2>&1;${ECHO} $?`
+
+if [ "${INSTANCE_EXISTS}" -ne "0" ] ; then
+	${ECHO} "Provided instance '${INSTANCE}' does not exist in ${CONFIG_FILE}\\n"
+	exit 255
+fi
+
+############
+#
+# Appears config file is valid, and readable
+#
+############
+
+# I cant' think of anything else to check at this point, begin processing.
+# Show some default information before we modify anything on the server.
+
+${ECHO} "Locally mounted file systems (df -kl)"
+${DF} -kl
+${ECHO} "-----------------\n"
+${ECHO} "All veritas disks. (vxdisk -o alldgs list)"
+${VXDISK} -o alldgs list
+${ECHO} "-----------------\n"
+${ECHO} "All imported Veritas disk groups. (vxdg list)"
+${VXDG} list
+${ECHO} "-----------------\n"
+${ECHO} "All disk/subdisk/volume/plex info (vxprint -ht)"
+${VXPRINT} -ht
+${ECHO} "-----------------\n"
+
+
+
+# Check to see if the mount point is mounted.  If it is, check for open processes.
+# #instance_name:orig_dg_name:new_dg_name:volume_name:mount_point
+
+
+# Confirm the disk group isn't already imported.
+# Checking for all disk groups for ${INSTANCE}.
+# Only need the third field as that is the name of the imported disk group.
+# Second field is if disk group had name that was to be changed (like generic 'appdg01').
+# We do a sort here in the event more than one line returns (ie more than one volume per disk group)
+DGS_TO_EXPORT=`${GREP} "^${INSTANCE}:" ${CONFIG_FILE} | ${AWK} -F: '{print $3}' | ${SORT} -u`
+
+# Check that each of the disk group(s) to export are still imported.
+# root@ssmn00pk00268# vxdg -g p17rptdg free > /dev/null;${ECHO} $?
+# 0
+# root@ssmn00pk00268# vxdg -g p17comdg free > /dev/null;${ECHO} $?
+# VxVM vxdg ERROR V-5-1-607 Diskgroup p17comdg not found
+# 11
+# root@ssmn00pk00268# 
+# 
+for DG_CHECK in ${DGS_TO_EXPORT}
+do
+
+	${ECHO} "\n*** Starting to check disk group ${DG_CHECK}"
+	DG_IMPORTED=`${VXDG} list ${DG_CHECK} > /dev/null 2>&1;${ECHO} $?`
+
+	if [ "${DG_IMPORTED}" -ne "0" ] ; then
+		${ECHO} "ERROR: Disk group ${DG_CHECK} appears to not be imported."
+		${ECHO} "Output of ${VXDG} list ${DG_CHECK}"
+		${VXDG} list ${DG_CHECK}
+		${ECHO} "\n"
+		exit 255
+	fi
+
+	# Need to check for each volume in each of the disk groups.
+	# Again, ignoring the second field of Config file.
+	VOLUMES_IN_DG=`${GREP} "^${INSTANCE}:.*:${DG_CHECK}:" ${CONFIG_FILE} | ${AWK} -F: '{print $4}'`
+
+	${ECHO} "Volumes to umount/stop:  ${VOLUMES_IN_DG}"
+
+	for VOLUME in ${VOLUMES_IN_DG}
+	do
+		${ECHO} "\n*** Starting to check volume ${VOLUME} in ${DG_CHECK}"
+		MOUNT_POINT=`${GREP} "^${INSTANCE}:.*:${DG_CHECK}:${VOLUME}" ${CONFIG_FILE} | ${AWK} -F: '{print $5}'`
+		#${ECHO} "MP = ${MOUNT_POINT}, Vol is ${VOLUME} in DG: ${DG_CHECK}"
+
+		# root@ssmn00pk00268# df -k /p17combk/u09 | grep "/p17combk/u09$";echo $?
+		# /dev/vx/dsk/p17comdg/u09_new 837689344 795190810 39842427    96%    /p17combk/u09
+		# 0
+		# root@ssmn00pk00268#
+		IS_MOUNTED=`${DF} -kl ${MOUNT_POINT} | ${GREP} "${MOUNT_POINT}$" > /dev/null 2>&1;echo $?`
+
+		if [ "${IS_MOUNTED}" -ne "0" ] ; then
+			${ECHO} "ERROR: Cannot find ${MOUNT_POINT} mounted."
+			${DF} -l ${MOUNT_POINT} | ${GREP} "${MOUNT_POINT}$"
+			${ECHO} "\n"
+			exit 255
+		fi
+
+		${ECHO} "Attempting to unmount ${MOUNT_POINT}"
+		#UMOUNT_FS=`${UMOUNT} ${MOUNT_POINT} > ${ERROR_FILE} 2>&1;${ECHO} $?`
+		UMOUNT_FS=`${UMOUNT} ${MOUNT_POINT} > ${ERROR_FILE} 2>&1;${ECHO} $?`
+
+		if [ "${UMOUNT_FS}" -ne "0" ] ; then
+			${ECHO} "ERROR: Unable to ${UMOUNT} ${MOUNT_POINT}"
+			${ECHO} "Exit code was ${UMOUNT_FS}, and the error was:"
+			${CAT} ${ERROR_FILE}
+			${CAT} /dev/null > ${ERROR_FILE}
+
+			${ECHO} "${FUSER} -cu output is:"
+			${FUSER} -cu ${MOUNT_POINT}
+
+			# Get listing of offending processes.
+			HANG_PROCESS=`${FUSER} -cu ${MOUNT_POINT} 2> /dev/null`
+
+			${ECHO} "Details on offending processes hung on ${MOUNT_POINT}"
+			for PROC in ${HANG_PROCESS}
+			do
+				${PS} -ef | ${GREP} "${PROC}" | ${GREP} -v "grep"
+			done
+
+			${ECHO} "\n\n"
+			exit 255
+		else
+			${ECHO} "Umount of ${MOUNT_POINT} had exit code of zero (Success)."
+		fi
+
+		# Check again to see if it is mounted.  We would expect it to be unmounted now.
+		IS_MOUNTED=`${DF} -kl ${MOUNT_POINT} | ${GREP} "${MOUNT_POINT}$" > /dev/null 2>&1;echo $?`
+
+		if [ "${IS_MOUNTED}" -eq "0" ] ; then
+			${ECHO} "ERROR:  ${MOUNT_POINT} is still mounted."
+			${DF} -l ${MOUNT_POINT} | ${GREP} "${MOUNT_POINT}$"
+			${ECHO} "We could not unmount the file system.\n\n"
+			exit 255
+		fi
+
+		${ECHO} "*** Done with volume ${VOLUME} at ${MOUNT_POINT}"
+	done
+
+	# Now all volumes should be unmounted.  We are ready to deport the disk group.
+	${ECHO} "\nDone with all volumes in ${DG_CHECK}"
+
+	${ECHO} "\n*** Now attempting to deport disk group ${DG_CHECK}"
+
+	EXPORT_DG=`${VXDG} deport ${DG_CHECK} > ${ERROR_FILE} 2>&1;${ECHO} $?`
+
+	if [ "${EXPORT_DG}" -ne "0" ] ; then
+		${ECHO} "ERROR: Unable to export ${DG_CHECK}"
+		${ECHO} "Exit code was ${EXPORT_DG}, and the error was:"
+		${CAT} ${ERROR_FILE}
+		${CAT} /dev/null > ${ERROR_FILE}
+		${ECHO} "\n\n"
+		exit 255
+	else
+		${ECHO} "${VXDG} deport ${DG_CHECK} was successful."
+	fi
+
+done
+
+${ECHO} "Done with all disk group deporting.\n\n"
+
+# Cleanup any files we may have used.
+[ -f ${ERROR_FILE} ] && ${RM} ${ERROR_FILE}
+
+${ECHO} "Locally mounted file systems (df -kl)"
+${DF} -kl
+${ECHO} "-----------------\n"
+${ECHO} "All veritas disks. (vxdisk -o alldgs list)"
+${VXDISK} -o alldgs list
+${ECHO} "-----------------\n"
+${ECHO} "All imported Veritas disk groups. (vxdg list)"
+${VXDG} list
+${ECHO} "-----------------\n"
+${ECHO} "All disk/subdisk/volume/plex info (vxprint -ht)"
+${VXPRINT} -ht
+${ECHO} "-----------------\n"
+
+${ECHO} "Done $0 with arguments: $* at `${DATE}`"
+
+# If we have made it this far, no problems.
+exit 0

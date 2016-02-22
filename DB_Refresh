@@ -1,0 +1,256 @@
+
+k# HP on Compellent
+# Gather disk information for old VG on destination server
+raven: # vgdisplay -v vgfr10
+...
+   --- Physical volumes ---
+   PV Name                     /dev/disk/disk48
+   PV Status                   available                
+   Total PE                    799     
+   Free PE                     799     
+   Autoswitch                  On        
+   Proactive Polling           On               
+
+   PV Name                     /dev/disk/disk108
+   PV Status                   available                
+   Total PE                    639     
+   Free PE                     0       
+   Autoswitch                  On        
+   Proactive Polling           On               
+
+   PV Name                     /dev/disk/disk148
+   PV Status                   available                
+   Total PE                    6399    
+   Free PE                     0       
+   Autoswitch                  On        
+   Proactive Polling           On               
+
+   PV Name                     /dev/disk/disk158
+   PV Status                   available                
+   Total PE                    63      
+   Free PE                     0       
+   Autoswitch                  On        
+   Proactive Polling           On               
+
+   PV Name                     /dev/disk/disk229
+   PV Status                   available                
+   Total PE                    6399    
+   Free PE                     880     
+   Autoswitch                  On        
+   Proactive Polling           On    
+...
+raven: # for i in 48 108 148 158 229
+> do
+> wwid disk${i}
+> done
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000006b01
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000006b02
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000006b03
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000006b05
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000006b04
+
+# Gather disk information for source VG on source server
+sabre: # vgdisplay -v vgfrp_c
+...
+   --- Physical volumes ---
+   PV Name                     /dev/disk/disk302
+   PV Status                   available                
+   Total PE                    6399    
+   Free PE                     0       
+   Autoswitch                  On        
+   Proactive Polling           On               
+
+   PV Name                     /dev/disk/disk303
+   PV Status                   available                
+   Total PE                    63      
+   Free PE                     0       
+   Autoswitch                  On        
+   Proactive Polling           On               
+
+   PV Name                     /dev/disk/disk25
+   PV Status                   available                
+   Total PE                    639     
+   Free PE                     0       
+   Autoswitch                  On        
+   Proactive Polling           On               
+
+   PV Name                     /dev/disk/disk27
+   PV Status                   available                
+   Total PE                    6399    
+   Free PE                     880     
+   Autoswitch                  On        
+   Proactive Polling           On               
+
+   PV Name                     /dev/disk/disk29
+   PV Status                   available                
+   Total PE                    799     
+   Free PE                     799     
+   Autoswitch                  On        
+   Proactive Polling           On               
+...
+
+sabre: # for i in 302 303 25 27 29
+> do  
+> wwid disk${i}
+> done
+World Wide Identifier (WWID)                  = 0x6000d310001bea00000000000000007a
+World Wide Identifier (WWID)                  = 0x6000d310001bea00000000000000007d
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000003011
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000004db5
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000005d27
+
+# Find WWIDs of source on Compellent, create replays, and generate volumes from those replays
+# Oracle DB needs to be placed in hot backup mode prior to taking replay
+Generate replay of Volumes: provide meaningful names such as "oldserver - newdb date - volume"
+		example: "ep1q-dbor10 - mfgt10 4-2-15 - View of mfgt - arc"
+
+Generate volume from replay: provide meaningful name such as "newserver - newdb from olddb - volname - date"
+		example: "raven - msgr93 4-2-15 - View of msgr95 - arc 1 1"
+
+
+# On destination server, after DB is taken offline...
+# Determine group id for the VG group file, this will be used later to recreate the group file
+ls -ld /dev/vgname/group -> save major:minor number (0x210000)
+crw-r--r--   1 root       sys         64 0x210000 Nov 20 14:25 group
+EXAMPLE:
+raven: # ls -ltr /dev/vgfr10/group
+crw-r--r--   1 root       sys         64 0x900000 Jan 12 19:31 /dev/vgfr10/group
+
+# Unmount volumes
+raven: # for MNT in $(grep fr10 /etc/fstab | awk '{print $2}')
+do
+umount ${MNT}
+done
+
+# Deactivate the volumegroup
+vgchange -a n vg
+raven: # vgchange -a n vgfr10
+Volume group "vgfr10" has been successfully changed.
+
+# Export the VG
+vgexport vg
+raven: # vgexport vgfr10
+vgexport: Volume group "vgfr10" has been successfully removed.
+
+# Map new volumes to destination server in Compellent; compare wwids with the new volumes in Compellent
+raven: # ls -ltr /dev/disk
+...
+brw-r-----   1 bin        sys          3 0x00000c May 19 21:58 disk14
+brw-r-----   1 bin        sys          3 0x000015 May 19 21:58 disk26
+brw-r-----   1 bin        sys          3 0x000024 May 19 21:58 disk44
+brw-r-----   1 bin        sys          3 0x000025 May 19 21:58 disk50
+brw-r-----   1 bin        sys          3 0x00002b May 19 21:58 disk59
+raven: # for i in 14 26 44 50 59
+> do
+> wwid disk${i}
+> done
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000007366
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000007367
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000007368
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000007369
+World Wide Identifier (WWID)                  = 0x6000d310001bea00000000000000736a
+
+# set the vg id for all new disks so they can all be in the same vg; gives all disks the same VG ID
+raven: # vgchgid /dev/rdisk/disk14 /dev/rdisk/disk26 /dev/rdisk/disk44 /dev/rdisk/disk50 /dev/rdisk/disk59
+
+# Recreate the vg directory; was removed during export
+raven: # mkdir -m 755 /dev/vgmsgr93
+
+# generate the group file with the same major(64) and minor(0x900000) numbers
+raven: # mknod /dev/vgfr10/group c 64 0x900000
+
+# UPDATE
+vgexport -p -m mapfile.name vgname
+
+# Import the vg using the map from the production server
+raven: # vgimport -m /opt/depots/admin/jeff/vgfrp_c.map vgfr10 /dev/disk/disk14 /dev/disk/disk26 /dev/disk/disk44 /dev/disk/disk50 /dev/disk/disk59
+vgimport: Volume group "/dev/vgfr10" has been successfully created.
+Warning: A backup of this volume group may not exist on this machine.
+Please remember to take a backup using the vgcfgbackup command after activating the volume group.
+
+# rename VG lv device names to match the vg name
+raven: # ls -ltr /dev/vgfr10
+total 0
+crw-r--r--   1 root       sys         64 0x900000 May 19 22:12 group
+brw-r-----   1 root       sys         64 0x900003 May 19 22:16 lvfrpind1
+crw-r-----   1 root       sys         64 0x900003 May 19 22:16 rlvfrpind1
+brw-r-----   1 root       sys         64 0x900004 May 19 22:16 lvfrprol1
+crw-r-----   1 root       sys         64 0x900004 May 19 22:16 rlvfrprol1
+
+raven: # ls -tlr /dev/vgfr10
+total 0
+crw-r--r--   1 root       sys         64 0x900000 May 19 22:12 group
+brw-r-----   1 root       sys         64 0x900004 May 19 22:16 lvfr10rol1
+crw-r-----   1 root       sys         64 0x900004 May 19 22:16 rlvfr10rol1
+crw-r-----   1 root       sys         64 0x900003 May 19 22:16 rlvfr10ind1
+brw-r-----   1 root       sys         64 0x900003 May 19 22:16 lvfr10ind1
+
+# Activate volume group
+raven: # vgchange -a y vgfr10
+Activated volume group 
+Volume group "vgfr10" has been successfully changed.
+
+# backup the vg configuration
+raven: # vgcfgbackup vgfr10  
+Volume Group configuration for /dev/vgfr10 has been saved in /etc/lvmconf/vgfr10.conf
+
+# Fsck each lv, and mount
+raven: # fsck -y -F vxfs /dev/vgfr10/lvfr10rol1
+log replay in progress
+replay complete - marking super-block as CLEAN
+raven: # fsck -y -F vxfs /dev/vgfr10/lvfr10red1
+vxfs fsck: V-3-20837: file system had I/O error(s) on user data.
+log replay in progress
+replay complete - marking super-block as CLEAN
+...
+raven: # for MNT in $(grep fr10 /etc/fstab | awk '{print $2}')
+> do
+> mount $MNT
+> done
+raven: # bdf |grep fr10
+/dev/vgfr10/lvfr10cod1
+                   10485760 8544064 1829021   82% /fr10/oracle
+/dev/vgfr10/lvfr10data
+                   10452992 6194795 3992114   61% /fr10/data
+/dev/vgfr10/lvfr10tab1
+                   196575232 107709187 83311936   56% /fr10/d01
+/dev/vgfr10/lvfr10ind1
+                   115310592 71455395 41114272   63% /fr10/d03
+/dev/vgfr10/lvfr10rol1
+                   20971520 16799505 3911270   81% /fr10/d05
+/dev/vgfr10/lvfr10red1
+                   2064384  650793 1325293   33% /fr10/d06
+/dev/vgfr10/lvfr10arc1
+                   57671680 29777881 26150488   53% /fr10/d08
+
+
+# from Compellent, unmap old disks
+raven: # vgdisplay -v vgfr10
+raven: # for i in 48 108 148 158 229
+> do
+> wwid disk${i}
+> done
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000006b01
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000006b02
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000006b03
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000006b05
+World Wide Identifier (WWID)                  = 0x6000d310001bea000000000000006b04
+
+# Search for LUNs no longer mapped with the ioscan and remove 'special files'
+raven: # ioscan -fNC disk |grep NO
+disk     48  64000/0xfa00/0xe   esdisk   NO_HW       DEVICE       COMPELNTCompellent Vol
+disk    108  64000/0xfa00/0x18  esdisk   NO_HW       DEVICE       COMPELNTCompellent Vol
+disk    148  64000/0xfa00/0x35  esdisk   NO_HW       DEVICE       COMPELNTCompellent Vol
+disk    158  64000/0xfa00/0x41  esdisk   NO_HW       DEVICE       COMPELNTCompellent Vol
+disk    229  64000/0xfa00/0x57  esdisk   NO_HW       DEVICE       COMPELNTCompellent Vol
+raven: # rmsf -a /dev/disk/disk48
+raven: # rmsf -a /dev/disk/disk108
+raven: # rmsf -a /dev/disk/disk148
+raven: # rmsf -a /dev/disk/disk158
+raven: # rmsf -a /dev/disk/disk229
+
+# for quick scripting
+raven # for DISK in $(ioscan -fNC disk |grep NO | awk '{print $2}')
+do
+rmsf -a /dev/disk/disk${DISK}
+done

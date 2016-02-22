@@ -1,0 +1,28 @@
+#disk queues/service-times (capture to a file for several minutes)
+iostat -xn 10
+
+#Clear the NFS stat accumulators
+nfsstat -z
+
+#NFS server stats (capture once every few minutes and note trends) 
+nfsstat -rc
+
+#Check disk queues (capture for 5-10 minutes if possible and note any high waiting and blocking %-ages)
+iostat -D 5
+
+#Kernel values (pay particular attention to the “total name lookups” hit rate)
+vmstat –s
+
+#Show NFS server threads currently in use:
+echo '$<threadlist'|mdb -k|grep svc_run|grep -v grep |wc -l
+(Note that the maximum number of threads is the value supplied at runtime: nfsd –a <maxthreads> )
+
+
+#It’s also good to take a look at an affected NFS client system:
+
+#Clear the counters:
+nfsstat -z
+
+#And then capture values once every few minutes and note trends - DO THIS ON THE CLIENT SIDE ONLY
+nfsstat -rc
+

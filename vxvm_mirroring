@@ -1,0 +1,51 @@
+SUMMARY
+vxdg -g <disk_group> adddisk <disk_name>=<Device Name> 
+vxdg -g <disk_group> free
+
+vxassist -g <disk_group> -U fsgen mirror <vol> layout=stripe stripeunit=64k nstripe=<stripe_cols> <diskname>.. & 
+     (or vxassist -g <dg> -U fsgen mirror <vol> <diskname> & for concatenated) 
+
+vxassist -g <disk_group> mirror <vol> layout=concat diskname & - will mirror a striped volume to a concat disk
+
+vxtask -l list 
+vxtask -h list
+
+vxplex -g <dsikgroup> dis <old_plex_name> 
+vxedit -g <diskgroup> -rf rm <old_plex> 
+or
+vxplex -g <diskgroup> -o rm dis <old_plex_name>
+
+vxdg -g <diskgroup> rmdisk <disk_name>...
+/usr/lib/vxvm/bin/vxdiskunsetup <Device Name> 
+
+/opt/jni/ezfibre/standalone/ezf & - disassociate old luns.
+devfsadm -C 
+vxdctl enable 
+
+Example:
+vxassist -g g23hcmbkdg -U fsgen mirror g23hcmbk layout=stripe stripeunit=128k nstripe=4 newdisk1 newdisk2 newdisk3 newdisk4
+vxassist -g g23hcmdg -U fsgen mirror u13 layout=stripe stripeunit=128k nstripe=4 newdisk1 newdisk2 newdisk3 newdisk4
+vxassist -g m23hcmbkdg -U fsgen mirror m23hcmbk layout=stripe stripeunit=128k nstripe=4 newdisk1 newdisk2 newdisk3 newdisk4
+vxassist -g m23hcmdg -U fsgen mirror u14 layout=stripe stripeunit=128k nstripe=4 newdisk1 newdisk2 newdisk3 newdisk4
+vxtask list
+
+after vxtask list shows all plex mirrroring completed:
+vxplex -g g23hcmbkdg dis g23hcmbk-01 - disassociates the plex from the dg
+vxedit -g g23hcmbkdg -rf rm g23hcmbk-01 - removes the plex from the dg
+
+or
+
+vxpleg -g g23hcmdg -o rm dis g23hcmbk-01 - will disassociates the plex and remove it in one command
+
+vxdg -g g23hcmbkdg rmdisk g23hcmbkdg01 g23hcmbkdg02 g23hcmbkdg03 g23hcmbkdg04
+vxdg -g g23hcmdg rmdisk g23hcmdg01 g23hcmdg02 g23hcmdg03 g23hcmdg04
+vxdg -g m23hcmbkdg rmdisk m23hcmbkdg01 m23hcmbkdg02 m23hcmbkdg03 m23hcmbkdg04
+vxdg -g m23hcmdg rmdisk m23hcmdg01 m23hcmdg02 m23hcmdg03 m23hcmdg04
+/etc/vx/bin/vxdiskunsetup c2t0d43 c2t0d44 c2t0d45 c2t0d46
+/etc/vx/bin/vxdiskunsetup c2t0d79 c2t0d80 c2t0d81 c2t0d82
+/etc/vx/bin/vxdiskunsetup c2t0d67 c2t0d68 c2t0d69 c2t0d70
+/etc/vx/bin/vxdiskunsetup c2t0d87 c2t0d88 c2t0d89 c2t0d90
+
+/opt/jni/ezfibre/standalone/ezf &
+devfsadm -C 
+vxdctl enable

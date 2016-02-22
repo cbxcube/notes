@@ -1,0 +1,9 @@
+vxfencoordg imported on one host - not good
+Reboot is not needed, but you will want to stop the application
+hastop -all
+/opt/VRTSvcs/vxfen/bin/vxfenclearpre - only on the node that vxfencoorddg is imported on
+/etc/rc2.d/S97vxfen stop
+vxdg -tCf import vxfencoorddg
+vxdg deport vxfencoorddg
+/etc/rc2.d/S97vxfen start - both nodes
+hastart

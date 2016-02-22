@@ -1,0 +1,277 @@
+#To update Hosts in Nagios
+ssh ux330
+cd /usr/local/nagios/etc
+sudo co -l hosts.cfg     #checks out hosts.cfg in version control
+sudo vi hosts.cfg
+
+find your host and update
+# out or remove the entire stanza, not just one line
+add new host
+
+sudo ci -u hosts.cfg	#checks hosts.cfg back in in version control
+
+#Restart Nagios
+sudo /etc/init.d/nagios restart
+
+
+######NAGIOS INSTALL#######
+vi /etc/sysconfig/network-scripts/ifcfg-eth0
+DEVICE=eth0
+BOOTPROTO=dhcp
+HWADDR=00:50:56:B6:76:B3
+DHCP_HOSTNAME=ply-nagios-01
+ONBOOT=yes
+
+yum install httpd php
+yum install gcc glibc glibc-common
+yum install gd gd-devel
+yum install sendmail sendmail-cf
+useradd -m nagios
+passwd nagios
+groupadd nagcmd
+usermod -a -G nagcmd nagios
+usermod -a -G nagcmd apache
+
+unzip nagios-3.4.1.tar.gz
+cd nagios
+./configure --with-command-group=nagios
+make all
+make install
+make install-init
+make install-config
+make install-commandmode
+
+update nagios config files
+
+make install-webconf
+htpasswd -c /usr/local/nagios/etc/htpasswd.users nagiosadmin
+service httpd restart
+
+unzip nagios-plugins
+cd nagiols-plugins-1.4.16
+./configure --with-nagios-user=nagios --with-nagios-group=nagios
+make
+make install -> might have to edit the plugins/httpd_conf.c file to move the "int ssl_version;" line outside of the "#ifdef HAVE_SSL" fucntion
+
+chkconfig --add nagios
+chkconfig nagios on
+
+/usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg -> verify config files are correct
+
+service nagios start
+
+disable selinux
+setenforce 0
+vi /etc/selinux/config -> set SELINUX=disabled
+
+shutdown iptables
+service iptables stop; chkconfig iptables off
+
+#install nrpe-server-plugin
+unzip nrpe plugin tgz
+cd nrpe-2.13
+yum install openssl-devel mod-ssl
+yum install xinetd
+./configure
+make all
+make install
+make install-plugin
+make install-daemon
+make install-daemon-config
+make install-xinetd
+
+vi /etc/xinetd.d/nrpe
+# default: on
+# description: NRPE
+service nrpe {
+	flags = REUSE
+	socket_type = stream
+	wait = no
+	user = nagios
+	server = /usr/local/nagios/libexec/nrpe
+	server_args = -c /usr/local/nagios/libexec/nrpe.cfg --inetd
+	log_on_failure += USERID
+	disable = no
+	# Change this to your primary Nagios server
+	only_from = 127.0.0.1
+}
+add "nrpe  5666/tcp	#NRPE" to /etc/services
+
+
+adjust the commands in /usr/local/nagios/etc/nrpe.cfg
+  command[check_users]=/usr/local/nagios/libexec/check_users -w 5 -c 10
+  command[check_load]=/usr/local/nagios/libexec/check_load -w 15,10,5 -c 30,25,20
+  command[check_hda1]=/usr/local/nagios/libexec/check_disk -w 20% -c 10% -p /dev/hda1
+  command[check_sda1]=/usr/local/nagios/libexec/check_disk -w 20% -c 10% -p /dev/sda1
+  command[check_root]=/usr/local/nagios/libexec/check_disk -w 20% -c 10% -p /dev/mapper/ply--bkup--01-root
+  command[check_bkupdsk]=/usr/local/nagios/libexec/check_disk -w 20% -c 10% -p /dev/mapper/vgbackuppc-lvbackuppc
+  command[check_all_disks]=/usr/local/nagios/libexec/check_disk -w 20% -c 10% -A
+  command[check_zombie_procs]=/usr/local/nagios/libexec/check_procs -w 5 -c 10 -s Z
+  command[check_total_procs]=/usr/local/nagios/libexec/check_procs -w 150 -c 200 
+
+
+#Turn on SSL
+yum install openssl-devel mod-ssl
+vi /etc/httpd/conf.d/nagios.conf -> add "SSLRequireSSL" into the <Directory "/usr/local/nagios/sbin"> and <Directory "/usr/local/nagios/share"> stanzas
+restart httpd and nagios
+
+#Update Sendmail to use smtp.paisley.com and masquerade as @paisley.com
+vi /etc/mail/sendmail.mc
+append the following lines:
+MASQUERADE_AS(paisley.com)dnl
+FEATURE(masquerade_envelop)dnl
+FEATURE(masquerade_entire_domain)dnl
+MASQUERADE_DOMAIN(paisley.com)dnl
+
+recompile sendmail.cf:
+m4 /etc/mail/sendmail.mc > /etc/mail/sendmail.cf
+
+vi /etc/mail/sendmail.cf
+change DS to DSsmtp.paisley.com
+
+#NAGIOSGRAPH
+unzip nagiosgraph-1.4.4.tgz
+cd nagiosgraph-1.4.4
+./install.pl --check-prereq
+yum install perl-rrdtool perl-GD
+yum install perl-Time-HiRes
+http://nagiosgraph.svn.sourceforge.net/viewvc/nagiosgraph/trunk/nagiosgraph/INSTALL
+./install.pl --check-prereq
+./install.pl --layout overlay --prefix /usr/local/nagios
+OR
+Manual install
+Recipe for Manual Installation
+------------------------------
+
+These instructions assume an overlay layout, with nagios at /usr/local/nagios
+
+ - Extract nagiosgraph into a temporary location:
+     cd /tmp
+     tar xzvf nagiosgraph-x.y.z.tgz
+
+ - Copy the contents of etc into your preferred configuration location:
+     mkdir /etc/nagiosgraph
+     cp etc/* /etc/nagiosgraph
+
+ - Edit the perl scripts in the cgi and lib directories, modifying the
+   "use lib" line to point to the directory from the previous step.
+     vi cgi/*.cgi lib/insert.pl
+
+ - Copy insert.pl to a location from which it can be executed:
+     cp lib/insert.pl /usr/local/nagios/libexec
+
+ - Copy CGI scripts to a script directory served by the web server:
+     cp cgi/*.cgi /usr/local/nagios/sbin
+
+ - Copy CSS and JavaScript files to a directory served by the web server:
+     cp share/nagiosgraph.css /usr/local/nagios/share
+     cp share/nagiosgraph.js /usr/local/nagios/share
+
+ - Edit /etc/nagiosgraph/nagiosgraph.conf.  Set at least the following:
+     logfile           = /var/log/nagiosgraph.log
+     cgilogfile        = /var/log/nagiosgraph-cgi.log
+     perflog           = /var/nagios/perfdata.log
+     rrddir            = /var/nagios/rrd
+     mapfile           = /etc/nagiosgraph/map
+     nagiosgraphcgiurl = /nagios/cgi-bin
+     javascript        = /nagios/nagiosgraph.js
+     stylesheet        = /nagios/nagiosgraph.css
+
+ - Set permissions of "rrddir" (as defined in nagiosgraph.conf) so that
+   the *nagios* user can write to it and the *www* user can read it:
+     mkdir /var/nagios/rrd
+     chown nagios /var/nagios/rrd
+     chmod 755 /var/nagios/rrd
+
+ - Set permissions of "logfile" so that the *nagios* user can write to it:
+     touch /var/log/nagiosgraph.log
+     chown nagios /var/log/nagiosgraph.log
+     chmod 644 /var/log/nagiosgraph.log
+
+ - Set permissions of "cgilogfile" so that the *www* user can write to it:
+     touch /var/log/nagiosgraph-cgi.log
+     chown www /var/log/nagiosgraph-cgi.log
+     chmod 644 /var/log/nagiosgraph-cgi.log
+
+ - Ensure that the *nagios* user can create and delete perfdata files:
+     chown nagios /var/nagios
+     chmod 755 /var/nagios
+
+ - In the Nagios configuration file (nagios.cfg) add this:
+
+     process_performance_data=1
+     service_perfdata_file=/var/nagios/perfdata.log
+     service_perfdata_file_template=$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$
+     service_perfdata_file_mode=a
+     service_perfdata_file_processing_interval=30
+     service_perfdata_file_processing_command=process-service-perfdata
+
+ - In the Nagios commands file (commands.cfg) add this:
+
+     define command {
+       command_name  process-service-perfdata
+       command_line  /usr/local/nagios/libexec/insert.pl
+     }
+
+ - Check the nagios configuration
+
+     /usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg
+
+ - Restart nagios
+
+     /etc/init.d/nagios restart
+
+ - Verify that nagiosgraph is working by running showconfig.cgi
+
+     http://server/nagios/cgi-bin/showconfig.cgi
+
+ - Try graphing some data by running show.cgi
+
+     http://server/nagios/cgi-bin/show.cgi
+
+ - In the Nagios configuration, add a template for graphed services:
+
+     define service {
+       name graphed-service
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/cgi-bin/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450+-j
+       register 0
+     }
+
+ - Enable graph links for services by appending the graphed-service to existing
+   service definitions in the Nagios configuration:
+
+     define service {
+       use local-service,graphed-service
+       ...
+     }
+
+ - Replace the Nagios action icon with the nagiosgraph graph icon:
+     mv /usr/local/nagios/share/images/action.gif /usr/local/nagios/share/images/action.gif-orig
+     cp share/graph.gif /usr/local/nagios/share/images/action.gif
+
+ - In the nagiosgraph SSI file, set the URL for nagiosgraph.js:
+     vi share/nagiosgraph.ssi
+     src="/nagiosgraph/nagiosgraph.js"   ->    src="/nagios/nagiosgraph.js"
+
+ - Install the nagiosgraph SSI file:
+     cp share/nagiosgraph.ssi /usr/local/nagios/share/ssi/common-header.ssi
+
+ - Add links to graphs in the Nagios sidebar (side.php or side.html):
+
+<ul>
+<li><a href="/nagios/cgi-bin/show.cgi" target="main">Graphs</a></li>
+<li><a href="/nagios/cgi-bin/showhost.cgi" target="main">Graphs by Host</a></li>
+<li><a href="/nagios/cgi-bin/showservice.cgi" target="main">Graphs by Service</a></li>
+<li><a href="/nagios/cgi-bin/showgroup.cgi" target="main">Graphs by Group</a></li>
+</ul>
+
+ - Check the nagios configuration
+
+     /usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg
+
+ - Restart nagios
+
+     /etc/init.d/nagios restart
+restart nagios
+restart apache
+

@@ -1,0 +1,70 @@
+exec > /home/uss/u28ts04/ldap_group_and_netgroup_cleanup.txt
+
+YPCAT_PASSWD=/tmp/ypcat.tmp.$$
+WORKFILE=/tmp/workfile
+
+ypcat passwd > $YPCAT_PASSWD
+
+
+# Get all groups and sort them
+
+for GROUP in `ypcat -k group |awk '{print $1}'|sort`
+do
+# Capture members of the group
+ID="beginning"
+for MEMBER in `ldaps -G ${GROUP}|grep memberUid | awk '{print $2}'`
+do
+
+# Build list of IDs of the group.
+
+ID="$ID:|$MEMBER"
+done
+
+#Find *DISABLE* accounts and write to file
+
+egrep "$ID" $YPCAT_PASSWD|grep DISABLE >> $WORKFILE
+
+# If workfile has no size then skip reporting on this GROUP.
+
+ if [ -s $WORKFILE ]; then
+    echo GROUP: $GROUP
+    cat $WORKFILE   
+    echo " "
+    > $WORKFILE
+ fi
+done
+
+
+# Get all netgroups
+
+for NETGROUP in `ypcat -k netgroup |awk '{print $1}'|egrep -v "^all" | sort`
+do
+# Capture members of the netgroup
+ID="beginning"
+for MEMBER in `ldaps -N ${NETGROUP}|grep nisnetgroup | cut -d, -f2`
+do
+# Build list of IDs of the group.
+
+ID="$ID:|$MEMBER"
+done
+
+#Find *DISABLE* accounts and write to file
+
+egrep $ID $YPCAT_PASSWD|grep DISABLE >> $WORKFILE
+
+# If workfile has no size then skip reporting on this NETGROUP.
+
+ if [ -s $WORKFILE ]; then
+    echo NETGROUP: $NETGROUP
+    cat $WORKFILE 
+    echo " "
+    > $WORKFILE
+ fi
+
+
+done
+
+
+
+
+rm $YPCAT_PASSWD

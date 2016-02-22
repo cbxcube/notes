@@ -1,0 +1,52 @@
+#ZFS
+
+#Recover root password on zpool when not running on disk
+ok> boot net -s
+#zpool import -f rpool
+#zfs get mountpoint
+#zfs set mountpoint=legacy rpool/ROOT/10_1009
+#mount -F zfs rpool/ROOT/10_1009 /mnt
+REPAIR STUFF
+#umount /mnt
+#zpool export rpool
+
+
+#destroy all snapshots
+for snapshot in `zfs list -H -t snapshot | egrep '2011' | awk '{print $1}'`; do zfs destroy $snapshot; done
+
+#create snapshot
+zfs snapshot -r rpool@`date +%Y%m%d`
+
+zpool create poolname c0t0d0s4
+
+zpool attach 
+
+#Create new zfs file system:
+	zfs create -o mountpoint=/var/core -o quota=2G -o reservation=2G pools4/core
+	  Creates zfs in zpool pools4 called core which can use no more than 2Gb and always
+	   has 2Gb available and with a mount point of /var/core
+
+#Mount zfs file system
+	zfs mount pools4/core
+	  mounts pools4/core to whichever mountpoint it has been assigned
+ 
+
+#Mirror for SAN Migration:
+	shutdown zones prior to this:
+	Create New pool with SAN:
+		zpool creat newpool SAN_disk1 SAN_disk1 etc...
+	Make a recusive snapshot that will be used to migrate the data:
+		zfs snapshot -r pool_toclone@migrate01
+	Recursive Send/Receive that copies the snapshot data to the new SAN:
+		zfs send -R pool_toclone@migrate | zfs receive -Fdvu newpool
+	Make a second snapshot:
+		zfs snapshot -r pool_toclone@migrate02
+	Second Send/Receive to get everything up to date (a rsync delta):
+		zfs send -R -i  pool_toclone@migrate02 | zfs receive -dvu newpool
+	Rename the pools:
+		zpool export pool_toclone
+		zpool export newpool
+		zpool import pool_toclone pool_toclone_OLD  - will import pool_toclone with a new name of pool_toclone_OLD
+		zpool export pool_toclone_OLD - this will prevent the zone root from being in use when you reimport the new pool
+		zpool import newpool pool_toclone - will import newpool with the name pool_toclone
+	

@@ -1,0 +1,40 @@
+###T5220###
+SUNSP00144F97F9C7 login: root
+Password: changeme
+-> start /SP/console
+-> start /SYS
+##setup sc port
+-> cd /SP
+-> set hostname=servernamesc
+-> cd /SP/network
+-> set pendingipdiscovery=static
+-> set pendingipgateway=ip.gat.ew.ay
+-> set pendingipaddress=ip.for.sc.add
+-> set pendingipnetmask=sc.net.mask.ip
+-> set commitpending=true
+reset /SP
+###To create the admin sc account:
+-> create /SP/users/admin role=Administrator cli_mode=alom
+
+
+Or
+
+SUNSP00144F97F9C7 login: admin
+Password: 
+sc> setupsc - sets up sc ethernet connection
+
+sc> console - sends to console
+sc> break - sends break to OS
+
+need to "init 0" from OS to get to <ok> prompt
+
+/SYS/start - poweron the system remotely
+
+
+
+
+
+
+
+
+

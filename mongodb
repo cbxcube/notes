@@ -1,0 +1,106 @@
+https://docs.mongodb.org/v3.2/tutorial/
+
+# Install
+vim /etc/yum/pluginconf.d/rhnplugin.conf
+ append the following:
+ [mongodb-org-3.2-rhel6-x86_64-jan2016]
+ gpgcheck = 0
+# NEED TO CHANGE THE FUTURE MONGODB CHANNEL LABEL TO BE PERSISTENT
+
+cat <<EOF>> /etc/rc.d/init.d/disable-transparent-hugepages
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          disable-transparent-hugepages
+# Required-Start:    $local_fs
+# Required-Stop:
+# X-Start-Before:    mongod mongodb-mms-automation-agent
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Disable Linux transparent huge pages
+# Description:       Disable Linux transparent huge pages, to improve
+#                    database performance.
+### END INIT INFO
+
+case \$1 in
+  start)
+    if [ -d /sys/kernel/mm/transparent_hugepage ]; then
+      thp_path=/sys/kernel/mm/transparent_hugepage
+    elif [ -d /sys/kernel/mm/redhat_transparent_hugepage ]; then
+      thp_path=/sys/kernel/mm/redhat_transparent_hugepage
+    else
+      return 0
+    fi
+
+    echo 'never' > \${thp_path}/enabled
+    echo 'never' > \${thp_path}/defrag
+
+    unset thp_path
+    ;;
+esac
+EOF
+chkconfig --add disable-transparent-hugepages
+
+cat <<EOF>> /etc/security/limits.d/95-mongodb.conf
+mongod          soft    nproc     64000
+mongod          hard    nproc     64000
+EOF
+
+vim /etc/grub.conf; append "transparent_hugepage=never" to kernel line
+
+shutdown -r now
+
+rhn-channel -a -c mongodb-org-3.2-rhel6-x86_64-jan2016
+rhn-channel -a -c rhel-x86_64-server-sfs-6.7.z-jan2016
+
+yum -y install xfsdump xfsprogs
+
+pvcreate /dev/sdb
+vgcreate vg_scstage /dev/sdb
+lvcreate -n lv_scstage -l 100%FREE /dev/vg_scstage
+mkfs -t xfs /dev/vg_scstage/lv_scstage
+mkdir -m 755 /scstage
+vim /etc/fstab; append:
+ # Sitecore MongoDB
+ /dev/mapper/vg_scstage-lv_scstage       /scstage        xfs     defaults        1 2
+mount /scstage
+
+yum -y install mongodb-org
+chown mongod:mongod /scstage
+
+vim /etc/mongod.conf; change the following:
+  dbPath: /scstage
+#  bindIp: 127.0.0.1
+replication:
+  replSetName: scstage
+
+on the Arbiter, change 'port:' to 27019
+
+service mongod start
+
+mongo
+
+rs.initiate(); initiates replica set
+
+rs.conf(); displays configuration
+
+rs.add("ep1q-dbmongo03.starkey.com"); second node
+
+rs.status();
+
+rs.addArb("ep1q-dbmongo01.starkey.com:27019"); adds ep1q-dbmongo01.starkey.com:27019 as the arbiter
+
+https://docs.mongodb.org/v3.0/tutorial/deploy-replica-set/
+https://docs.mongodb.org/v3.0/tutorial/add-replica-set-arbiter/
+for connection string:
+https://docs.mongodb.org/v3.0/reference/connection-string/
+  <add name="analytics" connectionString="mongodb://username:password@server1:27017, server2:27017/databaseName/?replicaSet=replSetName" />
+where:
+ "server1" = ep1q-dbmongo02.starkey.com
+ "server2" = ep1q-dbmongo03.starkey.com
+ databaseName = name of database being hosted
+ replSetName = name of replica set as set in /etc/mongod.conf
+
+for encryption:
+https://blog.istern.dk/2014/05/01/encrypting-and-securing-your-sitecore-connenction-strings/
+
+

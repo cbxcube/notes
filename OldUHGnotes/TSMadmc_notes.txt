@@ -1,0 +1,8 @@
+dsmadmc
+	userid: utility
+	passwd: jul20
+
+
+dsmadmc -servername=tsm-ora - log into the tsm-ora configuration
+q actlog begind=-1 begint=00:00 search=dbsz8031 - search log file starting yesterday at 00:00am for dbsc8031
+q actlog search=dbsz8031 - search recent log file for dbsz8031

@@ -1,0 +1,40 @@
+TSM configuration:
+
+/opt/tivoli/tsm/client/bin/ba
+dsm.sys
+SErvername    pbu43
+   COMMmethod           TCPip
+   TCPServeraddress     tsmetc100.uhc.com
+*   TCPServeraddress    10.222.104.31
+   TCPPort              28043
+   TCPClientAddress     iexwfmd.uhc.com
+   TCPWindowsize        256
+   TCPBuffsize          32
+ 
+   NODEname             iexwfmd
+   PASSWORDAccess       GENERATE
+   INCLEXCL             /opt/tivoli/tsm/client/ba/bin/inclexcl
+   SCHEDLOGname         /var/tsm/logs/dsmsched.log
+   SCHEDLOGRetention    5
+   ERRORLOGname         /var/tsm/logs/dsmerror.log
+   ERRORLOGRetention    33
+
+dsm.opt
+* SErvername       A server name defined in the dsm.sys file
+SErvername      pbu43
+
+dsmc q sched - displays backup schedule
+dsmc - takes you to the TSM prompt
+first time dsmc is run, you will be prompted for a password: ETC servers=servernameetc; 
+
+verify backups are using the backup interface:
+traceroute tsmserver - displays hops, should indicate using backup interface, IP
+if not using backup interface, add a static route:
+route add host TSM_Server_IP Client_BU_Gateway
+netstat -rn - should show the new static route
+
+Add the static route to the startup route S99 file S99routes:
+vi /etc/rcS.d/S99routes
+/usr/sbin/route add host TSM.Server.IP.Address Client.BU.Gateway.IP
+:wq!
+

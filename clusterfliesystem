@@ -1,0 +1,48 @@
+INSTALLATION:
+1) Import New LUNs and bind them to the controller:
+    log onto each server (ssmn00pk00264, ssmn00pk00265, ssmn00pk00266) and switch to root:
+    scli -> option 7 (Target persistent binding) -> option 1 (view bindings) -> verify current bindings for each HBA 
+      -> option 5 (return to previous menu) -> option 2 (bind targets) -> option 2 (bind all targets) 
+      -> Option 0 (return to main menu) -> 16 (quit)
+2) Label new disks:
+    devfsadm -v
+    echo |format | more - see new LUNs unlabeled
+    for i in 31 32 33
+    do
+      format c3t0d${i} < /tmp/q - /tmp/q contains two letters, "l" and "y"
+    done
+***THE NEXT STEPS WILL BE DONE FROM THE CLUSTER MASTER SERVER (vxdctl -c mode from any node will display the master)***
+3) Pull the new disks under Veritas control, and add them to the disk groups:
+    vxdisk scandisks
+    for i in 31 32 33
+    do
+      /etc/vx/bin/vxdisksetup -i c3t0d${i}
+    done
+    vxdg -g symprddg adddisk c3t0d31s2
+    vxdg -g oracle1020dg adddisk c3t0d32s2
+    vxassist -g oracle1020dg make d08 `vxassist -g oracle1020dg maxsize c3t0d32s2` c3t0d32s2
+    vxedit -g oracle1020dg set user=oracle group=oinstall d08
+    vxresize -g symprddg b_01 +`vxassist -g symprddg maxsize c3t0d31s2` c3t0d31s2
+4) Add the new RAW volume into the cluster:
+    haconf -makerw
+    hares -modify oracle1020dg_voldg CVMVolume d01 d02 d03 d04 d05 d06 d07 d08
+    haconf -dump -makero
+    
+BACKOUT:
+1) Remove the new RAW Volume from the cluster:
+    haconf -makerw
+    hares -modify oracle1020dg_voldg CVMVolume d01 d02 d03 d04 d05 d06 d07
+    haconf -dump -makero
+2) Remove the new RAW volume and shrink b_01 to it's original size
+    vxassist -g oracle1020dg remove volume d08
+    vxresize -g symprddg b_01 -209616640
+    vxdg -g symprddg rmdisk c3t0d31s2
+    for i in 31 32 33
+    do
+      /etc/vx/bin/vxdiskunsetup c3t0d${i}
+    done
+    for i in 31 32 33
+    do
+      vxdisk rm c3t0d${i}s2
+    done
+

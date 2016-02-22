@@ -1,0 +1,7 @@
+#!/usr/bin/ksh
+i=1
+while (i)
+do
+	read(j)
+	print("%s ",j)
+done

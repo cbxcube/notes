@@ -1,0 +1,327 @@
+#NIC MAC Address
+netstat -ia
+entstat -d ent(#) | grep "Hardware Address"
+
+#Create file system
+  crfs -v 'fstype' -g 'vol_group' -m '/mountpoint' -A 'yes' -p'rw' -a agblksize='4096'
+      -A - mount at boot?
+    OR
+  crfs -v 'fstype' -d'logical_vol' -m'mountpoint' -A 'yes' -p'rw' -a agblksize='4096'
+
+
+#failing patch
+  instfix -ciqk 5300-12_AIX_ML | grep :-:
+
+#Increase paging space (swap)
+  chps -s 32 hd6 - adds 32 LP's to hd6 which is normally the paging LV
+  chps -d 32 hd6 - removes 32 LP's from hd6
+
+#Remove file system
+  umount /mountpoint - umount file system before destroying the lv
+  rmfs -r /mountpoint - will destroy the file system and lv
+
+#Mksysb
+  mount ux230:/export/backups /mnt
+  mksysb -i /mnt/ux440_upgrade_mksysb
+
+#Maint boot off NIM
+    ux230: smitty nim_mac_op - select the client, and select the spot -> hit enter
+	if this fails, from command line:
+		nim -Fo reset clientname
+		nim -o deallocate -a subclass=all clientname
+		smitty nim_mac_op
+    boot client to SMS
+
+
+#Unmirroring disks:
+    unmirrorvg rootvg hdisk1 - will remove hdisk1 from the rootvg mirror
+    lsvg -l rootvg - if LPs are equal, mirror is broken
+    lspv hdisk1
+    reducevg rootvg hdisk1 - will remove hdisk1 from rootvg
+    lspv - hdisk1 should not be part of any vg
+    rmdev -dl hdisk1 - will prepare the server for pulling hdisk1
+    Identify the correct drive to pull:
+  	run: diag
+	  Select Task selection
+	  Select Hot Plug Task
+	  Select RAID Hot Plug Devices
+	  Select your array adapter and hit F7 to commit
+	  Select "Identify a Device Attached to a SCSI Hot Swap Enclosure Device"
+	  <enter> a second time
+	  Select the drive you are replacing and hit enter
+	  The diag led will be lit on the drive you selected which will help you find which drive to pull
+    Physically replace the disk
+    cfgmgr -v
+    lsdev | grep hdisk - verify new disk is visible
+    lspv - hdisk1 should say none, meaning not associated with a vg
+    extendvg datavg hdisk1 - extends datavg onto hdisk1
+      If this fails saying the following:
+        0516-1162 extendvg: Warning, The Physical Partition Size of 128 requires the
+                creation of 1093 partitions for hdisk0.  The limitation for volume group
+                datavg is 1016 physical partitions per physical volume.  Use chvg command
+                with -t option to attempt to change the maximum Physical Partitions per
+                Physical volume for this volume group.
+        0516-792 extendvg: Unable to extend volume group.
+      run: chvg -t 2 datavg; then rerun the extendvg command.
+    mirrorvg datavg hdisk1 - creates a mirror of datavg onto hdisk1
+
+
+#Raw volumes:
+    Create volume:
+	mklv -y 'lvname' -t'sybase' volumegroup PP's
+	  example:
+		mklv -y'cwtprdg_ustmp02' -t'sybase' cc2103vg 16 - create the cwtprdg_ustmp02 volume on cc2103vg using 16PP's
+	chown sybaseg:database /dev/cwtprdg_ustmp02 /dev/rcwtprdg_ustmp02 - change ownership for the raw devices
+	ls -ltr /dev | grep ustmp02 - verify the raw devices exist and have the correct ownership
+
+    Remove volume:
+	lsvg cc2103vg | grep FREE - initially see how many PP's are free
+	rmlv -f 'lvname'
+	  example:
+		rmlv -f 'cwtprdg_ustmp02' - removes the volume
+	lsvg cc2103vg | grep FREE - should have 16 more PP's this time
+	lsvg -l cc2103vg | grep ustmp - verify cwtprdg_ustmp02 no longer exists
+	ls -ltr /dev | grep ustmp02 - device files should no longer exist
+
+
+#Recycle sshd:
+	refresh -s sshd
+	stopsrc -s sshd;startsrc -s sshd
+
+
+#NIS Ypbind:
+Verify LDAP is not configured:
+	view /etc/security/ldap/ldap.cfg
+	If ldapservers is configured and uncommented, LDAP is configured.  If not then it's local or NIS
+recycle yp:
+	stopsrc -s ypbind;sleep 5;startsrc -s ypbind
+
+
+
+#LPAR ASMI display:
+  HMC Console
+  Service Applications
+  Service Focal Point
+    Service Utilities
+      Highlight server, serial number
+        click Selected, select "Launch ASM Menu..."
+	  UserID: admin; Password: uhgadm
+
+#Firmware version:
+  prtconf
+
+
+#Snap file:
+  snap -r - removes any old snap files
+  snap -cg - creates new snap file
+  /tmp/ibmsupt - snap file repository
+
+
+#add nim server to client:
+smitty nim
+  Configure Network Installation Management Client Fileset
+    Machine Name = server you are working on
+    Primary Network Install Interface = F4, primary
+    Host Name of Network Install Master = nima8001 (ply); 
+    Communication Protocol used by client = nimsh
+
+
+#add filesets:
+oslevel -s - to find current version of OS
+smitty nim
+  Install and Update Software
+    Install and Update from ALL Available Software
+      Select current version of OS resource
+        Select package to be installed - F4 to create list of available packages, use "/" to search
+	run as "Preview only" first time to check for errors
+	run with "Preview only = off" and watch for errors
+
+
+#lsvg - displays volume groups
+   jjoh105 (1) => lsvg
+   rootvg
+   raid0vg
+   raid1vg
+
+
+#lsvg volume - displays volumes configuration
+  zuhl #lsvg rootvg
+  VOLUME GROUP:   rootvg                   	VG IDENTIFIER:  	0006391a00004c00000000f3de7cdfcf
+  VG STATE:       	active                   	PP SIZE:        	64 megabyte(s)
+  VG PERMISSION:  	read/write               	TOTAL PPs:      	1084 (69376 megabytes)
+  MAX LVs:        	256                      	FREE PPs:       	150 (9600 megabytes)
+  LVs:           		20                       	USED PPs:      	934 (59776 megabytes)
+  OPEN LVs:       	18                       	QUORUM:         	1
+  TOTAL PVs:      	2                        	VG DESCRIPTORS:3
+  STALE PVs:      	0                        	STALE PPs:      	0
+  ACTIVE PVs:     	2                        	AUTO ON:        	yes
+  MAX PPs per PV: 	1016                     	MAX PVs:        	32
+  LTG size:       		128 kilobyte(s)          	AUTO SYNC:      	no
+  HOT SPARE:      	no
+
+
+#lsvg -p volume - displays volumeÆs physical partitions.
+  zuhl #lsvg -p rootvg
+  rootvg:
+  PV_NAME           	PV STATE          	TOTAL PPs   	FREE PPs    	FREE DISTRIBUTION
+  hdisk0            		active            		542         	90          	  00..00..00..05..85
+  hdisk1            		active            		542         	60          	  00..00..00..06..54
+
+
+#lscfg -vl fcs0 | grep Network  - displays the WWN for HBA 0
+
+
+#Creating filesystem:
+  Create logical volume for filesystem to reside on:
+  lsvg - shows available volume groups - use any vg other than rootvg if available.
+  lsvg -l appvg - shows logical volumes on appvg - watch "type" column, if jfs2 go to JFS2:   after deciding on which volume group to use.
+  lsvg appvg - shows stats for appvg - find PP SIZE and FREE PPs
+	-FREE PPs shows how much disk is available
+	-PP SIZE shows the size of the PPs
+	-Calculate the # of PPs required for filesystem: ex. PP SIZE = 64 MB, 5 GB needed for filesystem
+		- (1024MB * 5 GB) = 25722880 MB
+		- 25722880MB / 64MB(PP SIZE) = 80 PPs
+  mklv -y'LogicalVollv' -t'type' Volumegroup size - makes logicalvolume in size of type on volumegroup
+  mklv -y'u01lv' -t'jfs' appvg 80 - makes jfs logical volume u01lv 80PPs on appvg, could replace with jfs with jfs2
+  lspv - shows physical volumes appvg is on, ie hdisk1 and hdisk3
+    bhapp22 #lspv
+    hdisk0          0008d0cadfc58554                    rootvg          active
+    hdisk1          0008d0cac2a718f5                    appvg           active
+    hdisk2          0008d0ca22eb9827                    rootvg          active
+    hdisk3          0008d0cac2a71c76                    appvg           active
+
+  lslv -l u01lv - shows current phyiscal volumes u01lv resides on
+    bhapp22 #lslv -l u01lv
+    u01lv:N/A
+    PV                COPIES        IN BAND       DISTRIBUTION  
+    hdisk1            080:000:000   5%            000:004:076:000:000 
+
+  mklvcopy u01lv 2 hdisk3 - makes u01lv mirrored over hdisk1 and hdisk3
+  syncvg -v appvg - synchronizes appvg
+
+
+#Create Filesystem:
+  smitty fs
+  Add / Change / Show / Delete File Systems
+  Journaled File Systems - for jfs filesystem
+  Add Journaled File System on a Previously Defined Logical Volume - for JFS
+  Add a Standard File System (unless file system is over 1 TB, then use Large File Enabled JFS)
+  Logical Volume name = u01lv
+  Mount Point = u01
+  Mount AUTOMATICALLY at system restart? = yes
+  <enter>
+  cd /
+  ls -ltra - check to see if directory already exists
+	- if directory does not exist:
+		-mkdir u01
+		-chown oracle:dba u01
+  mount u01 - mounts u01
+
+
+#JFS2:
+  Make logical volume to house filesystem:
+  smitty mklv
+  F4 to select desired volume group
+  enter desired Logical volume NAME
+  Number of LOGICAL PARTITIONS = 1
+  Logical volume TYPE = jfs2
+  <enter>
+
+#Create new JFS2 Filesystem:
+  smitty fs
+  Add / Change / Show / Delete File Systems
+  Enhanced Journaled File Systems - for jfs2 filesystem
+  Add an Enhanced Journaled File System on a Previously Defined Logical Volume - for JFS2
+  Logical Volume name = u01lv
+  Mount Point = u01
+  Mount AUTOMATICALLY at system restart? = yes
+  <enter>
+  cd /
+  ls -ltra - check to see if directory already exists
+	- if directory does not exist:
+		-mkdir u01
+  -mount /u01
+  -chown oracle:dba u01
+
+After JFS2 filesystem has been created and mounted, expand it to the correct size using following:
+  df -k shows:
+  /dev/pegdevlv     131072    130392    1%        4     1% /pega/pegdev
+
+expand it to 3276800k by entering:
+  chfs -a size=3276800k /pega/pegdev
+
+df -k now shows:
+  /dev/pegdevlv     3276800   3275972    1%        4     1% /pega/pegdev
+
+If errors occur, cancel (Esc-3) to the Logical Volume Manager
+  Logical Volumes
+  Set Characteristics of a Logical Volume
+  Change a Logical Volume
+  Select the Logical Volume (Esc-4)
+  Increase size of Maximum Number of Logical Partitions
+	Or - /usr/sbin/chlv ûxÆ4096Æ archlv û will change the Max # of LPs for archlv to 4096
+   
+
+#Increase Filesystem size:
+Lsvg û to list volume groups
+  #lsvg
+  rootvg
+  viovg
+lsvg volumegroup û to find free disk space of volumegroup
+  #lsvg viovg
+chfs ûa size=+8G /filesystem
+	Increases /filesystem by 8GB
+  #chfs -a size=+8G /uhtrels
+  #df ûk /uhtrels
+  Filesystem    1024-blocks      Free %Used    Iused %Iused Mounted on
+  /dev/uhtrelslv     2097152   2088280    1%        9     1% /uhtrels
+
+
+#emgr -l - displays e-fixes installed on LPAR
+#emgr -l
+
+ID  STATE LABEL      INSTALL TIME       ABSTRACT
+=== ===== ========== ================== ======================================
+1    S    libsup-3.1 03/15/06 16:15:15  ML3 cumulative efix bundle         
+
+indicates login e-fix is installed...
+if not...
+   oslevel -s - obtain the OS ver., Tech Lev or Mnge Lev, and SP
+	ie.  oslevel -s
+	     5300-03-02 = AIX5.3, Tech Lev or Mnge Lev 3, and SP 2
+   scp nima8001:/uht_packages/AIX53/EFIX/NIS_Correct_OSLEVEL/efix_install.ksh - to server needing efix
+	run efix_install.ksh and reboot server
+
+
+#User locked out, /etc/passwd & /etc/security/passwd show no locks:
+  chsec -f /etc/security/lastlog -a "unsuccessful_login_count=0" -s userid
+  chuser "account_locked=false" userid
+
+
+#LDAP security:
+  Check to see if AIX is using LDAP instead of NIS:
+    Check /etc/group for +: entry
+    Check /etc/passwd for + and +@ entries
+  If server is running LDAP:
+  lsldap -a passwd userid - shows users account settings
+  lsldap -a netgroup usc - shows setings of usc netgroup
+  add user to /etc/passwd file as follows: +userid:::::
+
+
+#NFS Mounts:
+  AIX: smitty nfs <enter>
+  /etc/filesystems
+
+
+#Static Routes:
+  netstat -rn
+  To route traffic to backup interface for NFS mounts (AIX): smitty route <enter>; Add a Static Route
+
+
+#Find size of disks not in a volume group in AIX:
+  /usr/local/bin/inq
+  size is under CAP heading in kb.
+
+
+#AIX ptree equivilent
+  proctree

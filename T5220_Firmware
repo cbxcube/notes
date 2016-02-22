@@ -1,0 +1,15 @@
+1) Ensure the firmware pkg is available on the server:
+    ls -ltra /path/to/firmware/patches
+2) Copy the package down to the SC using the sysfwdownload command:
+    /path/to/firmware/patches/sysfwdownload Sun_System_Firmware-7_2_10-SPARC_Enterprise_T5120+T5220.pkg
+3) Shutdown the OS:
+    init 0
+4) connect to the ALOM and poweroff the system:
+      sc> poweroff -> respond "y"
+      sc> showkeyswitch
+           if keyswitch is LOCKED, change to normal
+               sc> setkeyswitch -y normal
+5) Flash update the firmware image:
+    sc> flashupdate -s 127.0.0.1
+6) Reset the ILOM:
+    sc> resetsc

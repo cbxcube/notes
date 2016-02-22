@@ -1,0 +1,57 @@
+This document provides instructions on how to perform an upgrade installation using the HMC Recovery CDs for all versions of HMC code prior to and including V4R5.0. An upgrade installation might be preferable to updating from an HMC corrective service file for the following reasons:
+	1 	It is the only method that can be used to update the file system of HMC Version 4.2 and earlier from ext2 to ext3.
+	2 	It might reduce the size the of the critical console backup file, allowing quicker backup operations.
+Before proceeding, verify that there is a current Backup Critical Console Data . This might be needed for disaster recovery if an unexpected error should occur in the update process. For further information on Backup Critical Console Data, refer to the following Web site:
+
+http://publib.boulder.ibm.com/infocenter/systems/scope/hw/advanced/browse.jsp?searchQuery=backup+critical+console+data&home_url=%2Fipha8%2Fhwicwelcome.htm&scheme=int_2
+
+Updating the HMC from the Recovery CDs
+
+Note: These instructions are valid only for updating the HMC from Version 4 Release 1.1 or later. If the HMC is running Version 4, Release 1.0, it must first be upgraded to release 1.1.
+
+To update the HMC from recovery CDs, do the following:
+1 	Power on and log on the HMC. If the HMC is configured as a DHCP server, ensure that it is configured using eth0.
+2 	Save the current configuration by doing the following:
+
+	a On the Navigation area, expand License Internal Code Maintenance .
+	b Select HMC Code Update .
+	c On the Content area, select Save Upgrade Data .
+	d Select the hard drive option.
+	e Click Continue . When another panel is displayed, click Continue again.
+	f After the task is performed successfully, click OK on the Task Succeed panel.
+3 	Insert the HMC Recovery CD Volume 1 into the HMC CD/DVD drive.
+4 	Reboot the HMC by selecting Console > Exit . Then select Exit Now > Reboot Console > OK . After the normal PC power-on process, the Hardware Management Console Hard Disk Install/Upgrade window is displayed.
+5 	Press F1 to perform the upgrade, and then press F1 again to confirm.
+6 	When prompted, remove the first CD and then insert the second CD into the DVD-RAM drive.
+7 	Press the Enter key to continue the installation. The PC reboots and reads from the second CD. When the second CD is complete, the following options are displayed:
+
+	1 Install additional software from CD media.
+	2 Restore critical console data from DVD media.
+	3 Finish installation.
+
+8 	Insert the third CD into the DVD-RAM drive.
+	Version 4.3.0 Recovery CDs: The third CD is the Information Center CD.
+	Version 4.3.2 Recovery CDs: The third CD is the HMC Recovery CD volume 3.
+9 	Select Option 1, and then press the Enter key to continue the installation. Press any key to confirm the installation.
+	The HMC will display status messages as it installs the packages.
+10 	Version 4.3.0 Recovery CDs continue at Step 11.
+
+	Version 4.3.2 Recovery CDs have an additional CD. When the third CD is complete, the following options are displayed:
+
+	1 Install additional software from CD media.
+	2 Restore critical console data from DVD media.
+	3 Finish installation.
+
+	Insert the fourth CD, Information Center, into the DVD-RAM. Select Option 1, and then press the Enter key to continue the installation. Press any key to confirm the installation.
+11 	After the last CD completes the options displayed will change to the following:
+	1 Restore critical console data from DVD media.
+	2 Finish installation.
+
+12 	Select Option 2 Finish installation , to complete the installation and reboot the HMC. The remaining CDs are other translations of the Information Center and do not need to be installed at this time.
+
+	Note: The option Restore critical console data from DVD media should never be used during this upgrade installation process.
+13 	During the rebooting process you are prompted to select the keyboard mapping.
+14 	At the Hardware Management Console login prompt, log in using your HMC user ID and password.
+15 	Accept the License Agreement for Machine Code twice. The HMC code installation is complete.
+
+	A backup of critical console data is recommended after the installation or upgrade is completed. 

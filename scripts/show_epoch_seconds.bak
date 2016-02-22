@@ -1,0 +1,5 @@
+#!/bin/sh
+
+
+EPOCH=`perl -e 'print time(), "\n";'`
+echo "${EPOCH}"

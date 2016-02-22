@@ -1,0 +1,58 @@
+#!/bin/sh
+
+echo "# Report for `/usr/bin/uname -n` as of `date`"
+echo "#"
+
+for FRAME in `/usr/sbin/vxdmpadm listctlr all | /usr/bin/awk '$4 ~ /STK_ARRA/ || $4 ~ /SAN_VC/ || $4 ~ /XP512/ {print $NF}' | /usr/bin/sort -u`
+do
+	DISK_ERRORS=`/usr/sbin/vxdmpadm getdmpnode enclosure=${FRAME} | /usr/bin/awk 'NR==1 {next} $4!=$5 {print}'`
+
+	#echo "Disk errors are: ${DISK_ERRORS}"
+
+	if [ ! -z "${DISK_ERRORS}" ] ; then
+		echo "# Frame ${FRAME} is having issues."
+		echo "# Execute the following to see which luns are missing paths:"
+		echo "/usr/sbin/vxdmpadm getdmpnode enclosure=${FRAME}"
+	else
+		echo "# Frame ${FRAME} has correct paths to all luns."
+	fi
+done
+
+echo "#"
+
+# If we have qlogic on the box, print the details of it.
+if [ -d "/opt/QLogic_Corporation/SANsurferCLI" ] ; then
+	echo "# QLogic card information on this host:"
+	#/opt/QLogic_Corporation/SANsurferCLI/scli -i all | /usr/bin/awk '/Port Name/ {print "#",$NF}'
+	/opt/QLogic_Corporation/SANsurferCLI/scli -i all | /usr/bin/awk '/^Host Name/ {hosts=$NF} /OS Instance/ {instance=$NF} /HBA Model/ {model=$NF} /Port Name/ {wwn=$NF} /HBA Status/ {print "#",hosts,instance,model,wwn,$4,$5}'
+fi
+echo "#"
+
+exit 0
+
+root@ssmn00pk00144# /opt/QLogic_Corporation/SANsurferCLI/scli -i 1                                                                
+ --------------------------------------------------------------------------------
+Host Name                        : ssmn00pk00144
+HBA Instance                     : 1
+OS Instance                      : 1
+HBA Model                        : QLA2340
+HBA Description                  : QLA2340/QLA2340L (PCI to FC single channel)
+HBA ID                           : 1-QLA2340
+HBA Alias                        : 
+HBA Port                         : 1
+Port Alias                       : 
+Node Name                        : 20-00-00-E0-8B-14-2E-5F
+Port Name                        : 21-00-00-E0-8B-14-2E-5F
+Port ID                          : 74-3D-13
+Serial Number                    : N35086
+Driver Version                   : qla-5.04
+FCode Version                    : 1.47
+Firmware Version                 : 3.03.27 IPX
+Actual Connection Mode           : Point to Point
+Actual Data Rate                 : 2 Gbps
+PortType (Topology)              : NPort
+Target Count                     : 1
+HBA Status                       : Online
+--------------------------------------------------------------------------------
+root@ssmn00pk00144# 
+

@@ -1,0 +1,24 @@
+Webserver config:
+#Place the SUN Java WebServer package in a install location
+     sjsws-7_0u5-solaris-sparc.tar.gz
+   #Untar, gunzip the package, and run setup
+     gunzip sjsws-7_0u5-solaris-sparc.tar.gz
+     tar -xvf sjsws-7_0u5-solaris-sparc.tar
+     ./setup
+     Give it the location you want the webserver installed, the port, and the password for the webconsole
+#Give the user the rights to start the webserver with a port under 1000:
+    usermod -K defaultpriv=basic,net_privaddr cwt_adm
+#Change the webconsole port
+   sudo su - cwt_adm
+   cd /cwtapp/q28test1a/webserver/sun/webserver7/admin-server/config
+   vi server.xml - change 8989 to 26916 - this will be the port you connect to for webconsole
+   cd ../bin
+   ./startserv
+   cd /cwtapp/q28test1a/webserver/sun/webserver7/https-instance.com/bin
+   ./startserv
+
+#To test the instance
+   open browser; http://instance.com - should show webpage
+
+#To log onto webconsole
+   open browser; http://hostname.carlson.com:26916;

@@ -1,0 +1,14 @@
+###CONFIGURE MULTIPATHING
+	MPXIO:
+		vi /kernel/drv/fp.conf; uncomment mpxio-disable="no"; comment mpxio-disable="yes";
+		vi /kernel/drv/vhci.conf; uncomment auto-failback="enable"
+			Append following to end of file:
+				auto-failback="enable";
+				device-type-mpxio-options-list =
+				"device-type=HITACHI OPEN-V      -SUN",
+				"load-balance-options=logical-block-options";
+				logical-block-options="load-balance=logical-block", "region-size=18";
+		vi /etc/system; append following to end of file:
+			set ssd:ssd_io_time=0x3c
+			set ssd:ssd_max_throttle=12
+		reboot -- -r

@@ -1,0 +1,128 @@
+Pre-Work:
+1) check file systems to see what's local and not system related:
+     a) df -k | egrep -v "c:|vx" - look for file systems that are local but aren't OS related, ie /apps, /usr/db2, /export/home
+	1) record the size of the local file systems for after the OS reinstall is complete
+	2) Backup these file systems to a location that has enough free space :
+	     a) Try to find a local SAN based file system that has enough free space and tar up the local file system to it:
+                 rsync -avuz /localfilesystem /remote/filesystem
+	     b) If you don't have enough SAN disk available, you might be able to find disk space on an external host.  You can 		 use rsync to copy the data over:
+		   rsync -avuz --rsync-path=/path/to/rsync/onremotesystem -e ssh SRC:/filesystem DEST:/filesystem
+                     example:
+                        from fiadmin:
+                           rsync -avuz --rsync-path=/usr/local/bin/rsync -e ssh ux417:/apps/ /HOME/e29412/ux417/apps
+		
+	     c) we will run rsync once more before we bring the OS down prior to rebuild so we have a current copy.
+     b) Backup /etc (and /var for zones) to reference after OS reinstall is complete, ie /etc/vfstab, /etc/hostname.*, etc...:
+	     a) rsync -avuz /etc /remote/filesystem
+	     b) rsync -avuz /var /remote/filesystem
+     c) make note of the existing static routes on the global zone and save for post install:
+	     a) netstat -rn > /var/tmp/ux417.static
+     d) Create zone configuration files to rebuild the zones after the OS install:
+	     a) from Global zone:
+		   sudo zonecfg -z zonename export -f /path/to/zonename.cfg
+		   scp /path/to/zonename.cfg fiadmin:/HOME/e29412/OS_Upgrades/globalzone/zones/localzone/
+     e) Create a sysidcfg file if possible to use for the zone install
+     f) Uninstall the zones to prepare the root file system for reinstall
+             a) from Global zone:
+                   sudo zoneadm -z zonename uninstall
+                   sudo ls -ltra /zones/roots/zonename - verify it is empty
+
+2) Prepare jumpstart for the reinstall:
+     a) Find and follow the Sun Solaris JET Jumpstart Installation procedures to prepare the jumpstart server for the reinstall
+
+Upgrade:
+3) Begin the reinstall:
+     a) again, find and follow the Sun Solaris JET Jumpstart Installation procedures to perform the jumpstart/wanboot
+     b) from OBP:
+	IF FIRMWARE IS AT A HIGH ENOUGH LEVEL:
+		setenv network-boot-arguments host-ip=,router-ip=,subnet-mask=,hostname=,file=http://jumpstart.server.ip.address:443/cgi-bin/wanboot-cgi
+		boot net - install
+	IF FIRMWARE IS TOO LOW OF A LEVEL, BOOT OFF CDROM FIRST:
+		boot cdrom -o prompt -F wanboot - install
+		boot> prompt
+		host-ip? clients.IP.addres.123
+		subnet-mask? clients.subnet.mask.0
+		router-ip? clients.gateway.IP.123
+		hostname? clientshostname
+		http-proxy?
+		client-id?
+		aes?
+		3des?
+		sha1?
+		bootserver? https://jumpstart.server.ip.address:443/cgi-bin/wanboot-cgi
+		boot> go
+
+4) Follow thru the ServerBuild checklist (SOP UNIX Engineering Server Build Checklist)
+     a) Global Zone:
+	   1) Set root password
+ 	   2) rejoin vas 
+	       vastool -u jeffreyjohnson join -f -c "ou=ah,ou=unix managed,ou=servers,dc=fiaspdev,dc=org" -n ux417 fiaspdev.org
+           3) update cfengine
+	       cfagent -qv
+           4) remove /u01 - if oracle is already installed on SAN
+               zfs destroy rpool/u01
+	   5) Initiate Fair Share Scheduler
+	       dispadmin -d FSS
+	       dispadmin -d - confirm FSS is implemented
+
+5) Recreate and restore local file systems and import SAN:
+    a) Create the mountpoints and update /etc/vfstab with the mountpoints
+         zfs create -o mountpoint=/usr/db2 -o quota=10g -o reservation=10g rpool/db2
+         mkdir -m 755 /u01
+         mkdir -m 755 /dba_work
+         mkdir -m 755 /db01
+         mkdir -m 755 /db02
+    b) Create Zones roots mount points:
+         mkdir -m 755 -p /zones/roots/zonename - for each zone
+    c) Restore data to local file systems:
+         1) from fiadmin:
+		rsync -avuz --rsync-path=/usr/local/bin/rsync -e ssh /HOME/e29412/ux417/usr_db2/ ux417:/usr/db2
+                rsync -avuz --rsync-path=/usr/local/bin/rsync -e ssh /HOME/e29412/ux417/apps/ ux417:/apps
+                rsync -avuz --rsync-path=/usr/local/bin/rsync -e ssh /HOME/e29412/ux417/export_home/ ux417:/export/home
+    d) Copy SAN and NFS file systems entries from backup of /etc/vfstab
+    e) Install Veritas Storage Foundation:
+
+6) Restore other files/settings needed for this specific host:
+    a) recreate any interface startups from backups of /etc/vfstab
+         e.g. hostname.bge2
+    b) Update hosts file to match original from backup of /etc/hosts
+    c) Recreate static routes - check the backup of /etc for startup scripts that will create the necessary static routes.
+    d) Verify auto_master matches original from backup of /etc
+         touch /etc/cf_auto_maps - this will update auto_maps when cfengine is working
+    e) Confirm cfengine is working correctly:
+         on ux330 - rm /var/cfengine/ppkeys/root-IP.of.rebuilt.host.pub
+         on rebuilt host - cfagent -qv
+
+7) Rebuild the zones:
+    a) Copy the zone config files created in step 1-d:
+	scp fiadmin:/HOME/e29412/OS_Upgrades/globalzone/zones/zonename/zonename.cfg /tmp
+    b) Create a sysidcfg for each zone:
+	from global zone:
+	   cp /etc/sysidcfg /tmp/sysidcfg.zonename
+	   vi /tmp/sysidcfg.zonename - change the network_interface line to match everything that is needed for zonename
+    c) Create the zone:
+	from global zone:
+	   zonecfg -z zonename -f /tmp/zonename.cfg
+	   zoneadm -z zonename install
+    d) Copy the sysidcfg file to the zone's etc: 
+	from global zone:
+	   cp -p /tmp/sysidcfg.zonename /zones/roots/zonename/root/etc/sysidcfg
+    e) Boot the zone and monitor from it's console:
+	from global zone:
+	   zoneadm -z zonename boot
+	   zlogin -C zonename
+    f) Run the zone finish scripts:
+	from the jumpstart server (ux255):
+	   sudo /usr/local/bin/make_zone_finish.ksh
+	   scp /var/tmp/zone_finish.tar globalzone:/tmp
+	from global zone:
+	   cp /tmp/zone_finish.tar /zones/roots/zonename/root/tmp
+	from local zone:
+	   cd /tmp
+	   tar -xvf zone_finish.tar
+	   /var/tmp/zone_finish/zone_finish.ksh
+	   shutdown -g0 -y -i6
+    g) Verify VAS and cfengine are running correctly, repair them if not
+    h) reset root password
+
+7) Reboot and confirm everything starts up correctly before handing off to the customer for application start/checkout.

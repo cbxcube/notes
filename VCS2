@@ -1,0 +1,117 @@
+IMPORT NEW LUNS:
+from both ssmn00dk00238 and ssmn00dk00239:
+devfsadm 
+
+from ssmn00dk00239:
+/tmp/q contains 2 lines, "y l"
+for i in `ls -l /dev/rdsk | grep c3t0 | grep s2 | awk '{print $9}' | sed -e 's/s2//g'`
+do
+format $i < /tmp/q
+done
+vxdisk scandisks
+for i in `vxdisk list | grep invalid | grep -v c1t | awk '{print $1}' | sed -e 's/s2//g'`
+do
+/etc/vx/bin/vxdisksetup -i $i
+done
+
+from ssmn00dk00239:
+BUILD DISK GROUPS:
+vxdg -s init test01dg test01dg-01=48GBdisk
+vxdg -g test01dg adddisk test01dg-02=48GBdisk (5 times so test01dg has 6x 48GB disks)
+vxdg -s init test02dg test02dg-01=48GBdisk
+vxdg -g test02dg adddisk test02dg-02=48GBdisk (5 times so test02dg has 6x 48GB disks)
+vxdg -s init tst1db_racdg tst1db_racdg01=250GBdisk
+vxdg -s init tst2db_racdg tst2db_racdg01=250GBdisk
+
+from ssmn00dk00239:
+BUILD VOLUMES AND FILE SYSTEMS:
+(perform the next 6 steps for test02dg as well)
+vxassist -g test01dg make d01 100562944 user=oracle group=oinstall test01dg-01
+vxassist -g test01dg make d02 100562944 user=oracle group=oinstall test01dg-02
+vxassist -g test01dg make d03 100562944 user=oracle group=oinstall test01dg-03
+vxassist -g test01dg make d04 100562944 user=oracle group=oinstall test01dg-04
+vxassist -g test01dg make d05 100562944 user=oracle group=oinstall test01dg-05
+vxassist -g test01dg make d06 100562944 user=oracle group=oinstall test01dg-06
+
+(perform the next step for tst2db_racdg as well)
+vxassist -g tst1db_racdg make b_01 524187648 tst1db_racdg01
+mkfs -F vxfs -o largefiles /dev/vx/rdsk/tst1db_racdg01/b_01
+mkfs -F vxfs -o largefiles /dev/vx/rdsk/tst2db_racdg01/b_01
+
+from ssmn00dk00239:
+ADD NEW GROUPS TO CLUSTER:
+mkdir /cwtdb/tst1db_rac
+mkdir /cwtdb/tst1db_rac/b_01
+mkdir /cwtdb/tst2db_rac
+mkdir /cwtdb/tst2db_rac/b_01
+
+haconf -makerw
+hares -add tst1_voldg CVMVolDg cvm
+hares -modify tst1_voldg Enabled 1
+hares -modify tst1_voldg CVMDiskGroup tst1db_racdg
+hares -modify tst1_voldg CVMVolume b_01
+hares -modify tst1_voldg CVMActivation sw
+
+hares -add tst2_voldg CVMVolDg cvm
+hares -modify tst2_voldg Enabled 1
+hares -modify tst2_voldg CVMDiskGroup tst2db_racdg
+hares -modify tst2_voldg CVMVolume b_01
+hares -modify tst2_voldg CVMActivation sw
+
+hares -add tst1_b01_mnt CFSMount cvm
+hares -modify tst1_b01_mnt Enabled 1
+hares -modify tst1_b01_mnt MountPoint /cwtdb/tst1db_rac/b_01
+hares -modify tst1_b01_mnt BlockDevice /dev/vx/dsk/tst1db_racdg/b_01
+
+hares -add tst2_b01_mnt CFSMount cvm
+hares -modify tst2_b01_mnt Enabled 1
+hares -modify tst2_b01_mnt MountPoint /cwtdb/tst2db_rac/b_01
+hares -modify tst2_b01_mnt BlockDevice /dev/vx/dsk/tst2db_racdg/b_01
+
+hares -add test01raw_voldg CVMVolDg cvm
+hares -modify test01raw_voldg Enabled 1
+hares -modify test01raw_voldg CVMDiskGroup test01dg
+hares -modify test01raw_voldg CVMVolume d01 d02 d03 d04 d05 d06
+hares -modify test01raw_voldg CVMActivation sw
+
+hares -add test02raw_voldg CVMVolDg cvm
+hares -modify test02raw_voldg Enabled 1
+hares -modify test02raw_voldg CVMDiskGroup test02dg
+hares -modify test02raw_voldg CVMVolume d01 d02 d03 d04 d05 d06
+hares -modify test02raw_voldg CVMActivation sw
+
+BRING THE NEW CLUSTER RESOURCES ONLINE: (might not be necessary)
+hares -online tst1_voldg -sys ssmn00dk00239
+hares -online tst1_voldg -sys ssmn00dk00238
+hares -online tst2_voldg -sys ssmn00dk00239
+hares -online tst2_voldg -sys ssmn00dk00238
+hares -online tst1_b01_mnt -sys ssmn00dk00239
+hares -online tst1_b01_mnt -sys ssmn00dk00238
+hares -online tst2_b01_mnt -sys ssmn00dk00239
+hares -online tst2_b01_mnt -sys ssmn00dk00238
+hares -online test01raw_voldg -sys ssmn00dk00239
+hares -online test01raw_voldg -sys ssmn00dk00238
+hares -online test02raw_voldg -sys ssmn00dk00239
+hares -online test02raw_voldg -sys ssmn00dk00238
+
+hares -link cssd tst1_b01_mnt
+hares -link cssd tst2_b01_mnt
+hares -link cssd test01raw_voldg
+hares -link cssd test02raw_voldg
+
+hares -link tst1_b01_mnt tst1_voldg
+hares -link tst1_b01_mnt vxfsckd
+hares -link tst2-b01_mnt tst2_voldg
+hares -link tst2-b01_mnt vxfsckd
+
+hares -link test01raw_voldg cvm_clus
+hares -link test02raw_voldg cvm_clus
+hares -link tst1_voldg cvm_clus
+hares -link tst2_voldg cvm_clus
+
+hares -modify tst1_b01_voldg Critical 1
+hares -modify tst2_b01_voldg Critical 1
+hares -modify test01raw_voldg Critical 1
+hares -modify test02raw_voldg Critical 1
+
+haconf -dump -makero

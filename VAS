@@ -1,0 +1,18 @@
+#Update VAS cache
+vastool flush
+
+#Reset VAS and VGP
+vgptool clean
+vgptool apply
+vastool flush
+
+#Rejoin VAS
+cat /etc/opt/quest/vas/lastjoin to find the last rejoin to verify which command was run
+vastool -u jeffreyjohnson join -f corp.fairisaac.com
+
+#Profile files
+/etc/opt/quest/vas/users.allow - contains VAS groups that are granted access
+/etc/opt/quest/vas/vas.conf - contains domain and other configs necessary for VAS
+
+#Disable VAS timesync
+vastool configure vas vasd timesync-interval 0

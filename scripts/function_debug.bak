@@ -1,0 +1,48 @@
+#!/usr/bin/ksh 
+
+ps -ef|grep qip
+
+killproc() {
+
+set -x
+#        for pid in `ps -ef | awk '$NF~/'"$1"'/ {print $2}'`
+        for pid in `ps -ef | grep $1 | grep -v grep | awk '{print $2}'`
+        do
+                if [ "X$pid" != "X" ]; then
+                        if echo "$1 - $pid"; then
+                               # echo "$1 stopped"
+				q=1
+                        else
+                                echo "Unable to stop $1"
+                                rval=1
+                        fi
+                fi
+        done
+}
+
+
+
+        killproc qip-rmtd
+        killproc qipd
+        killproc qip-dhcpmsgd
+        killproc dhcpd
+        killproc qip-netd
+        killproc qip-qdhc
+        killproc qip-logind
+        killproc qip-rmisched
+        killproc qip-dnsupdated
+        killproc qip-dnsupdate
+        killproc qip-qipupdated
+        killproc qip-msgd
+        killproc dnsgen.sh
+        killproc dhcpgen.sh
+        killproc qsiexport
+        killproc qip_export.sh
+        killproc qipinst
+        killproc qip-export
+        killproc qapi
+
+
+
+ps -ef|grep qapi
+

@@ -1,0 +1,37 @@
+Installation:
+Replace disk with 146G disks:
+1) Pull the disk from Veritas so it can be replaced with the new disk
+    vxdiskadm -> Option 4 Remove a disk for replacement -> follow instructions and select 75_internal disk group and c0t1d0s2/75_inte02 disk when prompted
+2) Physically replace disk:
+    format c0t1d0s2 -> analyze -> read -> yes
+      Confirm at server which disk is being read - light will be constantly flashing
+      Ctrl-C to end analyze/read
+    Pull disk and replace with the larger one
+3) Verify Disk is pulled into OS control:
+    format - if disk doesn't show up run the following:
+      devfsadm -v
+4) PUll the disk into Veritas and mirror it up to the existing disk:
+    vxdisk scandisks
+    vxdiskadm -> Option 5 Replace a failed or removed disk -> follow instructions and select 75_internal disk group and c0t1d0s2/75_inte02 disk when prompted
+5) Wait for mirror to sync before continuing:
+    run: vxtask -l list
+6) After mirroring is completed:
+    vxdiskadm -> Option 4 Remove a disk for replacement -> follow instructions and select 75_internal disk group and c0t3d0s2/75_inte01 disk when prompted
+7) Physically replace disk:
+    format c0t3d0s2 -> analyze -> read -> yes
+      Confirm at server which disk is being read - light will be constantly flashing
+      Ctrl-C to end analyze/read
+    Pull disk and replace with the larger one
+8) Verify Disk is pulled into OS control:
+    format - if disk doesn't show up run the following:
+      devfsadm -v
+9) PUll the disk into Veritas and mirror it up to the existing disk:
+    vxdisk scandisks
+    vxdiskadm -> Option 5 Replace a failed or removed disk -> follow instructions and select 75_internal disk group and c0t3d0s2/75_inte01 disk when prompted
+10) Wait for mirror to sync before continuing:
+     run: vxtask -l list
+
+
+Backout:
+Replace the new disks with the original.  Follow the exact same steps as Installation only replacing the 146Gb drives with the original 73Gb drives
+3 hours

@@ -1,0 +1,164 @@
+record existing root devices from /dev/rdsk, compare echo|format|more with eeprom for rootdisk and rootmirror
+/dev/dsk/c1t0d0s2 -> ../../devices/pci@9,600000/SUNW,qlc@2/fp@0,0/ssd@w21000004cf990f8b,0:c
+/dev/dsk/c1t1d0s2 -> ../../devices/pci@9,600000/SUNW,qlc@2/fp@0,0/ssd@w21000004cf96e655,0:c
+
+Verify root disks are healthy
+vxprint -hrg rootdg
+
+Collect system info (copy and paste this next session into command line):
+
+mkdir /VXVM4.1-UPGRADE-CHECK
+cp /etc/vfstab.prevm /VXVM4.1-UPGRADE-CHECK
+df -k > /VXVM4.1-UPGRADE-CHECK/df-k.sav
+mount > /VXVM4.1-UPGRADE-CHECK/mount.sav
+vxprint -ht > /VXVM4.1-UPGRADE-CHECK/vxprint-ht.sav
+vxprint -m > /VXVM4.1-UPGRADE-CHECK/vxprint-m.sav
+vxdisk list > /VXVM4.1-UPGRADE-CHECK/vxdisk-list.sav
+vxdg list > /VXVM4.1-UPGRADE-CHECK/vxdg-list.sav
+prtvtoc /dev/rdsk/c0t0d0s2 > /VXVM4.1-UPGRADE-CHECK/vtoc.sav
+prtvtoc /dev/rdsk/c1t0d0s2 > /VXVM4.1-UPGRADE-CHECK/vtoc.sav.mirror
+cp /etc/vfstab /VXVM4.1-UPGRADE-CHECK/vfstab.sav
+cp /etc/system /VXVM4.1-UPGRADE-CHECK/system.sav
+pkginfo -l > /VXVM4.1-UPGRADE-CHECK/pkginfo-l.sav
+showrev -p > /VXVM4.1-UPGRADE-CHECK/showrev-p.sav
+cp -R /etc/vx/licenses /VXVM4.1-UPGRADE-CHECK
+cp -R /etc/vx/elm /VXVM4.1-UPGRADE-CHECK
+cp /etc/vfstab /etc/vfstab.orig
+cp /etc/vfstab /VXVM4.1-UPGRADE-CHECK/vfstab.orig
+-------------------------------------------
+
+boot off of mirror to make sure it works:
+	boot rootmirror -s
+
+backup /export/home 
+
+	mount /export/home
+	cd /export
+	tar cf /var/home.tar home
+	
+	
+	umount /export/home
+
+Disassociate rootdisk plexes:
+
+for /
+	sync;sync;vxplex -g rootdg -o rm dis rootvol-01
+for /var
+	sync;sync;vxplex -g rootdg -o rm dis var-01
+for /opt
+	sync;sync;vxplex -g rootdg -o rm dis opt-01
+for swap
+	vxplex -g rootdg -o rm dis swapvol-01
+for /export/home
+	vxplex -g rootdg -o rm dis home-01
+
+
+
+Prepare original root disk for new veritas and also slices:
+
+	fsck /dev/rdsk/c1t0d0s0
+	fsck /dev/rdsk/c1t0d0s5
+
+	mount /dev/dsk/c1t0d0s0 /mnt
+
+Edit /mnt/etc/vfstab
+	
+	vi /mnt/etc/vfstab
+
+comment out all except for the follow and make changes
+
+  /dev/dsk/c0t0d0s0       /dev/rdsk/c0t0d0s0      /       ufs     1       no      -
+  /dev/dsk/c0t0d0s5       /dev/rdsk/c0t0d0s5      /var    ufs     1       no      -
+  /dev/dsk/c0t0d0s1     -       -       swap    -       no      -
+
+comment out two VX lines in /mnt/etc/system:
+
+	vi /mnt/etc/system
+
+stop veritas from running at next boot:
+	
+	touch /mnt/etc/vx/reconfig.d/state.d/install-db
+	rm /mnt/etc/vx/reconfig.d/state.d/root-done
+
+unmount /mnt and reboot off of primary (now slices)
+
+	umount /mnt
+
+Zero out slices in format for c0t0d0: following slices: 3 and 4
+
+	halt
+	boot -s
+
+------------------
+
+Stop any veritas running:
+	
+	vxdctl stop
+	vxiod -f set 0
+
+Remove Veritas packages:
+
+	mount /opt
+
+	pkgrm VRTSvmdev VRTSvmdoc VRTSvmman VRTSvmsa VRTSvxvm 
+
+Clean up any VRTS in /opt and /usr/lib
+
+***Install storage foundation 4.1
+cd /etc/rc2.d
+./S20sysetup start
+./S69inet start
+./S70nddconfig start (if necessary)
+
+mount jumps8002:/Jumpstart /mnt
+
+cd /mnt/Packages/Veritas/storage_foundation_4-1/volume_manager
+./installvm
+8EZ9-62BU-2Z6P-BLP6-PPNP-3X3P-PP6Z-PZ
+
+cd /mnt/Packages/Veritas/storage_foundation_4-1-mp1
+./install_vp
+
+vxinstall
+vxdctl enable
+upgrade SUNWsan
+	cd /mnt/Packages/SUNWsan/SAN_4.4.8_install_it
+	./install_it
+upgrade EMCpowerpath if necessary
+
+
+Edit /usr/lib/vxvm/bin/vxroot
+	Verify, approx. line 138 the line:
+		if [ $? -eq 0 -a -n $bus_drivers ] ;
+		should be
+		if [ $? -eq 0 -a -n "$bus_drivers" ] ;
+		With the quotes around $bus_drivers"
+
+encapsulate root / reboot
+	vsdiskadm
+
+re-mirror rootdisk
+	vxdg -g rootdg adddisk Disk_1
+	vxedit -g rootdg rename Disk_1 rootmirror
+	zero out all slices on mirror disk partition table (at least 3 and 4)
+	vxdiskadm
+		Opt 6
+		
+Verify SAN is visible to VXVM
+
+vxassist -g rootdg make home 1800m layout=nostripe
+
+newfs /dev/vx/rdsk/rootdg/home
+
+uncomment /home in vfstab
+
+mkdir /export/home
+mount /export/home
+cd /
+tar xf /var/home.tar
+
+
+uncomment SAN filesystems in vfstab
+reboot
+
+validate

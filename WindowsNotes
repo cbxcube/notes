@@ -1,0 +1,40 @@
+#To run commands remotely using psexec
+c:\SCRIPTS\sys\psexec \\destserver cmd -> will run cmd on the destserver as long as the DC has access to destserver
+c:\SCRIPTS\sys\psexec @filename cmd -> will run cmd against all servers in filename
+ ie  c:\SCRIPTS\sys\psexec @hostlist.txt net localgroup "Remote Desktop Users" -> will list out users in the "Remote Desktop Users" group on all hosts in the file hostlist.txt
+     c:\SCRIPTS\sys\psexec @hostlist.txt net localgroup "Remote Desktop Users" "PAISLEYHOSTING\Systems Engineers" /add -> will add the "PAISLEYHOSTING\Systems Engineers" group to the "Remote Desktop Users" group on all hosts in hostlist.txt
+
+
+#To run as another user from CMD
+runas /user:tlr\m154529 "msiexec /i C:\Users\c154529\Desktop\NSCP-0.4.0.179-x64.msi"
+runas /user:tlr\m154529 "notepad"
+runas /user:tlr\m154529 "mmc %windir%\system32\services.msc"
+
+#To look up LDAP information from the domain controllers in AD
+start -> run -> adsiedit.msc
+or
+runas /user:tlr\m154529 "adsiedit.msc"
+c:\Program Files\Support Tools\adsiedit.msc
+
+
+#Configuring Splunk to use AD authentication
+#To obtain the DN's for binding to AD, use adsiedit.msc on the DC
+Manager -> Access Controls -> Authentication method -> select LDAP & click on Configure Splunk to use LDAP and map groups
+click "New"
+ldap strategy name = paisley or vm013 or whatever unique name
+host = vm013.paisleyhosting.com		#DC
+port = 389			   	#Standard LDAP port
+Bind DN = CN=Splunk Admin,CN=Users,DC=paisleyhosting.com,DC=com		#Distinguished name for Domain Admin user used to bind to AD
+Bind DN Passwd = 4ba61-83D0						#Domain Admin user's password
+
+User base DN = CN=Users,DC=paisleyhosting,DC=com			#Distinguished name for the container that holds the users that will be using the tool
+User base filter = objectClass=user
+User name attr = sAMAccountName						#sAMAccountName contains the username used to log into the domain
+Real name attr = displayName						#Display Name
+
+Group base DN = CN=Users,DC=paisleyhosting,DC=com			#DN where the groups that will be used to administer are located
+Group name attr = sAMAccountName					#sAMAccountName contains the groupname
+static member attr = member						#looking up members in the groups
+
+#ktpass
+ktpass -princ HTTP/ply-nagios-01.paisley.com@PAISLEY.COM -mapuser jeff.johnson@PAISLEY.COM -crypto DES-CBC-MD5 -ptype KRB5_NT_PRINCIPAL -mapop set +desonly -pass Ch3wb@cc4 -out ply-nagios-01.keytab

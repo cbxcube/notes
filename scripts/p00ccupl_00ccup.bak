@@ -1,0 +1,59 @@
+#!/bin/ksh
+#
+# Runs from dev to prod to migrate code
+#
+SSH=/usr/bin/ssh
+SCP=/usr/bin/scp
+MKDIR=/usr/bin/mkdir
+CHOWN=/usr/bin/chown
+CHMOD=/usr/bin/chmod
+RM=/usr/bin/rm
+MV=/usr/bin/mv
+
+# Source/Dest
+SRC=/d10pld/staging/bin
+DST=/p10pld/bin
+ARCH=/d10pld/staged
+
+# Hosts
+SRC_HOST=ssmn00qk00134.carlson.com
+DST_HOST=ssmn00pk00150.carlson.com
+
+# SSH Id
+ID_FILE=/p00ccu/keys/id_rsa
+
+# Users
+SRC_USER=root
+DST_USER=root
+GRP=10pld
+
+# Copy files to dest
+if [ "$(find ${SRC} -type f -print | wc -l)" -gt 0 ]; then
+    ${SCP} -i ${ID_FILE} -r ${SRC}/* ${DST_USER}@${DST_HOST}:${DST}/.
+
+    # Check result
+    if [ ${?} -ne 0 ]; then
+        echo "Error copying files. Aborting."
+        exit 1
+    fi
+else
+    echo "No files to migrate"
+    exit 0
+fi
+
+# Set perms
+${SSH} -i ${ID_FILE} ${DST_USER}@${DST_HOST} ${CHOWN} -R p${GRP}:d${GRP} ${DST}
+${SSH} -i ${ID_FILE} ${DST_USER}@${DST_HOST} ${CHMOD} -R 750 ${DST}
+
+for DIR in 1 2 3 4 5
+do
+    test -d ${ARCH}/${DIR} || ${MKDIR} ${ARCH}/${DIR}
+done
+
+# Clean up and rotate archive
+${RM} -rf ${ARCH}/5/*
+${MV} -f ${ARCH}/4/* ${ARCH}/5/
+${MV} -f ${ARCH}/3/* ${ARCH}/4/
+${MV} -f ${ARCH}/2/* ${ARCH}/3/
+${MV} -f ${ARCH}/1/* ${ARCH}/2/
+${MV} -f ${SRC}/* ${ARCH}/1/

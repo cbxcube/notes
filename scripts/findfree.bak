@@ -1,0 +1,20 @@
+#!/bin/ksh
+################################################################################
+#
+#       Author: John Berger
+#       Date: 01/15/97
+#       Description:  Small awk script to quickly display free disk space per
+#       volume group
+#
+#       Modified: 12/06/99 by Ed Carrigan to use PE size for volume group
+#
+################################################################################
+/etc/vgdisplay | grep -E "Free PE|VG Name|PE Size" | awk 'BEGIN {print "VG-Name\t\tMB-Free"
+	print "-------\t\t-------" }
+	$1 ~ /VG/ {vgname = $3}
+	$1 ~ /PE/ {extentsize = $4}
+	$1 ~ /Free/ {free = $3*extentsize 
+			total += free
+			print vgname "\t" free}
+	END { print "-------\t\t-------"
+		print "Total:\t\t" total}'

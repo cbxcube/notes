@@ -1,0 +1,12 @@
+#!/bin/sh
+
+
+
+for DIR in `ls -la / | awk '/^dr/ {print $NF}' | egrep -v "home|dev" `
+do
+	#echo "checking $DIR"
+	if [ ! -d /${DIR}/lost+found ] ; then
+		#echo /$DIR
+		du -sk /$DIR 
+	fi
+done

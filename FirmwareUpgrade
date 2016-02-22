@@ -1,0 +1,45 @@
+###E6900/E2900
+# Copy firmware from one system board to another:
+  lom> flashupdate -y -c sb0 sb2 - copies firmware from sb0 to sb2; system needs to be down
+
+# Upgrade firmware using FTP
+  make sgrtos.flash, sgsc.flash, lw8cpu.flash, lw8pci.flash available via ftp
+  lom> flashupdate -y -f ftp://userid@10.10.10.10//tmp rtos scapp - files are in 10.10.10.10:/tmp, login userid - updates system controller
+  lom> flashupdate -y -f ftp://userid@10.10.10.10//tmp sb0 sb2 sb4 - updates system boards firmware
+  lom> flashupdate -y -f ftp://userid@10.10.10.10//tmp ib6 - updates io board firmware
+
+
+
+###NEW FIRMWARE
+Grab new firmware from jumps8002
+jumps8002:/Jumpstart/OBP/T5220/newestpatch.zip
+unzip -q newestpatch.zip
+cd /tmp/newestpatch
+./sysfwdownload Sun_System_Firmware-7_0_9_c-Sparc_Enterprise_T5120+5220.pkg
+init 0
+#. to switch to ALOM
+poweroff
+showkeyswitch
+if keyswitch isn't NORMAL: setkeyswitch -y normal
+ 
+flashupdate -s 127.0.0.1
+ 
+
+NOTE: A flashupdate takes about 6 minutes to load a new file.
+      Some commands are disabled until the file load is complete.
+      The SC must be reset to complete the upgrade.
+ 
+Are you sure you want to load the specified file (y/n)? y
+Using the following information for flash update
+        image file:     /coredump/ILOM_flash.pkg
+        sector_size:    0x20000
+        image_start:    0x0
+        flash_start:    0xfe0000
+        header_offset:  0x0
+        flash_size:     0x1000000
+ 
+.................................................................................................
+Operation succeeded
+New firmware images were loaded. Reset the SC to complete the upgrade.
+ 
+resetsc

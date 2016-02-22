@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# If you want only one argument
+if [ $# -lt 1 ]; then
+	echo "Usage: $0 <netgroup>"
+	exit 1
+fi
+
+NETGROUP="$1"
+
+
+for USER in `ldaps -N ${NETGROUP} | sed -e 's#.*(,##' -e 's#,)##' | grep "^u"`
+do
+	VALID=`id ${USER} > /dev/null 2>&1;echo $?`
+	GECOS=`ldaps -u $USER | awk -F= '/^gecos/ {print $2}' | sed 's#,##'`
+	echo "${USER} = ${GECOS} = ${VALID}"
+done

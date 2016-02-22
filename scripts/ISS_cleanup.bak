@@ -1,0 +1,91 @@
+#!/usr/bin/sh
+#
+
+# Cleanup old ISS Real Secure patches
+
+NUMBER_TO_RETAIN=3
+HOST=`uname -n`
+DATE=`date +%Y%m%d-%H%M%S`
+
+exec > /var/tmp/ISS_cleanup.log.${DATE}
+
+
+cd /opt/ISS/issDaemon
+
+echo "Script $0 - being ran as $logname on ${HOST} on `date`"
+echo "\nCurrent disk space - "
+
+echo "\n df -h /opt/ISS - \n`/usr/bin/df -h /opt/ISS`"
+
+echo "\n\nCurrent files in the /opt/ISS/issDaemon directory"
+ls -l /opt/ISS/issDaemon
+
+
+
+
+# Backup policies to be cleaned up
+
+   POLICY_COUNT=`ls -ldt /opt/ISS/issDaemon/${HOST}_RSSvrSnsr*_backup.policy|wc -l|sed -e 's/ //g'`
+
+   # If POLICY_COUNT less than NUMBER_TO_RETAIN, then nothing to clean up here.
+   if [ ${POLICY_COUNT} -le ${NUMBER_TO_RETAIN} ] ; then
+	echo " No Policy files to remove  - POLICY_COUNT=${POLICY_COUNT} NUMBER_TO_RETAIN=${NUMBER_TO_RETAIN}\n"
+   else
+	POLICY_REMOVE=`expr ${POLICY_COUNT} - ${NUMBER_TO_RETAIN}`
+	echo "POLICY_COUNT=${POLICY_COUNT} NUMBER_TO_RETAIN=${NUMBER_TO_RETAIN} POLICY_REMOVE=${POLICY_REMOVE}\n"
+	echo Listing of /opt/ISS/issDaemon for Policy files to retain
+	ls -ldt /opt/ISS/issDaemon/${HOST}_RSSvrSnsr*_backup.policy|head -${NUMBER_TO_RETAIN}
+	echo
+	echo Listing of /opt/ISS/issDaemon Policy files being removed
+	ls -ldt /opt/ISS/issDaemon/${HOST}_RSSvrSnsr*_backup.policy|tail -${POLICY_REMOVE}
+	for FILE in `ls -1dt /opt/ISS/issDaemon/${HOST}_RSSvrSnsr*_backup.policy|tail -${POLICY_REMOVE}`
+	do
+		rm ${FILE}
+	done
+    fi
+
+
+echo 
+
+
+
+# Directories to clean-up  
+
+   UNINSTALL_COUNT=`ls -ldt /opt/ISS/issDaemon/RSSvrSnsr*uninst | wc -l| sed -e 's/ //g'`
+
+   # If UNINSTALL_COUNT less than NUMBER_TO_RETAIN, then nothing to clean up here.
+   if [ ${UNINSTALL_COUNT} -le ${NUMBER_TO_RETAIN} ] ; then
+	echo " No uninstall directories to remove  - UNINSTALL_COUNT=${UNINSTALL_COUNT} NUMBER_TO_RETAIN=${NUMBER_TO_RETAIN}\n"
+   else
+	UNINSTALL_REMOVE=`expr ${UNINSTALL_COUNT} - ${NUMBER_TO_RETAIN}`
+	echo "UNINSTALL_COUNT=${UNINSTALL_COUNT} NUMBER_TO_RETAIN=${NUMBER_TO_RETAIN} UNINSTALL_REMOVE=${UNINSTALL_REMOVE}\n"
+	echo Listing of /opt/ISS/issDaemon for Uninstall directories to retain
+	ls -ldt /opt/ISS/issDaemon/RSSvrSnsr*uninst|head -${NUMBER_TO_RETAIN}
+	echo
+	echo Listing of /opt/ISS/issDaemon Uninstall directories being removed
+	ls -ldt /opt/ISS/issDaemon/RSSvrSnsr*uninst|tail -${UNINSTALL_REMOVE}
+	for FILE in `ls -1dt /opt/ISS/issDaemon/RSSvrSnsr*uninst|tail -${UNINSTALL_REMOVE}`
+	do
+		rm -r ${FILE}
+	done
+   fi
+
+# xpu file clean-up - remove if older than one day.
+#
+# This code unfortunately found files in subdirectories too.
+# find /opt/ISS/issDaemon -name "*.xpu" -mtime +1 -print
+
+echo "\n\nCleaning up *.xpu files which are only needed for short while after being applied.\n"
+
+for FILE in `ls -1 /opt/ISS/issDaemon/*.xpu`
+do
+	find ${FILE} -mtime +1 -print -exec rm {} \; 
+done
+
+
+echo "\n\nPost file cleanup sizes:"
+
+echo "\n df -h /opt/ISS - \n`/usr/bin/df -h /opt/ISS`"
+
+
+cp /var/tmp/ISS_cleanup.log.${DATE} /home/uss/root/ISS/${HOST}_ISS_cleanup.log.${DATE}

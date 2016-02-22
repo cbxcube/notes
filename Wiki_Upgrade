@@ -1,0 +1,49 @@
+1) Backup
+	Shutdown Confluence
+		service confluence stop
+	Backup Confluence configurations
+		rsync -avuz /wiki/application-data /wiki_backups/application-data.09022015
+		rsync -avuz /wiki/confluence /wiki_backups/confluence.09022015
+	Backup Virtual Machine for quick restore
+		from VMware, right click on ep1p-apwiki02, select Snapshot, select Take Snapshot
+	Restart Confluence prior to upgrade
+		service confluence start
+2) Patch
+    Run Confluence Upgrade script
+		/var/tmp/atlassian-confluence-5.8.9-x64.bin
+		o <enter> -> Ok to continue
+		3 <enter> -> Upgrade an existing Confluence installation
+		/wiki/confluence (default) <enter> -> installation directory
+		n <enter> -> Backup Confluence Home, already occurred prior to upgrade
+		<enter> -> to continue
+		
+Modified files:
+        bin/setenv.sh
+Removed files:
+        (none)
+Added files:
+        confluence/WEB-INF/lib/commons-validator-1.4.0.jar
+        confluence/WEB-INF/lib/mysql-connector-java-5.1.17.jar
+        bin/setenv.sh.06052015
+        bin/my.cnf.5.0
+        bin/setenv.sh.05052015
+
+		u <enter> -> to proceed with upgrade
+	Restore original setenv.sh from backup
+		mv /wiki/confluence/bin/setenv.sh /wiki/confluence/bin/setenv.sh.09022015
+		cp -p /wiki_backups/confluence.09022015/bin/setenv.sh /wiki/confluence/bin
+	Restore ownership to confluence
+		chown -R confluence:confluence /wiki/confluence
+	Restart Confluence services
+	   service confluence stop; sleep 30; service confluence start
+	Apply OS patches
+		yum -y update
+	Reboot
+		shutdown -r now
+	
+	
+confluence/WEB-INF/lib/mysql-connector-java-5.1.17.jar
+confluence/admin/find_and_recover_attachments-3.1.x.jsp
+confluence/admin/findattachments-3.1.x.jsp
+bin/setenv.sh.04222015
+bin/setenv.sh.04142015

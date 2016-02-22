@@ -1,0 +1,35 @@
+default images/rhel/6/x86_64/vesamenu.c32
+prompt 0
+timeout 600
+ONTIMEOUT local
+
+MENU TITLE PXE Menu
+
+LABEL local
+  MENU LABEL Boot from ^local drive
+  LOCALBOOT 0xffff
+
+LABEL RHEL 4AS Servers
+  MENU LABEL RHEL 4AS Servers
+  KERNEL images/rhel/6/x86_64/vesamenu.c32
+  APPEND pxelinux.cfg/RHEL4AS-Servers
+
+LABEL RHEL 5 Servers
+  MENU LABEL RHEL 5 Servers
+  KERNEL images/rhel/6/x86_64/vesamenu.c32
+  APPEND pxelinux.cfg/RHEL5-Servers
+
+LABEL RHEL 6 Servers
+  MENU LABEL RHEL 6 Servers
+  KERNEL images/rhel/6/x86_64/vesamenu.c32
+  APPEND pxelinux.cfg/RHEL6-Servers
+
+LABEL RHEL 7 Servers
+  MENU LABEL RHEL 7 Servers
+  KERNEL images/rhel/6/x86_64/vesamenu.c32
+  APPEND pxelinux.cfg/RHEL7-Servers
+
+LABEL Memtest86
+  MENU LABEL ^Memory test
+  KERNEL images/rhel/6/x86_64/memtest
+  APPEND -

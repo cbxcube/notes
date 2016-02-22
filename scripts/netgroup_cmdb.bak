@@ -1,0 +1,13 @@
+
+
+
+for NETGROUP in `ldaps -C allbox-nfs-root|grep Netgroup|awk '{print $2}'`
+do
+
+for H in `ldaps -N $NETGROUP|grep nisnet|sed -e 's/.*(//g' -e 's/,,.*//g'`
+do
+	CMDB_HOST=`echo $H|cut -d. -f1|tr [:lower:] [:upper:]`
+	CMDB=`/usr/bin/nawk -F, -v SEARCH_STRING="${CMDB_HOST}" 'gsub (/\"/,"") $4~SEARCH_STRING {print $9","$4}' /home/uss/reports/cmdb/TAM_UNIX_Data_Dump.csv`
+	echo $NETGROUP,$H,$CMDB
+done
+done

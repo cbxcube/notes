@@ -1,0 +1,213 @@
+#!/bin/ksh
+#-----------------------------------------------------------------------------
+#
+#  Script: Ntier_check
+#  Usage:  This script is invoked on CCUX18 to run a check on Ntier Servers
+#
+#
+#  Comments:
+#
+#
+#
+#  By: Josh Thorstad
+#  date: 07/31/01
+#  Copyright: (c) 2001 Carlson Companies Inc.
+#  Revision date(s): 
+#-----------------------------------------------------------------------------
+RUNFROM=ccux18
+MAILTO="jthorstad@carlson.com dcollins@carlson.com pammentorp@carlson.com mratnam@carlson.com jterhaar@carlson.com anorman@carlson.com bbarke@carlson.com pobrion@carlson.com rkhan@carlson.com dzellmer@carlson.com wmcdonald@carlson.com gharned@carlson.com mjmiller@carlson.com jhammond@carlson.com unixadm@ccux18.carlson.com mvukelich@carlson.com"
+#MAILTO="jthorstad@carlson.com"
+[ `uname -n` != "$RUNFROM" ] && { echo "\nThis must be run on $RUNFROM...\n"
+				  exit 1; }
+
+LOG=/tmp/ntier_check.log
+DATE=`date +%m%d%y`
+
+# Compile Header for Report
+REPORT=/tmp/ntier_report.$$
+echo "Subject: Unix NTier Daily Report" >> ${REPORT}
+echo "MIME-Version:1.0" >> ${REPORT}
+echo "Content-Type:text/html" >> ${REPORT}
+echo "" >> ${REPORT}
+echo "<html>" >> ${REPORT}
+echo "" >> ${REPORT}
+echo "<head>" >> ${REPORT}
+echo "<meta http-equiv="Content-Language" content="en-us">" >> ${REPORT}
+echo "<meta name="GENERATOR" content="Microsoft FrontPage 4.0">" >> ${REPORT}
+echo "<meta name="ProgId" content="FrontPage.Editor.Document">" >> ${REPORT}
+echo "<title>New Page 1</title>" >> ${REPORT}
+echo "</head>" >> ${REPORT}
+echo "" >> ${REPORT}
+echo "<body>" >> ${REPORT}
+echo "" >> ${REPORT}
+echo "<p> <b> <font size="4" face="Arial">CSS Unix Ntier Server Daily Report</font> </b> </p>" >> ${REPORT}
+echo "<hr>" >> ${REPORT}
+
+# Get Information on Host
+for Host in $(cat /usr/local/bin/ntier.txt|grep -v ^#| awk -F: ' { print $1 } ')
+do
+	print "$Host \c" >> ${LOG}
+	CPUMAX=0
+	DISKMAX=0
+	MEMMAX=0
+	PAGEMAX=0
+	RUNMAX=0
+	CPUSTATUS=UNKNOWN
+	DISKSTATUS=UNKNOWN
+	MEMSTATUS=UNKNOWN
+	PAGESTATUS=UNKNOWN
+	RUNSTATUS=UNKNOWN
+	if [ -f /p00cpy/extract/${Host}/${Host}_global_${DATE}.txt ]
+		then
+			sleep 1
+		else
+			if [ -d /p00cpy/extract/${Host} ]
+				then
+					sleep 1
+				else
+					mkdir /p00cpy/extract/${Host}
+			fi
+			rcp ${Host}:/p00cpy/extract/${Host}/${Host}_global_${DATE}.txt /p00cpy/extract/${Host}/
+	fi
+	if [ -f /p00cpy/extract/${Host}/${Host}_global_${DATE}.txt ]
+		then
+			CPUMAX=`cat /p00cpy/extract/${Host}/${Host}_global_${DATE}.txt | awk -F, ' { print $4 } '|grep -v CPU| sort | tail -1`
+			DISKMAX=`cat /p00cpy/extract/${Host}/${Host}_global_${DATE}.txt | awk -F, ' { print $5 } '|grep -v Disk|grep -v Peak | sort | tail -1`
+			MEMMAX=`cat /p00cpy/extract/${Host}/${Host}_global_${DATE}.txt | awk -F, ' { print $6 } '|grep -v Memory | sort | tail -1`
+			PAGEMAX=`cat /p00cpy/extract/${Host}/${Host}_global_${DATE}.txt | awk -F, ' { print $7 } '|grep -v Page |grep -v Out| sort | tail -1`
+			RUNMAX=`cat /p00cpy/extract/${Host}/${Host}_global_${DATE}.txt | awk -F, ' { print $11 } '|grep -v Run |grep -v Queue| sort | tail -1`
+
+	if [ ${CPUMAX} -lt 40.0 ]
+		then
+			CPUSTATUS="<font color="#008000"><b>green</b></font>"
+	fi
+	if [ ${CPUMAX} -gt 40.0 ]       
+		then
+			CPUSTATUS="<b><font color="#FFFF00">yellow</font></b>"
+	fi
+	if [ ${CPUMAX} -gt 80.0 ]       
+		then
+			CPUSTATUS="<b><font color="#FF0000">red</font></b>"
+	fi
+
+	if [ ${DISKMAX} -lt 40.0 ]
+		then
+			DISKSTATUS="<font color="#008000"><b>green</b></font>"
+	fi
+	if [ ${DISKMAX} -gt 40.0 ]
+		then
+			DISKSTATUS="<b><font color="#FFFF00">yellow</font></b>"
+	fi
+	if [ ${DISKMAX} -gt 80.0 ]
+		then
+			DISKSTATUS="<b><font color="#FF0000">red</font></b>"
+	fi
+
+	if [ ${MEMMAX} -lt 40.0 ]
+		then
+			MEMSTATUS="<font color="#008000"><b>green</b></font>"
+	fi
+
+	if [ ${MEMMAX} -gt 40.0 ]
+		then
+			MEMSTATUS="<font color="#008000"><b>green</b></font>"
+	fi
+
+	if [ ${MEMMAX} -gt 80.0 ]
+		then
+			MEMSTATUS="<font color="#008000"><b>green</b></font>"
+	fi	
+	
+	if [ ${PAGEMAX} -gt 0 ]
+		then
+			PAGESTATUS="<font color="#008000"><b>green</b></font>"
+		else
+			PAGESTATUS="<font color="#008000"><b>green</b></font>"
+	fi
+	if [ ${RUNMAX} -lt 5 ]
+		then
+			RUNSTATUS="<font color="#008000"><b>green</b></font>"
+	fi
+	if [ ${RUNMAX} -gt 5 ]
+		then
+			RUNSTATUS="<font color="#008000"><b>green</b></font>"
+	fi
+	if [ ${RUNMAX} -gt 20 ]
+		then
+			RUNSTATUS="<b><font color="#FF0000">red</font></b>"
+	fi
+	UPTIME=/tmp/ntier_uptime.log.`date +%a`
+	UPTIMERP=`grep ${Host} ${UPTIME}`
+	DAY=`date +%a`
+	if [ "${DAY}" = "Sun" ]
+		then
+			DAYNUM=7
+	fi
+	if [ "${DAY}" = "Mon" ]
+		then
+			DAYNUM=1
+	fi
+	if [ "${DAY}" = "Tue" ]
+		then
+			DAYNUM=2
+	fi
+	if [ "${DAY}" = "Wed" ]
+		then
+			DAYNUM=3
+	fi
+	if [ "${DAY}" = "Thu" ]
+		then
+			DAYNUM=4
+	fi
+	if [ "${DAY}" = "Fri" ]
+		then
+			DAYNUM=5
+	fi
+	if [ "${DAY}" = "Sat" ]
+		then
+			DAYNUM=6
+	fi
+		else
+			print "failed"
+	fi
+	# Add Host information to file
+	PURPOSE=`cat /usr/local/bin/ntier.txt|grep ${Host} | awk -F: ' { print $2 } '`
+
+	print "<font face="Arial"><b>Server:</b> ${Host} <b>Purpose:</b> ${PURPOSE}<br>" >> ${REPORT}
+	print "<b>Uptime:</b> ${UPTIMERP}<br>" >> ${REPORT}
+	print "<br>" >> ${REPORT}
+	print "<b><a href="http://www.capacity.carlson.com/web/data/${Host}/${Host}-cpu-day${DAYNUM}.gif">CPU Status:</a></b>" >> ${REPORT}
+	print "${CPUSTATUS}<br>" >> ${REPORT}
+	print "<b>CPU Max Percent:</b> ${CPUMAX}<br>" >> ${REPORT}
+	print "<br>" >> ${REPORT}
+	print "<b><a href="http://www.capacity.carlson.com/web/data/${Host}/${Host}-disk-day${DAYNUM}.gif">Disk" >> ${REPORT}
+	print "Status:</a></b> ${DISKSTATUS}<br>" >> ${REPORT}
+	print "<b>Disk Max Percent:</b> ${DISKMAX}<br>" >> ${REPORT}
+	print "<br>" >> ${REPORT}
+	print "<b><a href="http://www.capacity.carlson.com/web/data/${Host}/${Host}-mem-day${DAYNUM}.gif">Memory Status:</a></b>" >> ${REPORT}
+	print "${MEMSTATUS}<br>" >> ${REPORT}
+	print "<b>Memory Max Percent:</b> ${MEMMAX}<br>" >> ${REPORT}
+	print "<br>" >> ${REPORT}
+	print "<b>Memory Page Outs Status:</b> ${PAGESTATUS}<br>" >> ${REPORT}
+	print "<b>Memory Page Outs Max:</b> ${PAGEMAX}<br>" >> ${REPORT}
+	print "<br>" >> ${REPORT}
+	print "<b><a href="http://www.capacity.carlson.com/web/data/${Host}/${Host}-proc-day${DAYNUM}.gif">Run Queue Status:</a></b>" >> ${REPORT}
+	print "${RUNSTATUS}<br>" >> ${REPORT}
+	print "<b>Run Queue Max Proccess:</b>${RUNMAX}<br>" >> ${REPORT}
+	print "</font>" >> ${REPORT}
+	print "<hr>" >> ${REPORT}
+
+done
+
+# Add Footer Information to file
+print "</body>" >> ${REPORT}
+
+print "</html>" >> ${REPORT}
+
+
+# Send File
+					
+					
+print "Send File"
+rmail -t ${MAILTO} < ${REPORT}
+rm -f ${REPORT}

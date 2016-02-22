@@ -1,0 +1,62 @@
+Installation:
+The server will be unavailable for no longer than an hour.
+1) Confirm current OSBackup and explorer:
+     on ssmn00pk00144:
+       ls -ltr /osbackups/<servername> - verify time stamp is less than 7 days old
+         if the current backup is more than 7 days old:
+           /usr/local/bin/backupos.sh
+     from current server:
+       ls -ltr /home/uss/bin/explorer/servers/<current server> - verify time stamp is less than 7 days old
+         if current explorer is more than 7 days old:
+           /home/uss/bin/explorer/bin/run_explorer.ksh -i
+2) Prep server for ISS installation:
+     metainit d47 -p d4 500m
+     mkdir -m 755 /opt/ISS
+     update /etc/vfstab:
+       cpv /etc/vfstab - add the following line:
+         /dev/md/dsk/d47        /dev/md/rdsk/d47       /opt/ISS    ufs    3       yes     logging
+     mount /opt/ISS
+     chown root:other /opt/ISS
+     chmod 740 /opt/ISS
+     update fswatch:
+       cpv /opt/local/fswatch/etc/fswatch.cfg - add the following line:
+         <current server>,/opt/ISS,94,SEV2,CRC-C-SECENG,
+3) See attached document for the remaining installation instructions.
+
+
+Backout:
+1) Remove the ISS package:
+     pkgrm ISSXss
+     reboot if instructed to do so by the package removal script
+2) Remove the ISS File system:
+     umount /opt/ISS
+     rmdir /opt/ISS
+     metaclear d47
+     mv /etc/vfstab.date /etc/vfstab
+
+
+
+CWTOTC Install:
+Installation:
+The server will be unavailable for no longer than an hour.
+1) Confirm current OSBackup and explorer:
+     on ssmn00pk00144:
+       ls -ltr /osbackups/<servername> - verify time stamp is less than 7 days old
+         if the current backup is more than 7 days old:
+           /usr/local/bin/backupos.sh
+     from current server:
+       ls -ltr /home/uss/bin/explorer/servers/<current server> - verify time stamp is less than 7 days old
+         if current explorer is more than 7 days old:
+           /home/uss/bin/explorer/bin/run_explorer.ksh -i
+2) Prep server for ISS installation:
+     mkdir -m 755 /opt/ISS
+     chown root:other /opt/ISS
+     chmod 740 /opt/ISS
+     
+3) See attached document for the remaining installation instructions.
+
+
+Backout:
+1) Remove the ISS package:
+     pkgrm ISSXss
+     reboot if instructed to do so by the package removal script

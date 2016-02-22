@@ -1,0 +1,172 @@
+# Find HBA WWN's:
+	prtpicl -v -c scsi-fcp|grep wwn
+	/opt/DynamicLinkManager/bin/dlnkmgr view -lu - displays luns visible to server
+	luxadm -e dump_map /device/for/fiber/channel/from/luxadm -e port
+
+
+# reformat luns to cdsdisk:
+	/usr/lib/vxvm/bin/vxdisksetup -i DISKNAME format=cdsdisk
+
+
+# Create new filesystem in Veritas cluster:
+	hastatus -sum - shows servers in cluster
+	olsnodes - shows other servers in Oracle RAC cluster
+
+
+# All following commands need to be run on all clustered servers.
+	check for existing space:
+	vxdg free - length column shows amount of free space in blocks.  Anything under 2000 is not enough free
+	vxassist -g diskgroup maxsize - diskgroup is diskgroup to be increased, ie oradg1; shows amount of free space left in diskgroup
+	vxdisk -o alldgs list - shows cluster groups, parenthesis=group is on other server, no parenthesis=group on this server; dash in group column means free for use
+	echo | format | more - shows available disks; lines above "AVAILABLE DISK SELECTIONS" are unlabelled disks
+
+# import new disks from SAN
+	luxadm -e port - shows fiber controller devices
+	dbsd0003:/ #luxadm -e port
+ 
+	Found path to 2 HBA ports
+ 
+	/devices/ssm@0,0/pci@1b,700000/SUNW,qlc@2/fp@0,0:devctl            CONNECTED
+	/devices/ssm@0,0/pci@1b,600000/SUNW,qlc@1/fp@0,0:devctl            CONNECTED
+
+	luxadm -e forcelip /devices/ssm@0,0/pci@1b,700000/SUNW,qlc@2/fp@0,0:devctl - recycled fiber connections to recapture SAN; run for both HBA ports
+
+# refresh controllers
+	cfgadm -avl | more - shows controllers - look for c# from fc-fabric, c8 from following response
+	c8                             connected    configured   unknown
+	unavailable  fc-fabric    n        /devices/ssm@0,0/pci@1b,700000/SUNW,qlc@2/fp@0,0:fc
+	c8::50060e8004758605           connected    configured   unknown
+	unavailable  disk         n        /devices/ssm@0,0/pci@1b,700000/SUNW,qlc@2/fp@0,0:fc::50060e8004758605 
+	c8::50060e8004758621           connected    configured   unusable
+	unavailable  disk         n        /devices/ssm@0,0/pci@1b,700000/SUNW,qlc@2/fp@0,0:fc::50060e8004758621 
+	cfgadm -c configure c# - c# is controller number found from previous command
+
+# refresh HDLM if necessary
+	/opt/DynamicLinkManager/bin/dlmsetconf = configures HDLM
+	/opt/DynamicLinkManager/bin/dlmcfgmgr -a = changes configuration of HDLM - completes import of LUNs
+	#####If DynamicLinkManager does not exist#####
+	vxdmpadm getsubpaths ctlr=c4 		- shows paths for controller c4
+	vxdmpadm listctlr all			- shows all fiber controllers 
+	vxdmpadm enable ctlr=c4			- enables c4 luns if luns are not enabled
+	vxdmpadm getdmpnode nodename=c4t32d0s2	- ?
+	vxdmpadm getdmpnode enclosure=USP0	- lists all number of paths for all USP0 disks
+
+	echo | format | more - disks may need labelling
+	cd /dev/rdsk - location of disk devices
+	ls |grep ^c9 |grep s2 |sed -e 's/s2//g' - to see if you have the correct devices - c9 equals the controller
+
+# following commands format disks:
+	ls |grep ^c9 |grep s2 |sed -e 's/s2//g'|\
+	>while read dev
+	>do
+	>format $dev < /tmp/q - /tmp/q contains two lines, l y
+	>done
+	vxdisk -o alldgs list - new disks might not show up yet
+	vxdctl enable - enables disks, 
+	vxdisk -o alldgs list - group should now have a "-" for the new disks
+		if vxdctl enable does not bring the USP0_### out of error,
+		#/ vxdisk list USP0_###
+		...
+		c5t50060E80042A9B5Cd41s2        state=disabled
+		c4t50060E80042A9B4Cd41s2        state=disabled
+		c7t50060E80042A9B5Cd41s2        state=disabled
+		c6t50060E80042A9B4Cd41s2        state=disabled
+
+		#/ vxdmpadm enable ctlr=c4
+		#/ vxdmpadm enable ctlr=c5
+		#/ vxdmpadm enable ctlr=c6
+		#/ vxdmpadm enable ctlr=c7
+
+	/usr/lib/vxvm/bin/vxdisksetup -i USP0_282 - to bring the disk status from "online invalid" to "online"
+ 
+# All new allocated LUNs should appear on all clustered servers.
+
+# create new disk group:
+	vxdg init dicartadg dicarta01=USP0_281 - creates new diskgroup dicartadg and adds disk dicarta01 to diskgroup
+	vxdg -g dicartadg adddisk dicarta02=USP0_283 - adds disk dicarat02 to existing diskgroup dicartadg
+
+	vxdisk -g dicartadg list - displays all disks in dicaratdg diskgroup
+
+# create new volumes:
+	vxassist -g diskgroupdg maxsize layout=stripe disk01 disk02 - displays max volume size for a striped volume accross disk01 and disk02 from diskgroupdg
+		dbsd0003:/ #vxassist -g dicartadg maxsize layout=stripe dicarta01 dicarta02 dicarta03 dicarta04 dicarta05 dicarta06 dicarta07 dicarta08
+		Maximum volume size: 234743808 (114621Mb)
+	vxassist -g diskgroupdg make volume max_volume_size layout=stripe disk01 disk02 - makes volume of max_volume_size in a striped disk accross disk01 and disk02
+		dbsd0003:/ #vxassist -g dicartadg make u08 234743808 layout=stripe dicarta01 dicarta02 dicarta03 dicarta04 dicarta05 dicarta06 dicarta07 dicarta08
+
+Or:
+	vxassist -g diskgroupdg maxsize layout=stripe ncol=number - shows max size of volume striped across number of disks
+		dbss8037:/ #vxassist -g oradatdg03 maxsize layout=stripe ncol=42
+		Maximum volume size: 1232404480 (601760Mb)
+			Divide # of blocks by total # of volumes to be created
+	vxassist -g diskgroupdg make volume max_volume_size layout=stripe ncol=# - makes volume of max_volume_size in a striped disk accross ncol=# disks
+  
+
+# Create new filesystem 
+	newfs /dev/vx/rdsk/diskgroupdg/volume - makes new filesystem using newly created volume
+		dbsd0003:/ #newfs /dev/vx/rdsk/dicartadg/u08
+
+
+# If filesystem is not to be mounted accross cluster:
+	vi /etc/vfstab
+	add line:
+		/dev/vx/dsk/diskgroupdg/volume /dev/vx/rdsk/diskgroupdg/volume /mount_directory ufs - yes largefiles,suid
+		mkdir mount_directory
+		mount mount_directory
+		chown owner:group mount_directory
+
+
+# To grow existing volume:
+	vxassist -g diskgroup growby volume size_to_add disk01
+		dbsd0004:/ #vxassist -g utdg growby prdctl 100m utdg09
+	vxassist -g diskgroup growto volume new_size_of_filesystem disk01
+		dbsd0004:/ #vxassist -g utdg growto prdctl 500m utdg09
+	To grow a striped volume:
+	vxassist -g diskgroup -o bg relayout volume layout=stripe ncol=+#ofcol_added volume1 volume2
+		dbss8200:${PWD} #vxassist -g iradsdg -o bg relayout irads-u07 layout=stripe ncol=+11 iradsdg26 iradsdg27 iradsdg28 iradsdg29 iradsdg30 iradsdg31 iradsdg32 iradsdg33 iradsdg34 iradsdg35 iradsdg36
+		dbss8200:${PWD} #vxassist -g irads-u07 maxgrow iradsdg26 iradsdg27 iradsdg28 iradsdg29 iradsdg30 iradsdg31 iradsdg32 iradsdg33 iradsdg34 iradsdg35 iradsdg36
+		dbss8200:#{PWD} #vxassist -g irads-u07 growto ########## layout=stripe ncol=+11 iradsdg26 iradsdg27 iradsdg28 iradsdg29 iradsdg30 iradsdg31 iradsdg32 iradsdg33 iradsdg34 iradsdg35 iradsdg36
+	To grow the filesystem:
+	/usr/lib/fs/ufs/mkfs -F ufs -M /mount_point /dev/vx/rdks/diskgroup/volume disksize
+		dbss8200:#{PWD} #/usr/lib/fs/ufs/mkfs -F ufs -M /prdctl /dev/vx/rdsk/iradsdg/irads-u07 #########
+
+
+# If filesystem is to be used accross cluster:
+	Create the filesystem on the volumes then input the filesystems into the Veritas Cluster.  See Veritas Cluster Notes.
+
+
+# Additional Notes:
+# to see multiple paths
+	vxdiskadm
+	vxdisk -e list HDS99600_3
+	vxdmpadm getsubpaths ctlr=c4
+	vxdmpadm listctlr all
+	vxdmpadm enable ctlr=c4
+	vxdmpadm getdmpnode nodename=c4t32d0s2
+	vxdmpadm getdmpnode enclosure=USP0
+	luxadm display /dev/rdsk/cxtxdxs2
+	cfgadm -alv
+	iostat -En
+
+
+# Sybase RAW Disk:
+	vxdg -g diskgrp adddisk diskname=GENESIS_#
+	vxassist -g diskgrp make volumename 0000m user=sybase group=sybase mode=660
+
+
+# HDLM notes:
+	/opt/DynamicLinkManager/bin/dlnkmgr view -lu - shows LUNS
+	/opt/Dyn*/bin/dlnkmgr view -path - shows fiber paths
+	luxadm -e dump_map fcp_path_from_luxadm_-e_port - shows WWNs.
+	/opt/DynamicLinkManager/bin/dlmsetconf
+	/opt/DynamicLinkManager/bin/dlmcfgmgr -a
+	/opt/DynamicLinkManager/bin/dlnkmgr view -path
+	/opt/DynamicLinkManager/bin/dlnkmgr view -lu
+	/opt/DynamicLinkManager/bin/dlnkmgr view -sys
+	/opt/DynamicLinkManager/bin/dlnkmgr online
+	/opt/DynamicLinkManager/bin/dlknmgr view -drv - displays LUNs with USP number and disk id
+	(/usr for AIX)
+
+# EMC Power:
+	powermt display dev=all - displays all devices and all paths.
+	powermt watch every=10 - displays activity for all paths polling every 10 seconds.

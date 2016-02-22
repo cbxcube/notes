@@ -1,0 +1,101 @@
+Verify duplex:
+/ # kstat ce 
+	(kstat bge for bge interfaces, qfe for qfe interfaces, etc...)
+	find the link_duplex line for your interface instance; 2 indicates full-duplex, 1 indicates half-duplex, 0 indicates down interface.  Also note the ifspeed in bytes for comparison later.
+	<...>
+	ifspeed                         100000000
+        inits                           1
+        ipackets                        0
+        ipackets64                      0
+        jabber                          0
+        len_errors                      0
+        link_duplex                     1
+        link_up                         1
+	<...>
+
+Verify the nddset script exists and that it turns on full duplex for the correct speed.  If not create it and make sure it's executable (ie, if the interface is set to 100full make sure the adv_100fdx_cap is set to 1 and everything else is set to 0.  But, first try to turn auto-negotiate on to see if it will work.  Set all to 0 except set adv_autoneg_cap to 1 to turn auto-negotiate on.  Again, /dev/bge for bge interfaces, /dev/qfe for qfe interfaces, etc...).  Make a copy of the original if your unsure:
+/ # cd /etc/init.d
+/ # vi nddset
+#!/bin/sh
+#ce0
+ndd -set /dev/ce instance 0
+ndd -set /dev/ce adv_100fdx_cap 0
+ndd -set /dev/ce adv_1000fdx_cap 0
+ndd -set /dev/ce adv_1000hdx_cap 0
+ndd -set /dev/ce adv_100hdx_cap 0
+ndd -set /dev/ce adv_10fdx_cap 0
+ndd -set /dev/ce adv_10hdx_cap 0
+ndd -set /dev/ce adv_autoneg_cap 1
+#ce1
+ndd -set /dev/ce instance 1
+ndd -set /dev/ce adv_100fdx_cap 0
+ndd -set /dev/ce adv_1000fdx_cap 0
+ndd -set /dev/ce adv_1000hdx_cap 0
+ndd -set /dev/ce adv_100hdx_cap 0
+ndd -set /dev/ce adv_10fdx_cap 0
+ndd -set /dev/ce adv_10hdx_cap 0
+ndd -set /dev/ce adv_autoneg_cap 1
+
+:wq!
+
+more examples:
+        #hme0 (the following will set hme0 to 100 full duplex)
+        ndd -set /dev/hme instance 0
+        ndd -set /dev/hme adv_100fdx_cap 1
+        ndd -set /dev/hme adv_100hdx_cap 0
+        ndd -set /dev/hme adv_10fdx_cap 0
+        ndd -set /dev/hme adv_10hdx_cap 0
+        ndd -set /dev/hme adv_autoneg_cap 0
+
+        #bge1 (the following will set bge1 to autonegotiate)
+	ndd -set /dev/bge instance 1
+	ndd -set /dev/bge adv_100fdx_cap 0
+	ndd -set /dev/bge adv_1000fdx_cap 0
+	ndd -set /dev/bge adv_1000hdx_cap 0
+	ndd -set /dev/bge adv_100hdx_cap 0
+	ndd -set /dev/bge adv_10fdx_cap 0
+	ndd -set /dev/bge adv_10hdx_cap 0
+	ndd -set /dev/bge adv_autoneg_cap 1
+
+	#qfe4 (the following will set qfe4 to 100 full duplex; notice the instance line is not there for qfe and it is /dev/qfe4, that is normal for qfe)
+        ndd -set /dev/qfe4 adv_100fdx_cap 1
+        ndd -set /dev/qfe4 adv_100hdx_cap 0
+        ndd -set /dev/qfe4 adv_10fdx_cap 0
+        ndd -set /dev/qfe4 adv_10hdx_cap 0
+        ndd -set /dev/qfe4 adv_autoneg_cap 0
+
+
+Verify a link to the startup script exists in /etc/rc2.d
+if not, create link:
+/ # ln -s /etc/init.d/nddset /etc/rc2.d/S31nddset
+
+
+Instead of running the script (so you don't mess with the front side interface), run the "ndd -set" commands for the bu interface from the command line so you are only affecting the bu interface (the following lines, run one at a time, will only affect ce1 interface).
+/ # ndd -set /dev/ce instance 1
+/ # ndd -set /dev/ce adv_100fdx_cap 0
+/ # ndd -set /dev/ce adv_100hdx_cap 0
+/ # ndd -set /dev/ce adv_10fdx_cap 0
+/ # ndd -set /dev/ce adv_10hdx_cap 0
+/ # ndd -set /dev/ce adv_autoneg_cap 1
+
+
+verify speed and duplex:
+/ # kstat ce  
+Look for your interface instance.  The link_duplex for the bu interface instance should now equal "2" to indicate full duplex.  The ifspeed will tell you how fast the interface is talking in bytes and link_up should be 1.  If link_up is 0 then your interface is not communicating.  Try re-plumbing the interface.
+
+/ # ifconfig ce1 unplumb
+/ # ifconfig ce1 plumb
+/ # ifconfig ce1 crmrpt1bu netmask + broadcast + up
+
+verify speed and duplex again by running the kstat ce command. 
+If the link still does not come up.  Revert to the original speed the interface was trying to communicate at.
+Edit your /etc/init.d script to reflect whatever speed you are trying to run at.
+for 100 full-duplex:
+  set adv_100fdx_cap to 1 and all other lines to 0
+for 1000 full-duplex:
+  set adv_1000fdx_cap to 1 and all other lines to 0
+
+After you finish editing the nddset script, run all of the "ndd -set" lines for your bu interface from the command line again.
+Verify your speed and duplex by running the kstat command again.  If the interface is still not up, replumb.  You should now be running at the correct speed at full duplex.  If not, check the switch setting.
+
+One last thing to note, qfe and hme cards can only communicate at 100full so if the switch is set to 1000full instead of auto or 100, the link will not come up.  Also qfe may not work with auto-negotiate, but it does not hurt to try.

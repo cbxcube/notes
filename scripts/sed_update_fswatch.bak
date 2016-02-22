@@ -1,0 +1,13 @@
+#!/usr/bin/ksh
+#
+cd /opt/local/fswatch/etc
+cp -p /opt/local/fswatch/etc/fswatch.cfg /opt/local/fswatch/etc/fswatch.cfg.tmp
+
+sed 's/CRC-C-CWGTSPT/CRC-B-CWGTSPT/' /opt/local/fswatch/etc/fswatch.cfg.tmp > /opt/local/fswatch/etc/fswatch.cfg
+
+cat fswatch.cfg |grep -i ora
+
+chmod 664 /opt/local/fswatch/etc/fswatch.cfg
+chown root:fswatch /opt/local/fswatch/etc/fswatch.cfg
+
+grep CWGT /opt/local/fswatch/etc/fswatch.cfg

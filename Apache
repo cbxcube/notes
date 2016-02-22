@@ -1,0 +1,9 @@
+# Adding SSL Certs
+# Install SSL requirements
+yum install mod_ssl openssl
+
+# Generate self-signed cert
+# Generate private key
+openssl genrsa -out ca.key 2048
+
+https://wiki.centos.org/HowTos/Https

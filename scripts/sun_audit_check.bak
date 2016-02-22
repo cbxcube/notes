@@ -1,0 +1,618 @@
+#!/usr/bin/ksh 
+# for the Carlson account
+# 
+# **** PLEASE NOTE
+# You will be notified of required changes in the log file.  These changes
+# require you to put in a change control before doing the Change.
+#
+#
+#
+# Appendix AB2. Solaris/SunOS Platform. 
+#############
+# Set environment variables
+# Edit to suit environment
+PATH=$PATH:/usr/bin:/usr/sbin
+
+function header {
+print "\n"
+print "************************************************** \n"
+print " Section $1 $2 \n " 
+print " Date of Report: `date` \t Server: `uname -n` \n"
+ }
+
+function subheader {
+print "\n"
+print "$1   \n"
+  }
+
+################
+
+function sun {
+
+#####
+# Section AB.1.1.2 Network Settings
+####
+
+header AB.1.1.2 "Network Settings"
+###########################################
+subheader "TFTP Service"
+###########################################
+  if [[ -z `grep ^tftp /etc/inetd.conf` ]]; then
+    echo "tftp service disabled: passed" 
+  else
+    echo "tftp service enabled: FAILED" 
+   fi
+###########################################
+subheader "NFS System settings"
+###########################################
+if [[ -n `ps -ef |grep nfsd |grep -v grep` && -n `cat /etc/dfs/dfstab|grep -v "^#"` ]]; then
+  echo "nfsd is running and /etc/exports is not empty: passed" 
+  echo "Review the following exports quarterly - `cat /etc/dfs/dfstab |grep -v "^#" `"
+  else
+   if [[ -n `ps -ef |grep nfsd |grep -v grep` && -z `cat /etc/dfs/dfstab |grep -v "^#"` ]]; then
+  echo "nfsd is running and /etc/dfs/dfstab is empty or does not exist: FAILED"
+   else
+     echo "nfsd is not running: passed"
+   fi
+fi
+###########################################
+subheader "Check for automounter browsing"
+###########################################
+#########################################################
+failed=false
+for i in `grep -v "^#" /etc/auto_master|grep -v "^+" |awk '{print $1}'`
+  do
+if [[ -n `grep "$i" /etc/auto_master|grep -v nobrowse`  ]]; then
+echo "Nobrowsing :FAILED"
+grep $i /etc/auto_master 
+failed=true
+fi
+done
+if [ $failed != true ]; then
+echo "Automaster nosuid: passed"
+fi
+
+###########################################
+subheader "Checking for hosts.equiv"
+###########################################
+if [[ ! -f /etc/hosts.equiv ]]; then 
+ echo " hosts.equiv file missing: FAILED"
+  else
+ ls -l /etc/hosts.equiv
+fi
+###########################################
+#  Verify no Kerberos ports available
+if [[ `netstat -a |grep -i kerberos |wc -l` -eq 0 ]]; then
+ echo "Kerberos not in use: passed" 
+ else
+ echo "Kerberos available: FAILED" 
+fi
+
+###########################################
+subheader "Checking for rexd Daemon"
+###########################################
+if [[ -z `grep ^rexd /etc/inetd.conf` ]]; then
+ echo "rexd daemon is disabled: passed" 
+ else
+  echo "rexd daemon is enabled: FAILED"
+fi
+###########################################
+subheader "Checking .netrc"
+###########################################
+
+for i in `cat /etc/passwd |awk -F: '{print $6}'`
+ do 
+  if [[ -s $i/.netrc ]]; then
+   if [[ `ls -al $i/.netrc |awk '{print substr($1,5,10)}'` != ------ ]]; then 
+   echo "$i/.netrc permissions: FAILED"
+   fi
+   echo "$i/.netrc permissions: passed"
+  fi
+done
+###########################################
+subheader  "Post Office Protocol (RPOP/NPOP) Services"
+###########################################
+if [[ -z `grep -i ^pop /etc/inetd.conf` ]]; then
+ echo "RPOP/NPOP server not running: passed"
+else
+ echo "RPOP/NPOP server running: FAILED "
+fi
+###########################################
+
+###########################################
+subheader "Net News Transfer Protocol (NNTP)"
+###########################################
+if [[ -n `grep -i ^nntp /etc/inetd.conf` ]]; then
+  echo "NNTP server is running: FAILED"
+else
+  echo "NNTP server is not running: passed" 
+fi
+###########################################
+subheader "FLEXlm License Daemon"
+###########################################
+if [[ -n `ps -eaf|grep lmgrd|grep -v grep`  ]]; then
+  echo "FLEXlm is running: FAILED"
+else
+  echo "FLEXlm is not running: passed"
+fi
+###########################################
+subheader "Xwindows"
+###########################################
+if [[ -s /etc/X0.hosts || -s /etc/X1.hosts ]]; then
+ echo "Access control has been disabled for /etc/X*.hosts: FAILED" 
+else
+ echo "Access control is enabled for xhosts: passed" 
+fi
+###########################################
+subheader  "Denial of Service Attacks"
+###########################################
+ if [[ -n `grep "^echo" /etc/inetd.conf` ]]; then
+  echo " echo service is enabled: FAILED " 
+else 
+ echo "echo service is disabled: passed" 
+fi
+ if [[ -n `grep "^chargen" /etc/inetd.conf` ]]; then
+  echo "chargen service is enabled: FAILED "
+ else 
+ echo "chargen service is disabled: passed" 
+fi
+ if [[ -n `grep "finger" /etc/inetd.conf` ]]; then
+  echo "finger service is enabled: FAILED "
+ else 
+ echo "finger service is disabled: passed"
+fi
+ if [[ -n `grep "^discard" /etc/inetd.conf` ]]; then
+  echo "discard service is enabled: FAILED " 
+ else 
+ echo "discard service is disabled: passed"
+fi
+ if [[ -n `grep "^daytime" /etc/inetd.conf` ]]; then
+  echo "daytime service is enabled: FAILED "
+ else 
+ echo "daytime service is disabled: passed"
+fi
+ if [[ -n `grep "^netstat" /etc/inetd.conf` ]]; then
+  echo "netstat service is enabled: FAILED "
+ else 
+ echo "netstat service is disabled: passed" 
+fi
+########################################################
+#echo " who :Compliance check is still in progress... " 
+########################################################
+header AB.1.2 "System Controls"
+########################################################
+subheader "AB.1.2.1 logging "
+
+# 1. Verify system login logs
+if [ -r /var/adm/wtmp ] || [ -r /var/adm/wtmpx ]; then
+ echo "Wtmp Logging: passed"
+ else
+ echo "Wtmp Logging: FAILED"
+fi
+if [ -r /var/adm/sulog ]; then
+ echo "Sulog Logging: passed"
+ else
+ echo "Sulog Logging: FAILED"
+fi
+if [ -r /var/adm/loginlog ]; then
+ echo "Lastlog Logging: passed"
+ else
+ echo "Lastlog Logging: FAILED" 
+fi
+if [[ -n `grep "SYSLOG=YES" /etc/default/login` ]]; then
+  echo "Failed Logins logged to syslog: passed"
+  else
+  echo "Failed Logins logged to syslog: FAILED"
+ fi 
+
+########################################################
+subheader "AB.1.2.2 Identify and Authenticate users"
+########################################################
+# 1. Verify PASSREQ=YES in /etc/default/login file
+
+if [[ -z `grep PASSREQ=YES /etc/default/login |grep -v "#"` ]]; then
+ echo "PASSREQ=YES /etc/default/login : FAILED"
+else
+ echo "PASSREQ=YES /etc/default/login : passed"
+fi
+
+# 2. Root password check
+if [ `grep root /etc/shadow |awk -F: '{print $2}'` != "NP" ]; then
+ echo "Root userid assigned password : passed"
+ else
+ echo "Root userid assigned password : FAILED"
+fi
+
+# 4. Unique UID
+un=`cat /etc/passwd |awk -F: '{print $3}'|sort -n |uniq -d`
+if [[ -z $un ]]; then
+ echo " Unique Ids:  passed"
+ else
+ echo " Unique Ids $un:  FAILED"
+fi
+######################################################
+subheader "ftp user"
+######################################################
+
+if [[ -z `grep ^ftp: /etc/passwd` ]]; then
+ echo "no ftp user: passed "
+elif [[ -z `grep ^ftp: /etc/passwd|sed -n /sh$/p` ]]; then
+  echo "No shell for ftp user: passed"
+else 
+  grep ^ftp: /etc/passwd
+  echo "Check shell for ftp user: FAILED"
+fi
+
+######################################################
+subheader "maxweeks"
+######################################################
+  if [[ -n `grep "^MAXWEEKS=12$" /etc/default/passwd` ]]; then
+    echo "maxweeks  set in /etc/default/passwd : passed"
+   else
+    echo "maxweeks not set in /etc/default/passwd : FAILED"
+  fi
+######################################################
+subheader "passlength"
+######################################################
+  if [[ -n `grep "^PASSLENGTH=8$" /etc/default/passwd` ]]; then
+    echo "passlength  set in /etc/default/passwd : passed"
+   else
+    echo "passlength not set in /etc/default/passwd : FAILED"
+  fi
+
+
+######################################################
+subheader "/etc/passwd"
+######################################################
+#  Each user must have valid password or not allowed to login.
+for i in `grep -v "^+" /etc/passwd|awk -F: '{print $1}'`
+ do
+  if [[ -n `passwd -s $i |grep NP`  ]]; then
+   echo "$i no password :FAILED" 
+  fi
+ done
+   echo " Password Verify complete"
+
+######################################################
+subheader "/etc/shadow"
+######################################################
+
+if [[  -f /etc/shadow ]]; then
+grep -v "^+" /etc/shadow|awk -F: '$2=="" {exit 1}'
+ if [ $? = 0 ]; then
+ echo "Shadow (passwords)  : passed" 
+ else
+  echo "Users with null passowrd"
+  grep -v "^+" /etc/shadow| awk -F: '$2=="" {print $0}'  2>/dev/null
+ fi
+else
+ echo "Shadow file missing : FAILED" 
+fi
+########################################################
+subheader "/etc/shadow permissions"
+########################################################
+if [[ -f /etc/shadow ]]; then
+  perm=`find /etc/shadow -ls|awk '{print substr($3,8,10)}`
+  if [[ $perm == "---" ]]; then
+  echo "/etc/shadow permissions: passed" 
+  else 
+   ls -l /etc/shadow
+  echo "/etc/shadow wrong permissions: FAILED" 
+  fi
+  else
+  echo "/etc/shadow file Missing : FAILED" 
+ fi
+###########################################################################################
+header AB.1.2.3 "Protecting resourses - OSR's "
+#######################################################################################
+subheader " Checking OSR userids and groupids "
+
+  find /bin /etc /kernel /lib /platform /sbin /usr/bin /usr/etc /usr/sbin \
+   /var/adm  -local -name perfmgr -prune -o -name /var/tmp -prune -o -name /proc -prune -o \
+  -name /dev -prune -o -name /devices -prune -o  -name  /home -prune -o \
+  -name /export/home -prune -o -name /tmp -prune -o -name /mnt -prune -o \
+  -name /var/spool/uucppublic -prune -o -name /cdrom -prune -o -ls  \
+   2>/dev/null |\
+  nawk -v Wrong="----------" -v Wrongend="-------------" 'BEGIN{
+    Ok = "= ok"
+    ok = 0
+    uid["root"] = 1
+    uid["daemon"] = 1
+    uid["bin"] = 1
+    uid["sys"] = 1
+    uid["adm"] = 1
+    uid["uucp"] = 1
+    uid["lp"] = 1
+    uid["nuucp"] = 1
+    uid["listen"] = 1
+    gid["root"] = 1
+    gid["other"] = 1
+    gid["bin"] = 1
+    gid["sys"] = 1
+    gid["adm"] = 1
+    gid["uucp"] = 1
+    gid["lp"] = 1
+    gid["mail"] = 1
+    gid["tty"] = 1
+    gid["daemon"] = 1
+    gid["sysadmin"] = 1
+    gid["nuucp"] = 1
+    }
+  {
+    prt = ok
+    if ( $1 ) {
+      if ( uid[$5] != 1 || gid[$6] != 1 ) { ok++ }
+      if ( ok == 1 ) {
+        ok++
+        print Wrong } }
+    if ( prt < ok ) {
+      print substr($0, index($0, $3)) }
+    }
+  END{
+    if ( ok > 0 ) { print Wrongend }
+    else { print passed }
+    }' 
+
+#############################################
+subheader "/tmp, /var/tmp "
+#############################################
+#  /tmp /var/tmp permissions
+if [[ `ls -ld /tmp |awk '{print $1}'` != "drwxrwxrwt" ]]; then
+ echo "/tmp permissions: FAILED" 
+ else
+ echo "/tmp permissions: passed" 
+fi
+if [[ `ls -ld /var/tmp |awk '{print $1}'` != "drwxrwxrwt" ]]; then
+ echo "/var/tmp permissions: FAILED" 
+ else
+ echo "/var/tmp permissions: passed" 
+fi
+######################################################
+subheader "Automounter "
+##########################################################
+if [[ -n `find /etc/auto_master -perm 640 -print` ]]; then
+    echo "Auto_master permissions: passed" 
+  else
+    echo "Auto_master permissions(needed 640): FAILED" 
+fi 
+set --
+set  `find /etc/auto_master -ls `
+    if [ $5 == "root" ] ;then
+    echo "Auto_master owner root: passed" 
+  else
+    echo "Auto_master owner(needed root): FAILED"
+  fi 
+    if [ $6 == "bin" ] ;then
+    echo "Auto_master group bin: passed" 
+  else
+    echo "Auto_master group(needed bin): FAILED" 
+  fi 
+#########################################################
+failed=false
+for i in `grep -v "^#" /etc/auto_master|grep -v "^+" |awk '{print $1}'`
+  do
+if [[ -n `grep "$i" /etc/auto_master|grep -v nosuid`  ]]; then
+echo  "Automounter $i nosuid: Failed" 
+failed=true
+fi
+done
+if [ $failed != true ]; then
+echo "Automaster nosuid: passwd"
+fi
+###################################################
+subheader "Sendmail"
+##########################################################
+  if [[ -f /etc/mail/sendmail.cf ]]; then
+   if [[ `ls -l /etc/mail/sendmail.cf |awk '{print substr($1,5,6)}'` == r--r-- ]]; then 
+   ls -l /etc/mail/sendmail.cf
+    echo " sendmail.cf not updatable by general user: passed"
+   else
+   ls -l /etc/mail/sendmail.cf
+    echo " sendmail.cf not updatable by general user: FAILED"
+    fi
+  else
+  echo "/etc/mail/sendmail.cf file not found "
+  fi
+########################################################
+header AB.1.2.4 "Protect Resources - User Resources"
+########################################################
+#  user resources - verify umask is set for users
+ if [[ -n `grep "^UMASK=.[2-7][2-7]" /etc/default/login` ]]; then
+ echo "Umask correctly set: passed" 
+ else
+ grep "^UMASK=" /etc/default/login
+ echo "Umask correctly set: FAILED" 
+fi
+
+
+########################################################################
+subheader "SPECIAL CONSIDERATIONS"
+########################################################################
+
+########################################################
+subheader "Check for /etc/motd"
+########################################################
+
+if [[ -f /etc/motd ]]; then
+ cat /etc/motd 
+ else
+ echo "/etc/motd: FAILED" 
+fi
+
+###########################################################
+subheader "Check for NP in  /etc/shadow"
+###########################################################
+ if [[ -n `grep "^bin:NP:" /etc/shadow` ]]; then
+  echo " bin:NP: passed " 
+else 
+  grep "^bin:" /etc/shadow
+fi
+
+ if [[ -n `grep "^sys:NP:" /etc/shadow` ]]; then
+  echo " sys:NP: passed " 
+ else
+  grep "^sys:" /etc/shadow
+fi
+
+ if [[ -n `grep "^adm:NP:" /etc/shadow` ]]; then
+  echo " adm:NP: passed " 
+else 
+ grep "^adm:" /etc/shadow
+fi
+
+ if [[ -n `grep "^lp:NP:" /etc/shadow` ]]; then
+  echo " lp:NP: passed " 
+else 
+  grep "^lp:" /etc/shadow
+fi
+
+ if [[ -n `grep "^uucp:NP:" /etc/shadow` ]]; then
+  echo " uucp:NP: passed " 
+else 
+ grep "^uucp:" /etc/shadow
+fi
+ if [[ -n `grep "^nuucp:NP:" /etc/shadow` ]]; then
+  echo " nuucp:NP: passed " 
+else 
+  grep "^nuucp:" /etc/shadow
+fi
+ if [[ -n `grep "^smmsp:NP:" /etc/shadow` ]]; then
+  echo " smmsp:NP: passed " 
+else 
+  grep "^smmsp:" /etc/shadow
+fi
+ if [[ -n `grep "^listen:NP:" /etc/shadow` ]]; then
+  echo " listen:NP: passed " 
+else 
+  grep "^listen:" /etc/shadow
+fi
+ if [[ -n `grep "^nobody:NP:" /etc/shadow` ]]; then
+  echo " nobody:NP: passed " 
+else 
+  grep "^nobody:" /etc/shadow
+fi
+
+  grep "^patrol:" /etc/shadow
+  grep "^controlm:" /etc/shadow
+  grep "^ctmagent:" /etc/shadow
+  grep "^oracle:" /etc/shadow
+########################################################
+subheader "root privileges"
+########################################################
+echo "Checking users for uid/gid 0"
+failed=false
+for i in `logins -u|awk '{print $1}'`
+  do
+if [[ `grep $i /etc/passwd|awk '{if ($3 == 0 || $4 == 0 ){print "nok"}}'` == "nok"  ]]; then
+grep $i /etc/passwd
+failed=true
+fi
+done
+if [ $failed != true ]; then
+echo  "NO User with UID/GID 0" 
+fi
+###################################################
+subheader "Checking permissions for .profile"
+###########################################
+failed=false
+for i in `cat /etc/passwd |awk -F: '{print $6}'`
+ do 
+  if [[ -s $i/.profile ]]; then
+   if [[ `ls -al $i/.profile |awk '{print substr($1,5,10)}'` != r--r-- ]]; then 
+   ls -al $i/.profile
+   echo "$i/.profile permissions: FAILED"
+   failed=true
+   fi
+  fi
+done
+if [ $failed != true ]; then
+echo ".profile permissions : passed"
+fi 
+###################################################
+subheader "Checking permissions for /etc/inittab, /etc/inet/inetd.conf"
+###########################################
+    if [ ! -f /etc/inittab ]; then
+    echo " /etc/inittab file not found"
+    break
+    elif [[ `ls -ld /etc/inittab |awk '{if ( substr($1,9,1)!= "w" && $3 == "root" ){print "ok"}}'` != "ok"  ]]; then 
+  ls -l /etc/inittab
+   echo "/etc/inittab  permissions: FAILED"
+   else
+  ls -l /etc/inittab
+   echo "/etc/inittab  permissions: passed"
+     fi
+#########################################################
+    if [ ! -f /etc/inet/inetd.conf ]; then
+    echo " /etc/inet/inetd.conf file not found"
+    break
+   elif [[ `ls -ld /etc/inet/inetd.conf |awk '{if ( substr($1,9,1)!= "w" && $3 == "root" ){print "ok"}}'` != "ok"  ]]; then 
+   ls -l /etc/inet/inetd.conf
+   echo "/etc/inet/inetd.conf  permissions: FAILED"
+   else
+   ls -l /etc/inet/inetd.conf
+   echo "/etc/inet/inetd.conf  permissions: passed"
+  fi
+###################################################
+subheader "Checking permissions for directories"
+####################################################
+failed=false
+set / /etc /usr/bin /var/adm
+for i in "$@"
+ do 
+   if [[ `ls -ld $i |awk '{if ( substr($1,9,1)!= "w" && $3 == "root" ){print "ok"}}'` != "ok"  ]]; then 
+   ls -ld $i
+   echo "$i permissions: FAILED"
+   failed=true
+   else
+   ls -ld $i
+   fi
+done
+if [ $failed != true ]; then
+echo "/ /etc /usr/bin /var/adm directory permissions : passed"
+fi 
+set --
+###################################################
+subheader "Checking permissions for .rhosts"
+###########################################
+failed=false
+for i in `cat /etc/passwd |awk -F: '{print $6}'`
+ do 
+  if [[  -f $i/.rhosts ]]; then 
+     ls -al $i/.rhosts
+   failed=true
+  fi
+done
+if [ $failed != true ]; then
+echo ".rhosts file not found in home directories : passed"
+fi 
+###################################################
+subheader "Checking users in /etc/ftpd/ftpusers"
+###################################################
+
+failed=false
+if [ ! -f /etc/ftpd/ftpusers ]; then
+  echo "/etc/ftpd/ftpusers file not found: FAILED"
+  failed=true
+  else
+ grep -v "^#"  /etc/ftpd/ftpusers
+for i in root daemon bin sys adm lp uucp nuucp smmsp listen nobody noaccess nobody4
+do
+   if [[ -z `grep  "^$i" /etc/ftpd/ftpusers` ]]; then
+   echo " $i not found in /etc/ftpd/ftpusers: FAILED"
+   failed=true
+   fi
+done
+fi
+if [ $failed != true ]; then
+echo "Checking users in /etc/ftpd/ftpusers : passed"
+fi
+###########################################
+###########################################
+# end of sun function
+}
+# Run the program
+# Run the sun function
+sun 
+
+exit 0
+

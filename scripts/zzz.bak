@@ -1,0 +1,43 @@
+#!/usr/bin/ksh
+#
+# Used to generate a listing of servers and what netgroups that they are a part of.
+#   - shows parent netgroups if they exist in ( ) 
+
+YPCAT_FILE=/var/tmp/ed.$$
+
+ypcat -k netgroup > $YPCAT_FILE
+#for S in `grep -v "^#" /usr/local/bin/critical_unix_servers.txt`
+for S in `cat /home/uss/u28ts04/scripts/server_check.txt`
+do
+#echo starting $S; sleep 1
+NETGROUPS=`grep -wi $S $YPCAT_FILE | awk '{print $1}'`
+
+for GROUP in `echo $NETGROUPS`
+      do
+	PARENT=`grep -w $GROUP $YPCAT_FILE  | egrep -v "^$GROUP" |  awk '{print $1}'`
+	PARENT="$GROUP (`grep -w $GROUP $YPCAT_FILE  | egrep -v "^$GROUP" |  awk '{print $1}'`)"
+	#echo "Parent= \( $PARENT \)"
+
+	PARENTS="$PARENT $PARENTS"
+      done
+echo $S - netgroup\(s\) = $PARENTS 
+PARENTS="";PARENT=""
+
+done
+
+
+exit 0
+
+
+ccsun24 - netgroup(s) = allsun (allbox allbox-nfs-root)
+
+starting ccux22
+Parents= allhpserver ()
+Parents= allhp1 (allhp) allhpserver ()
+ccux22 - netgroup(s) = allhp1 (allhp) allhpserver ()
+
+starting ccux57
+Parents= allCMWserver2 ()
+Parents= allhp1 (allhp) allCMWserver2 ()
+ccux57 - netgroup(s) = allhp1 (allhp) allCMWserver2 ()
+

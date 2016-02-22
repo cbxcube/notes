@@ -1,0 +1,88 @@
+#! /usr/bin/sh
+#
+# SCRIPT: fbdf
+# USAGE: fbdf host [filesystem]
+# AUTHOR: Michael D. Fox
+#
+# $Revision: 1.1
+# $Date: 12-05-2000
+# $Author: Michael D. Fox
+# 
+# DESCRIPTION: fbdf was written to aid in diagnosing filesystem full situations.
+#              fbdf will perform a bdf on host for filesystem.  Then list the 
+#              largest files in the designated directory and its subdirectories.
+#              The file list will be stored in /home/uss/tmp/filesize.list.
+#
+#              If filesystem is blank, a simple bdf will be run on the designated
+#              host.
+#
+#              fbdf assumes the user has read/write access to /home/uss/tmp 
+#              and permission to run bdf on host.
+#              
+# INPUTS: host - host to run on
+#         filesystem - filesystem to run on
+# OUTPUTS: creates the file /home/uss/tmp/filesize.list  This file is a sorted
+#          (smallest to largest) of all files in directory and sub-dirs
+# OPTIONS: 
+#
+# COPYRIGHT (c) 2000 Carlson Companies, Inc.
+#
+# MODIFICATIONS:
+#     Date          Description
+#     ------------  ----------------------------------------------------------
+#     01-19-01      added support for up to 3 file systems
+#
+
+clear
+
+# performs a bdf on designated host
+
+remsh $1 bdf $2 $3 $4
+
+# does a recursive long listing, cutting size, date, and name,
+# sorting by size (high to low), and storing in /home/uss/tmp/filesize.list
+#
+
+remsh $1 ls -lR $2 | tr -s " " | cut -d" " -f5,6,7,9 | sort -r -n -t" " -k1 > /home/uss/tmp/filesys.list
+
+if [ -n "$3" ]
+then
+   remsh $1 ls -lR $3 | tr -s " " | cut -d" " -f5,6,7,9 | sort -r -n -t" " -k1 >> /home/uss/tmp/filesys.list
+fi
+
+if [ -n "$4" ]
+then
+   remsh $1 ls -lR $4 | tr -s " " | cut -d" " -f5,6,7,9 | sort -r -n -t" " -k1 >> /home/uss/tmp/filesys.list
+fi
+
+cat /home/uss/tmp/filesys.list | sort -r -n -t" " -k1 > /home/uss/tmp/filesize.list
+
+# display the largest 25 files
+#
+echo "\n\n\nThe 25 largest files in the $2 directory tree are..."
+echo "============================================================\n"
+head -50 /home/uss/tmp/filesize.list
+
+# locates directories for the largest 25 files
+#
+echo "\n\n\nThey are located in..."
+echo "======================\n"
+for FNAME in $(head -50 /home/uss/tmp/filesize.list | cut -d" " -f4)
+do
+   remsh $1 find $2 -name $FNAME
+
+   if [ -n "$3" ]
+   then
+      remsh $1 find $3 -name $FNAME
+   fi
+
+   if [ -n "$4" ]
+   then
+      remsh $1 find $4 -name $FNAME
+   fi
+done
+
+# removes /home/uss/tmp/filesize.list and /home/uss/tmp/filesys.list
+#
+rm -f /home/uss/tmp/filesize.list
+rm -f /home/uss/tmp/filesys.list

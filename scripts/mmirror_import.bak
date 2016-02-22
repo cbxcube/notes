@@ -1,0 +1,332 @@
+#\n!/bin/sh
+
+# This script executes all of the vxfs and system commands
+# to import and mount up metro-mirrored (SVC) volumes for
+# Veritas systems.
+
+# Config file format:
+# $ cat ../etc/mmirror_dg.tab
+# #instance_name:orig_dg_name:new_dg_name:volume_name:mount_point
+# p17rpt:appdg02:p17rptdg:u20:/p17rptdg/u20
+# p17com:p17comdg:p17comdg:u09_new:/p17combk/u09
+# $ 
+# 
+# 
+
+# Binary locations
+ECHO="/usr/bin/echo"
+AWK="/usr/bin/nawk"
+GREP="/usr/xpg4/bin/grep"
+#GREP="/usr/bin/grep"
+FSCK="/usr/sbin/fsck"
+MOUNT="/usr/sbin/mount"
+DF="/usr/sbin/df"
+RM="/usr/bin/rm"
+RMDIR="/usr/bin/rmdir"
+CAT="/usr/bin/cat"
+SORT="/usr/bin/sort"
+MKDIR="/usr/bin/mkdir"
+DATE="/usr/bin/date"
+
+#
+VXDISK="/usr/sbin/vxdisk"
+VXDG="/usr/sbin/vxdg"
+VXVOL="/usr/sbin/vxvol"
+VXPRINT="/usr/sbin/vxprint"
+VXDMPADM="/usr/sbin/vxdmpadm"
+
+# Script Variables
+BASE_DIR="/opt/storage"
+CONFIG_FILE="${BASE_DIR}/etc/mmirror_dg.tab"
+ERROR_FILE="/var/tmp/mmirror_import.err.$$"
+
+# Show script start time
+${ECHO} "Starting $0 with arguments $* at `${DATE}`"
+
+# This script runs Veritas commands and mounts file systems.
+# It needs to be run as root.
+RUNAS=`${ECHO} ${LOGNAME}`
+
+if [ "${RUNAS}" != "root" ] ; then
+	${ECHO} "USAGE: $0 needs to be run as root user.\\n"
+	exit 255
+fi
+
+# Script Assumes that the name of the instance is passed as first argument:
+if [ $# -lt 1 ]; then
+	${ECHO} "USAGE: $0 <instance_to_import/mount>\\n"
+	exit 255
+else
+	INSTANCE="${1}"
+fi
+
+# Check that we can read our config file.
+if [ ! -r "${CONFIG_FILE}" ] ; then
+	${ECHO} "Cannot read config file ${CONFIG_FILE}\\n"
+	exit 255
+fi
+
+# Confirm that the config file is in correct syntax.
+# If it does not have 5 fields per line, print the offending lines and exit
+# If all of the lines have 5 fields, BAD_SYNTAX will be blank.
+BAD_SYNTAX=`${AWK} -F: 'NF!=5 {print}' ${CONFIG_FILE}`
+
+# From the test man page:
+# -z string True if the length of string  string is zero.
+#
+if [ ! -z "${BAD_SYNTAX}" ] ; then
+	${ECHO} "Config file ${CONFIG_FILE} has errors in it."
+	${ECHO} "Errors are: ${BAD_SYNTAX}\\n"
+fi
+
+# Confirm that the passed instance exists in the file.
+INSTANCE_EXISTS=`${GREP} "^${INSTANCE}:" ${CONFIG_FILE} > /dev/null 2>&1;${ECHO} $?`
+
+if [ "${INSTANCE_EXISTS}" -ne "0" ] ; then
+	${ECHO} "Provided instance '${INSTANCE}' does not exist in ${CONFIG_FILE}\\n"
+	exit 255
+fi
+
+############
+#
+# Appears config file is valid, and readable
+#
+############
+
+# Confirm that the host can see luns of the source disk group
+#${AWK} -F: -v INST_NAME="${INSTANCE}" '$1~INST_NAME {print $2}' ${CONFIG_FILE}
+ORIG_DGS_TO_IMPORT=`${GREP} "^${INSTANCE}:" ${CONFIG_FILE} | ${AWK} -F: '{print $2}' | ${SORT} -u`
+
+# Confirm the disk group isn't already imported.
+NEW_DGS_TO_IMPORT=`${GREP} "^${INSTANCE}:" ${CONFIG_FILE} | ${AWK} -F: '{print $2}' | ${SORT} -u`
+
+# Check that each of the disk group(s) to import aren't already imported.
+# root@ssmn00pk00268# vxdg -g p17rptdg free > /dev/null;${ECHO} $?
+# 0
+# root@ssmn00pk00268# vxdg -g p17comdg free > /dev/null;${ECHO} $?
+# VxVM vxdg ERROR V-5-1-607 Diskgroup p17comdg not found
+# 11
+# root@ssmn00pk00268# 
+# 
+for DG_CHECK in ${NEW_DGS_TO_IMPORT}
+do
+	#DG_IMPORTED=`${VXDG} -g ${DG_CHECK} free > /dev/null 2>&1;${ECHO} $?`
+	DG_IMPORTED=`${VXDG} list ${DG_CHECK} > /dev/null 2>&1;${ECHO} $?`
+
+	if [ "${DG_IMPORTED}" -eq "0" ] ; then
+		${ECHO} "Disk group ${DG_CHECK} appears to be imported."
+		#${ECHO} "Output of ${VXDG} -g ${DG_CHECK} free"
+		${ECHO} "Output of ${VXDG} list ${DG_CHECK}"
+		${VXDG} -g ${DG_CHECK} free
+		${ECHO} "\n"
+		exit 255
+	fi
+done
+
+
+# I cant' think of anything else to check at this point, begin processing.
+# Show some default information before we modify anything on the server.
+
+${ECHO} "Locally mounted file systems (df -kl)"
+${DF} -kl
+${ECHO} "-----------------\n"
+${ECHO} "All veritas disks. (vxdisk -o alldgs list)"
+${VXDISK} -o alldgs list
+${ECHO} "-----------------\n"
+${ECHO} "All imported Veritas disk groups. (vxdg list)"
+${VXDG} list
+${ECHO} "-----------------\n"
+${ECHO} "All disk/subdisk/volume/plex info (vxprint -ht)"
+${VXPRINT} -ht
+${ECHO} "-----------------\n"
+
+# Need to clear the private region on all of the disks for the corresponding disk group.
+#
+# root@ssmn00pk00268# vxdisk -o alldgs list | tail -5
+# c3t50050768011027AFd23s2 auto:cdsdisk    -            (p17rptdg)   online
+# c3t50050768011027AFd24s2 auto:cdsdisk    -            (p17rptdg)   online
+# c3t50050768011027AFd25s2 auto:cdsdisk    -            (p17rptdg)   online
+# c3t50050768011027AFd26s2 auto:cdsdisk    -            (p17rptdg)   online
+# c3t50050768011027AFd27s2 auto:cdsdisk    -            (p17rptdg)   online
+# root@ssmn00pk00268# 
+
+DISKS_TO_CLEAR=`${VXDISK} -o alldgs list | ${GREP} "(${ORIG_DGS_TO_IMPORT})" | awk '{print $1}'`
+
+#${ECHO} "Disks to clear ${DISKS_TO_CLEAR}"
+
+# Confirm we have disks to clear out
+if [ -z "${DISKS_TO_CLEAR}" ] ; then
+	${ECHO} "No disks were found to be cleared for ${INSTANCE} instance"
+	exit 255
+fi
+
+# Clear the private regions of the disks.
+for DISK in ${DISKS_TO_CLEAR}
+do
+
+		# Check if the disk is currently imported or not.
+		# root@ssmn00pk00268# vxdisk list c3t50050768011027AFd6s2 | grep "flags.*imported"
+		# flags:     online ready private autoconfig autoimport imported
+		# root@ssmn00pk00268# vxdisk list c3t50050768011027AFd11s2 | grep "flags.*imported"
+		# root@ssmn00pk00268# 
+
+		# If the disk is imported, DISK_IMPORTED will contain the flags line
+		# If the disk is not imported, DISK_IMPORTED will be blank.
+		DISK_IMPORTED=`${VXDISK} list ${DISK} | ${GREP} "flags.imported"`
+
+		if [ ! -z  "${DISK_IMPORTED}" ] ; then
+			${ECHO} "Disk ${DISK} appears to be imported."
+			${ECHO} "Output of ${VXDISK} list ${DISK} | ${GREP} \"flags\" contains imported"
+			${VXDISK} list ${DISK} | ${GREP} "flags"
+			${ECHO} "\n"
+			exit 255
+		fi
+
+		#${ECHO} "Running ${VXDISK} clearimport ${DISK}"
+		CLEAR_STATUS=`${VXDISK} clearimport ${DISK} > ${ERROR_FILE} 2>&1;${ECHO} $?`
+
+	if [ "${CLEAR_STATUS}" -ne "0" ] ; then
+		${ECHO} "Error running ${VXDISK} clearimport ${DISK}"
+		${ECHO} "Error was:"
+		${CAT} ${ERROR_FILE}
+		${CAT} /dev/null > ${ERROR_FILE}
+		# exit 255
+	else
+		${ECHO} "Successfully run ${VXDISK} clearimport ${DISK}"
+	fi
+done
+
+
+# Prepare for the disk group import.
+# Since we are importing disk groups from remote hosts, we wanted
+# the ability to rename the source disk group to reflect the instance name.
+for ORIG_DG_NAME in ${ORIG_DGS_TO_IMPORT}
+do
+	${ECHO} "*****\nBegin work with ${ORIG_DG_NAME}\n*****"
+	# Get the new disk group name from config file.
+	# Sort is there to get unique entries only.  In the event two volumes, don't
+	# want NEW_DG name being two names.
+	NEW_DG_NAME=`${GREP} "^${INSTANCE}:${ORIG_DG_NAME}:" ${CONFIG_FILE} | ${AWK} -F: '{print $3}' | ${SORT} -u`
+
+	#${ECHO} "Instance is: ${INSTANCE}\\nOrig DG is ${ORIG_DG_NAME}\\nNew DG name is ${NEW_DG_NAME}"
+
+	# When doing the vxdg we can specify the new disk group name.
+	if [ "${ORIG_DG_NAME}" != "${NEW_DG_NAME}" ] ; then
+		${ECHO} "Running ${VXDG} -n ${NEW_DG_NAME} import ${ORIG_DG_NAME}"
+		IMPORT_DG=`${VXDG} -n ${NEW_DG_NAME} import ${ORIG_DG_NAME} > ${ERROR_FILE} 2>&1;${ECHO} $?`
+	else
+		${ECHO} "Running ${VXDG} import ${NEW_DG_NAME}"
+		IMPORT_DG=`${VXDG} import ${NEW_DG_NAME} > ${ERROR_FILE} 2>&1;${ECHO} $?`
+	fi
+
+	if [ "${IMPORT_DG}" -ne "0" ] ; then
+		${ECHO} "Failure on importing disk group ${NEW_DG_NAME}"
+		${ECHO} "Error was:"
+		${CAT} ${ERROR_FILE}
+		${CAT} /dev/null > ${ERROR_FILE}
+		exit 255
+	else
+		${ECHO} "Successfully able to import ${NEW_DG_NAME}\n"
+	fi
+	
+	${ECHO} "Now running ${VXVOL} -g ${NEW_DG_NAME} startall"
+	VXVOL_START=`${VXVOL} -g ${NEW_DG_NAME} startall > ${ERROR_FILE} 2>&1;${ECHO} $?`
+	
+	if [ "${VXVOL_START}" -ne "0" ] ; then
+		${ECHO} "Failure on running ${VXVOL} -g ${NEW_DG_NAME} startall"
+		${ECHO} "Error was:"
+		${CAT} ${ERROR_FILE}
+		[ -f ${ERROR_FILE} ] && ${RM} ${ERROR_FILE}
+		exit 255
+	else
+		${ECHO} "Successfully able to ${VXVOL} -g ${NEW_DG_NAME} startall\n"
+	fi
+
+
+	# Now to start all volumes associated with this disk group.
+	VOLUMES_IN_DG=`${GREP} "^${INSTANCE}:${ORIG_DG_NAME}:${NEW_DG_NAME}:" ${CONFIG_FILE} | ${AWK} -F: '{print $4}'`
+	#${ECHO} "Volumes to check/mount:  ${VOLUMES_IN_DG}"
+
+	for VOLUME in ${VOLUMES_IN_DG}
+	do
+		${ECHO} "*****\nBegin work with ${VOLUME}\n*****"
+
+		VOL_DSK_PATH="/dev/vx/dsk/${NEW_DG_NAME}/${VOLUME}"
+		VOL_RDSK_PATH="/dev/vx/rdsk/${NEW_DG_NAME}/${VOLUME}"
+
+		#${ECHO} "${VOL_DSK_PATH}"
+
+		${ECHO} "Now running ${FSCK} -yF vxfs -o full ${VOL_RDSK_PATH}"
+
+		FSCK_OUT=`${FSCK}  -yF vxfs -o full ${VOL_RDSK_PATH} > ${ERROR_FILE} 2>&1;${ECHO} $?`
+
+		if [ "${FSCK_OUT}" -ne "0" ] ; then
+			${ECHO} "Failure on running ${FSCK} -yF vxfs -o full ${VOL_RDSK_PATH}"
+			${ECHO} "Error was:"
+			${CAT} ${ERROR_FILE}
+			[ -f ${ERROR_FILE} ] && ${RM} ${ERROR_FILE}
+			exit 255
+		else
+			${CAT} ${ERROR_FILE}
+			${CAT} /dev/null > ${ERROR_FILE}
+			${ECHO} "Successfully able to ${FSCK} -yF vxfs -o full ${VOL_RDSK_PATH}\n"
+		fi
+
+		MOUNT_POINT=`${GREP} "^${INSTANCE}:${ORIG_DG_NAME}:${NEW_DG_NAME}:${VOLUME}" ${CONFIG_FILE} | ${AWK} -F: '{print $5}'`
+
+		#${ECHO} "Mount point for $VOLUME is ${MOUNT_POINT}"
+
+		# Check to see if mount point exists.
+		if [ ! -d "${MOUNT_POINT}" ] ; then
+			${ECHO} "Mount point ${MOUNT_POINT} does not exist. Creating it now"
+			${MKDIR} -m 0755 -p ${MOUNT_POINT}
+		fi
+
+		# Check to see if volume is mounted or not.
+		IS_MOUNTED=`${DF} -k ${MOUNT_POINT} | ${GREP} -v "^Filesystem" | ${AWK} '{print $NF}'`
+
+		# If the IS_MOUNTED isn't the $MOUNT_POINT, the volume is not mounted.
+		if [ "${IS_MOUNTED}" = "${MOUNT_POINT}" ] ; then
+			${ECHO} "Mount point ${MOUNT_POINT} is mounted."
+		else
+			${ECHO} "Mount point ${MOUNT_POINT} needs to be mounted."
+
+			${ECHO} "Need to mount ${VOL_DSK_PATH} to mount point ${MOUNT_POINT}"
+			MOUNT_STATUS=`${MOUNT} -F vxfs ${VOL_DSK_PATH} ${MOUNT_POINT} > ${ERROR_FILE} 2>&1`
+			if [ "${MOUNT_STATUS}" -ne "0" ] ; then
+				${ECHO} "Failure on running ${MOUNT} -F vxfs ${VOL_DSK_PATH} ${MOUNT_POINT}"
+				${ECHO} "Error was:"
+				${CAT} ${ERROR_FILE}
+				${CAT} /dev/null > ${ERROR_FILE}
+				exit 255
+			else
+				${ECHO} "Successfully able to ${MOUNT} -F vxfs ${VOL_DSK_PATH} ${MOUNT_POINT}\n"
+			fi
+		fi
+
+		${ECHO} "*****\nEnd work with ${VOLUME}\n*****"
+	done
+
+	${ECHO} "*****\nEnd work with ${ORIG_DG_NAME}\n*****"
+done
+
+# Cleanup any files we may have used.
+[ -f ${ERROR_FILE} ] && ${RM} ${ERROR_FILE}
+
+${ECHO} "Locally mounted file systems (df -kl)"
+${DF} -kl
+${ECHO} "-----------------\n"
+${ECHO} "All veritas disks. (vxdisk -o alldgs list)"
+${VXDISK} -o alldgs list
+${ECHO} "-----------------\n"
+${ECHO} "All imported Veritas disk groups. (vxdg list)"
+${VXDG} list
+${ECHO} "-----------------\n"
+${ECHO} "All disk/subdisk/volume/plex info (vxprint -ht)"
+${VXPRINT} -ht
+${ECHO} "-----------------\n"
+
+${ECHO} "Done $0 with arguments: $* at `${DATE}`"
+
+# If we have made it this far, no problems.
+exit 0

@@ -1,0 +1,44 @@
+INstallation
+1) Verify the HBA's see the new LUN:
+     scli -> option 5 -> option 3 -> option 2
+	There will be a new 50Gb LUN associated with both HBA's
+	If you do not see the new LUN, contact the Storage team to verify everything is properly configured
+2) Verify the new LUN is visible to the OS:
+     echo | format | more:
+	if you do not see the new LUN:
+	   cfgadm -avl
+	   devfsadm -v
+3) Label the new disk:
+     format c3t0d5 -> label -> y
+4) Pull the new LUN into Veritas:
+     vxdctl enable
+     /etc/vx/bin/vx/disksetup -i c3t0d5
+5) Create a new disk group using the new LUN:
+     vxdg init cwtswdg cwtswdg01=c3t0d5s2
+6) Create the new volume and mount it:
+     vxassist -g cwtswdg make cwtsw `vxassist -g cwtswdg maxsize | awk '{print $4}'`
+     mkfs -F vxfs /dev/vx/rdsk/cwtswdg/cwtsw
+     mkdir -m 755 /cwtdb/software
+     cpv /etc/vfstab - add the following line:
+	/dev/vx/dsk/cwtswdg/cwtsw /dev/vx/rdsk/cwtswdg/cwtsw /cwtdb/software vxfs - yes largefiles
+     mount /cwtdb/software
+     chown oracle:oinstall /cwtdb/software
+7) Share out the new file system:
+     cpv /etc/dfs/dfstab - add the following line to the end:
+	share -F nfs -o ro,rw=cwtotc75.carlson.com:cwtotc82.carlson.com /cwtdb/software
+     shareall
+
+
+Backout:
+1) Unshare the file system:
+     unshareall
+     mv /etc/dfs/dfstab.date /etc/dfs/dfstab
+2) umount and remove new file system:
+     umount /cwtdb/software
+     mv /etc/vfstab.date /etc/vfstab
+     rmdir /cwtdb/software
+3) Remove new volume and disk group:
+     vxdg destroy cwtswdg
+4) Instruct Storage team to remove the LUN
+5) Clean up the device tree:
+     devfsadm -Cv

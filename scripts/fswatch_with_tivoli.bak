@@ -1,0 +1,293 @@
+#! /bin/ksh 
+#
+# fswatch
+#
+# USAGE:
+#       fswatch [-v][-t][-m maillist]
+
+# DESCRIPTION:
+#	 fswatch is a filesystem watcher.  When run from cron and piped into
+#	 mail, it will alert you to filesystems that have exceeded their 
+#	 maximum bounds.  
+#
+#	 It looks at each local filesystem and compares it to a list of
+#	 acceptable tolerances in $HOME/etc/fswatch.cfg.
+#
+# OPTIONS:
+#       -m maillist    mail list (use quotes if spaces)
+#       -t             Ticketing option.
+#       -v             Verbose option.
+#
+# MODIFIED:
+#    11/28/2008 - Ed Carrigan - Updated to add hostname, support group and severity to config file.
+#                               Updated notify message to update oncall spreadsheet.
+#				Changed default percent to 94 so that first alert happens at 95% not 96%.
+#				Script sends an e-mail of config file contents to get file to /home/uss/reports/fswatch
+#				Added FSSKIP to skip file systems to skip per OS.
+#				For alerts, it mails once every 24 runs, and then will re-ticket.  Notice e-mails happen on each run.
+
+
+NOTIFY=fswatch@uxmailhost.carlson.com
+ALERT=fswatch_alert@uxmailhost.carlson.com
+HOME=/opt/local/fswatch
+TMPFILE=$HOME/tmp/fswatch.$$
+ERRFILE=$HOME/tmp/fswatch.err.$$
+MAILFILE=$HOME/tmp/fswatch.mail.$$
+CFGFILE=$HOME/etc/fswatch.cfg
+TMPDIR=/$HOME/tmp
+MYNAME=`basename $0`
+HOSTNAME=`/bin/hostname`
+DEFAULT_PERCENT=94
+DEFAULT_SUPPORT=CRC-C-UNIX
+DEFAULT_SEVERITY=SEV2
+FSSKIP=":|/mnt|/opt/Tivoli|/var/adm/perfmgr|/etc/vsa"
+NOCFG=false
+VERBOSE=false
+TIVOLI=false
+TIVSYS=tivoliprod
+TIVSYSDEV=tivolidev
+HOUR=`date +%H`
+HOUR_MIN=`date +%H%M`
+
+trap "/bin/rm -f $TMPFILE $MAILFILE $ERRFILE ;exit" 0 1 2 3 15
+
+####################
+# Function for setting default thresholds for certain known file systems
+####################
+find_default_support_info ()
+{
+ #    set some default file systems to CRC-C-UNIX group
+                    case $FS in
+                        /|/stand)  
+				   PCT=90; DEFAULT_SEVERITY=SEV2; SUPPORTEDBY=CRC-C-UNIX ;;
+
+           /var|/var/run|/opt|/usr|/tmp|/opt/sdk|/home|/var/adm/ras/platform|/perfdata|/opt/local/fswatch)
+                                   PCT=94; DEFAULT_SEVERITY=SEV2; SUPPORTEDBY=CRC-C-UNIX ;;
+
+                        /opt/controlm|/opt/ecs) 
+                                    PCT=94; DEFAULT_SEVERITY=SEV2; SUPPORTEDBY=CRC-C-PRODOPS ;;
+
+                        /nsr|/opt/nsr|/opt/networker) 
+				    PCT=94; DEFAULT_SEVERITY=SEV2; SUPPORTEDBY=CRC-C-BCKUPL3 ;;
+
+                        /opt/ISS)   
+				    PCT=94; DEFAULT_SEVERITY=SEV2; SUPPORTEDBY=CRC-I-USSECRTY ;;
+
+			# This applies to GBIS Web supported servers only. Modify after config file is created to override.
+                       /wwwpub/*|/opt/cssinet|*repliweb*|/migration|/opt/bea*|/build)
+                                    PCT=94; DEFAULT_SEVERITY=SEV2; SUPPORTEDBY=CRC-C-WEB ;;
+
+			# This applies to GBIS Oracle supported servers only. Modify after config file is created to override.
+                        /u[0-9][0-9]|/u[0-9][0-9][0-9]|/[a-z][0-9][0-9][a-z][a-z][a-z]bk|/[a-z][0-9][0-9][a-z][a-z][a-z]_arch)
+                                    PCT=100; DEFAULT_SEVERITY=SEV3; SUPPORTEDBY=CRC-C-ORADVLDBA ;;
+
+
+                               *)   PCT=94; DEFAULT_SEVERITY=SEV2; SUPPORTEDBY=undefined-support-group ;;
+                    esac
+}
+###################
+# end functions 
+###################
+
+
+# Remove any old flag files older than 1 day to help force reticket if event still open after 24 hours.
+
+find /opt/local/fswatch/tmp -name "_*" -ctime +1 -exec rm -f {} \;
+
+
+
+OS=`uname`
+        case $OS in
+                SunOS )
+			DF="/usr/xpg4/bin/df -Pk"
+			FSSKIP="$FSSKIP|/devices|/system/contract|/proc|/etc/svc/volatile|/platform/sun4|/dev/fd|/system/object"
+			POSTEMSG=$HOME/bin/postemsg.sun
+                        ID=`/usr/xpg4/bin/id -u -n`
+                        ;;
+                HP-UX )
+			[ `uname -r` = "B.11.11" ] && DF="/usr/local/bin/df -Pk -x nfs"
+			[ `uname -r` = "B.11.00" ] && DF="/opt/local/gnu/bin/df -Pk -x nfs"
+			[ `uname -r` = "B.10.20" ] && DF="/opt/local/gnu/fileutils/bin -Pk -x nfs"
+			FSSKIP="$FSSKIP|/proc|/dev/fd"
+			POSTEMSG=$HOME/bin/postemsg.hp
+			ID=`/usr/bin/id -u -n`
+                        ;;
+                AIX )
+                        DF="/usr/bin/df -Pk"
+			POSTEMSG=$HOME/bin/postemsg.aix
+			FSSKIP="$FSSKIP|/proc|/dev/fd"
+			ID=`/usr/bin/id -u -n`
+                        ;;
+                Linux )
+                        DF="/bin/df -Pk -x nfs"
+			POSTEMSG=$HOME/bin/postemsg.aix
+			FSSKIP="$FSSKIP|/proc|/dev/fd"
+			ID=`/usr/bin/id -u -n`
+                        ;;
+                * )
+                        echo "ERROR: Unsupported platform $OS.\n"
+                        exit 1
+                        ;;
+        esac
+
+while getopts m:v\?:t\? c
+do
+        case "$c" in
+                m) MAIL=true; MAILLIST=$OPTARG;;
+                t) TIVOLI=true;;
+                v) VERBOSE=true;;
+           \?) echo "usage: $MYNAME [-v] [-t] [-m maillist ]";\
+		 exit;;
+        esac
+done
+
+if [ "$MAIL" = true ]
+then
+	touch ${MAILFILE}
+fi
+
+$DF 2>$ERRFILE |egrep -v "Filesystem|\/cdrom|\/jmd_|${FSSKIP}"|\
+while read LINE
+do
+        set $LINE
+        eval echo \$$# > $TMPFILE
+        read FS < $TMPFILE
+	# Create a temp file with / converted to _
+	FSTMP=`echo $FS |sed 's/\//_/g'`
+	# Strip the % sign from the percent used
+        PCT=`echo $5 | tr -d '%'`
+        # if the config file doesn't exist we'll try to create it
+        if [ ! -f "$CFGFILE" ]
+        then
+            NOCFG=true
+            if [ "$ID" != root ]
+            then
+                echo ${MYNAME}: must be root to create config file.
+                exit
+	    else
+		# set umask so files are readable
+		umask 002		
+            fi
+		    # artificially make the threshold at least the DEFAULT.
+		    if [ "$PCT" -lt "$DEFAULT_PERCENT" ]
+		    then
+			    PCT=$DEFAULT_PERCENT
+		    fi
+        else
+		NOCFG=false
+        fi
+	
+        if [ "$NOCFG" = true ] ; then
+	# File sytem not in $CFGFILE, adding and sending e-mail for updates
+            #    set some default file systems to CRC-C-UNIX group
+		  find_default_support_info	
+
+                  echo "${HOSTNAME} ${FS} ${PCT} ${DEFAULT_SEVERITY} ${SUPPORTEDBY}" >> $CFGFILE
+		  chown root:437 $CFGFILE  # 437=fswatch group
+ 	fi
+
+        if grep -i "^$HOSTNAME $FS " $CFGFILE > $TMPFILE
+        then
+            read HOST FS1 LIMIT SEVERITY SUPPORTEDBY < $TMPFILE
+		SEVERITY_NUM=`echo $SEVERITY| sed 's/SEV//'`
+            if [ "$PCT" -gt "$LIMIT" ]
+            then
+                # Create warning string and send to mail file
+                MESG="${MYNAME} on ${HOSTNAME}: $FS ${PCT}% full, limit of ${LIMIT}% exceeded, support group=$SUPPORTEDBY Severity=$SEVERITY"
+		OWNER=`ls -ld $FS | awk '{print "perms="$3":"$4}'`
+                echo ${MESG} >> ${ERRFILE}
+
+		# If Tivoli, send event to TEC.
+	    	   if [ "$TIVOLI" = true ]
+		      then
+			# check for tmp file for this filesystem to determine if this is the first event
+			if [ ! -f $TMPDIR/$FSTMP ]; then
+				# if not support group, then must default it to DEFAULT_SUPPORT
+				[ "$SUPPORTEDBY" = "undefined-support-group" ] && SUPPORTEDBY=$DEFAULT_SUPPORT
+				echo $MESG |mailx -s "UXALERT:FSWATCH: $SEVERITY - $HOSTNAME:$FS at $PCT%, Limit=${LIMIT}%, Support Group=$SUPPORTEDBY" $ALERT 
+				echo "${FS} ${PCT} at `date`" > $TMPDIR/$FSTMP
+			fi
+			
+			if [ `cat $TMPDIR/$FSTMP|wc -l` -ge 24 ]; then
+				# if not support group, then must default it to DEFAULT_SUPPORT
+				[ "$SUPPORTEDBY" = "undefined-support-group" ] && SUPPORTEDBY=$DEFAULT_SUPPORT
+				echo $MESG |mailx -s "UXALERT:FSWATCH: $SEVERITY - $HOSTNAME:$FS at $PCT%, Limit=${LIMIT}%, Support Group=$SUPPORTEDBY" $ALERT
+				# force a new flag file to treat it as a new event. 
+				mv $TMPDIR/$FSTMP $TMPDIR/$FSTMP.old
+				head -1  $TMPDIR/$FSTMP.old >  $TMPDIR/$FSTMP
+				rm -f $TMPDIR/$FSTMP.old
+				echo "${FS} ${PCT} at `date`" >> $TMPDIR/$FSTMP
+			fi
+
+	
+			 TMSG="${HOSTNAME}:${FS} ${PCT}% full, limit ${LIMIT}%, $SEVERITY Supported by $SUPPORTEDBY"
+			 # Send event to Prod Tivoli system
+        		 $POSTEMSG -S ${TIVSYS} -m "${TMSG}" -r CRITICAL status=OPEN SEVERITY=$SEVERITY_NUM \
+				hostname=${HOSTNAME} sub_source=${HOSTNAME}:${FS} support_team=$SUPPORTEDBY FSWATCH FSWATCH
+			 # Send event to Dev Tivoli system
+        		 $POSTEMSG -S ${TIVSYSDEV} -m "${TMSG}" -r CRITICAL status=OPEN SEVERITY=$SEVERITY_NUM \
+				hostname=${HOSTNAME} sub_source=${HOSTNAME}:${FS} support_team=$SUPPORTEDBY FSWATCH FSWATCH
+			echo "${FS} ${PCT} at `date`" >> $TMPDIR/$FSTMP
+		   fi	
+
+	    else
+
+            #  Level now lower than Threshold - close out alert and remove tmp file
+
+		if [ -f $TMPDIR/$FSTMP ]
+		then
+			rm -f $TMPDIR/$FSTMP
+		        TMSG="${HOSTNAME}:${FS} ${PCT}% full, limit ${LIMIT}%,"
+			 # Send event to Prod Tivoli system
+			$POSTEMSG -S ${TIVSYS} -m "${TMSG}" -r HARMLESS status=OPEN SEVERITY=$SEVERITY_NUM \
+			hostname=${HOSTNAME} sub_source=${HOSTNAME}:${FS} support_team=$SUPPORTEDBY FSWATCH FSWATCH
+			 # Send event to Dev Tivoli system
+			$POSTEMSG -S ${TIVSYSDEV} -m "${TMSG}" -r HARMLESS status=OPEN SEVERITY=$SEVERITY_NUM \
+			hostname=${HOSTNAME} sub_source=${HOSTNAME}:${FS} support_team=$SUPPORTEDBY FSWATCH FSWATCH
+		fi
+	    fi
+
+            if [ "$VERBOSE" = true ]
+            then
+                echo "${MYNAME} on ${HOSTNAME}: $FS $PCT%,\tlimit $LIMIT% support_team=$SUPPORTEDBY "
+            fi
+        else
+            # File sytem not in $CFGFILE, adding and sending e-mail for updates
+            #	 set some default file systems to CRC-C-UNIX group
+
+		find_default_support_info
+
+            if [ "$PCT" -gt "$DEFAULT_PERCENT" ]
+            then
+                    echo "$HOSTNAME $FS $PCT $DEFAULT_SEVERITY $SUPPORTEDBY" >> $CFGFILE
+		    PERCENT=$PCT		
+            else
+                    echo "$HOSTNAME $FS $DEFAULT_PERCENT $DEFAULT_SEVERITY $SUPPORTEDBY" >> $CFGFILE
+		    PERCENT=$DEFAULT_PERCENT		
+            fi
+            [ "$VERBOSE" = true ] && echo "${MYNAME}: added $FS to $CFGFILE, no support group defined"
+ 		echo "$HOSTNAME:$FS needs to be checked to see if it is setup for support group and severity in the UNIX Sharepoint site under Contact & Oncall / FSWATCH - File System Oncall / FSWATCH File System Support group list spreadsheet.  \n\nDefaults used are Support:$SUPPORTEDBY,$DEFAULT_SEVERITY,$PERCENT%.  Validate if this is correct.\n\nFrom $0"|mailx -s "FSWATCH: $FS added to $HOSTNAME. Needs to be defined in FSWATCH spreadsheet." $NOTIFY
+        fi
+done
+
+if [ -f "$MAILFILE" -a "$MAIL" = true ]
+then
+	# make sure we send the error messages too.
+	cat $ERRFILE >> $MAILFILE
+	if [ -s "$MAILFILE" ]
+	then
+		mailx -s "`hostname` Filesystem(s) Full" "$MAILLIST" < $MAILFILE
+	fi
+fi
+
+# Make a copy of the fswatch.cfg contents to fswatch_list for central management of the files.
+#  If access to NFS /home/uss/reports/fswatch use that first, or try e-mail (for DMZ and vault)
+
+if [ "$HOUR_MIN" -eq 0630 -o "${HOUR_MIN}" -eq 1230 ] ; then
+	if [ -d /home/uss/reports/fswatch ]; then
+			cp $CFGFILE /home/uss/reports/fswatch/$HOSTNAME.fswatch.cfg
+ 	else
+	 		cat $CFGFILE|mailx fswatch_list@uxmailhost.carlson.com
+	fi
+fi
+

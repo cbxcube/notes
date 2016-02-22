@@ -1,0 +1,62 @@
+# Add new license keys via CLI:
+Infoblox > set license
+Enter license string: GAAAAMLbI7rkbAj3gd9hwcJhaqrJhTnw/dWoww==
+Install license? (y or n): y
+
+License is installed.
+
+
+
+The UI needs to be restarted in order to reflect this license change.
+Restart UI now, this will log out all UI users? (y or n):y
+
+Are you sure you want to do this? (y or n): y
+UI restarted.
+
+# Show current license keys:
+Infoblox > show license
+Version         : 6.10.7-248160
+Hardware ID     : 1107201112100021
+
+License Type    : DHCP
+Expiration Date : Permanent
+License String  : EgAAAMPdNK/qMUvi34thwcJhJqnUzg==
+
+License Type    : DNS
+Expiration Date : Permanent
+License String  : EQAAAMPbJKO7LQazw8Yw3Y8tf/qB
+
+License Type    : NIOS Maintenance
+Expiration Date : 09/30/2015
+License String  : GwAAAMncOKzJbw/ugtVvmI8kO6iF1Dq8+tjgxvY/Sg==
+
+License Type    : Grid Maintenance
+Expiration Date : 09/30/2015
+License String  : GwAAAMzQLqzicxT7rclonI8kO6iF1Dq8+tjgx/M8Gg==
+
+License Type    : Grid
+Expiration Date : Permanent
+License String  : GAAAAMLbI7rkbAj3gd9hwcJhaqrJhTnw/dWoww==
+
+# Display current network settings:
+Infoblox > show network
+Current LAN1 Network Settings:
+  IP Address:                 192.168.1.2
+  Network Mask:               255.255.255.0
+  Gateway Address:            192.168.1.1
+  HA enabled:                 false
+  Grid Status:                Master of Infoblox Grid
+
+Current LAN1 Network Settings:
+  Virtual IP Address:         10.40.32.6
+  Network Mask:               255.255.252.0
+  Gateway Address:            10.40.35.254
+  HA enabled:                 true
+  Public Local IP Address:    10.40.32.1
+  HA Local IP Address:        10.40.32.2
+  Grid Status:                Master of FairIsaacGrid1 Grid
+
+# Replace faulty grid member
+1) plug in, power on, and log on admin:infoblox
+2) set network
+3) set membership

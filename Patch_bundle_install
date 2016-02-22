@@ -1,0 +1,47 @@
+INSTALLATION:
+1) Confirm current OSBackup and explorer:
+     on ssmn00pk00144:
+	ls -ltr /osbackups/ssmn00pk00058 - verify time stamp is less than 7 days old
+          if the current backup is more than 7 days old:
+            /usr/local/bin/backupos.sh
+     from ssmn00pk00058:
+	ls -ltr /home/uss/bin/explorer/servers/ssmn00pk00058 - verify time stamp is less than 7 days old
+          if current explorer is more than 7 days old:
+            /home/uss/bin/explorer/bin/run_explorer.ksh -i
+2) Unpackage the patch bundle on ssmn00pk00058:
+     on ssmn00pk00058:
+	mount ssmn00pk00144:/jumpstart /mnt
+	cp /mnt/patch_cluster/Feb_2010/10_Recommended.zip /patch
+	cd /patch
+	unzip 10_Recommended.zip
+	rm 10_Recommended.zip     
+3) Verify with the Backup team it is safe to shut down the server
+4) Shutdown server to maintenance mode:
+     From the console:
+	log in as root
+	init 0 - wait for "ok>" prompt
+        boot -s - from "ok>" prompt
+5) Remove IDR Patch:
+     patchrm IDR142144-15
+        reboot to single user mode if instructed to do so by the patch removal
+6) Install Patch cluster:
+     cd /patch/10_Recommended
+     ./install_cluster --s10cluster
+7) Review log files for failures, warnings, errors; compare system files for changes:
+     ls -l /etc/mail/sendmail.* - look for sendmail.cf to see if the DS entry was changed
+     ls -l /etc/mail/submit.* - look for submit.cf to see if the DS entry was changed
+     ls -l /etc/init.d - look for scripts that may have been updated by the patching process
+8) Reboot the server:
+     reboot
+9) After server comes back online, verify all file systems are online
+     run:
+	df -h - currently mounted file systems
+	expl -df ssmn00pk00058 - file systems mounted during last explorer run
+10) Contact Backup team to start Networker if it hasn't already started and to verify everything is ok.
+
+
+BACKOUT:
+1) Perform bare bones recovery - restore from OSBackups and tape using Explorer as a checklist and comparison
+
+
+

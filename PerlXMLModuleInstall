@@ -1,0 +1,23 @@
+install perl XML modules:
+
+log into client server as root
+
+run "perl -MCPAN -eshell"
+  apss0020:${PWD} #perl -MCPAN -eshell
+ 
+  cpan shell -- CPAN exploration and modules installation (v1.59_54)
+  ReadLine support available (try 'install Bundle::CPAN')
+ 
+  cpan> 
+
+from cpan> prompt "install Bundle::CPAN"
+  ie. install XML::SAX, install XML::Simple
+
+type "quit" to exit from cpan>
+
+from /.cpan/build/new_XML_Module_directory...
+perl Makefile.PL - watch for missing requirements, ie XML::Simple needed a parser such as XML::SAX
+make test - Watch for how many tests fail, includes around 200 tests
+make install - watch for successful completion
+
+

@@ -1,0 +1,27 @@
+#Rename host
+$ svccfg
+svc:> select /system/identity:node
+svc:/system/identity:node> listprop config 		->will display current hostname configuration
+svc:/system/identity:node> setprop config/nodename=newhostname
+svc:/system/identity:node> setprop config/loopback=newhostname
+svc:/system/identity:node> refresh
+svc:/system/identity:node> exit
+$ shutdown -i6 -y -g0
+
+#ReIP host
+$ ipadm show-addr 					->will display current interface settings
+	uxlab32:/etc > ipadm show-addr
+	ADDROBJ           TYPE     STATE        ADDR
+	lo0/v4            static   ok           127.0.0.1/8
+	net0/v4           static   ok           10.40.32.69/22
+	lo0/v6            static   ok           ::1/128
+	net0/v6           addrconf ok           fe80::250:56ff:fe86:52a6/10
+$ ipadm delete-addr net0/v4
+$ ipadm create-addr -T static -a 10.40.33.175/22 net0/v4
+$ ipadm show-addr					-> to confirm changes
+        uxlab32:/etc > ipadm show-addr
+        ADDROBJ           TYPE     STATE        ADDR
+        lo0/v4            static   ok           127.0.0.1/8
+        net0/v4           static   ok           10.40.33.175/22
+        lo0/v6            static   ok           ::1/128
+        net0/v6           addrconf ok           fe80::250:56ff:fe86:52a6/10

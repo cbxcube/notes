@@ -1,0 +1,41 @@
+Upgrade Oracle RAC 9i to RAC 10g
+
+ocrvote disk group, file system, mount point, also added to VCS cluster
+cssd resource added to cluster
+
+On Master node:
+import and enable new shared luns for ocrvotedg
+vxdctl enable
+/etc/vx/bin/vxdisksetup -i newdisk
+
+create ocrvotedg
+vxdg -s init ocrvotedg Diskname
+
+create ocrvote file system
+vxassist -g ocrvotedg make ocrvotevol 1G
+mkfs -F vxfs /dev/vx/rdsk/ocrvotedg/ocrvotevol
+mount /dev/vx/dsk/ocrvotedg/ocrvotevol /ocrvote
+
+#update VCS:
+  haconf -makerw
+  hares -add ocrvote_mnt CFSMount cvm
+  hares -modify ocrvote_mnt Critical 0
+  hares -modify ocrvote_mnt MountPoint "/ocrvote"
+  hares -modify ocrvote_mnt BlockDevice "/dev/vx/dsk/ocrvotedg/ocrvotevol"
+
+  hares -add ocrvote_voldg CVMVolDg cvm
+  hares -modify ocrvote_voldg CVMDiskGroup ocrvotedg
+  hares -modify ocrvote_voldg CVMVolume -add ocrvotevol
+  hares -modify CVMActivation sw
+
+  hares -link ocrvote_mnt ocrvote_voldg
+  hares -link ocrvote_mnt vxfsckd
+  hares -link ocrvote_voldg cvm_clus
+
+  hares -modify ocrvote_voldg Enabled 1
+  hares -modify ocrvote_mnt Enabled 1
+
+  haconf -dump -makero
+
+#add cssd to cluster
+  hares -add cssd cssd cvm

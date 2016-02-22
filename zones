@@ -1,0 +1,296 @@
+##Mount new file system in zones
+From global zone:
+  zfs create -o mountpoint=/zone_mnt/filesystem -o quota=Gb -o reservation=Gb pool/zfsname
+  ie.  zfs create -o mountpoint=/vsmn00zk00035mnt/oracle -o quota=2G -o reservation=2G pools4/vsmn00zk00035_webgate
+  zonecfg -z zone
+    add fs
+      set dir=/mount/point
+      set special=/zone_mnt/filesystem
+      set raw=/path/to/raw/vx
+      set type=lofs
+      add options rw,nodevices,nosuid
+      end
+    verify
+    commit
+    exit
+  vi /etc/zones/zonename.xml
+    The filesystem entry should look like this (make sure the / are correct):
+      <filesystem special="/vsmn00zk0035mnts/oracle" directory="/opt/oracle" type="lofs">
+        <fsoption name="rw"/>
+        <fsoption name="nodevices"/>
+        <fsoption name="nosuid"/>
+      </filesystem>
+From local zone:
+  mkdir -p -m 755 /mount/point
+From global zone:
+  mount -F lofs /vsmn00zk00035mnt/oracle /zones/vsmn00zk00035/root/opt/oracle
+From local zone:
+  chown user:group /mount/point
+
+
+##Resources Management
+Displaying the current Resource Controls assigned:
+  prctl -i zone apsz0179
+
+#Cpu Allocation Processor Sets:
+    * Checking the current allocation:
+	vsmd8011:/etc/zones #psrset 
+	user processor set 1: processors 8 9
+	user processor set 2: processors 10 11
+	user processor set 3: processors 2 3
+	user processor set 4: processors 0 1
+    * Adding a pool on the fly:
+	poolcfg -c "create pset work5-pset ( uint pset.min = 2; uint pset.max = 2 )"
+	poolcfg -c "create pool work5-pool"
+	poolcfg -c "associate pool work5-pool ( pset work5-pset )"
+	pooladm -c 
+    * Binding a zone to a pool on the fly:
+	poolbind -p work1-pool -i zoneid dbsz8014
+
+#Cpu Allocation Fair Share Scheduler (FSS):
+    * Configuring a zone with FSS:
+	# zonecfg -z workzone1
+	zonecfg:workzone1> set pool=work1-pool
+	zonecfg:workzone1> add rctl
+	zonecfg:workzone1:rctl> set name=zone.cpu-shares
+	zonecfg:workzone1:rctl> add value (priv=privileged,limit=30,action=none)
+	zonecfg:workzone1:rctl> end
+	zonecfg:workzone1> verify
+	zonecfg:workzone1> exit
+	OR add the following in the zonename.xml file
+	  <rctl name="zone.cpu-shares">
+	    <rctl-value priv="privileged" limit="20" action="none"/>
+	  </rctl>
+    * Changing Shares for a running zone:
+	prctl -n zone.cpu-shares -v 70 -r -i zone ldpz8006 
+	or
+	/etc/adm/zonefss -l
+    * Changing the number of semaphores in a zone:
+        from global:
+        zonecfg -z zonename
+        zonecfg:zonename> add rctl
+        zonecfg:zonename:rctl> set name=zone.max-sem-ids
+	zonecfg:zonename:rctl> add value (priv=privileged,limit=1340,action=deny)
+	zonecfg:zonename:rctl> end
+	zonecfg:zonename> verify
+	zonecfg:zonename> commit
+	zonecfg:zonename> exit
+    * Displaying current CPU shares setting for zone from global zone:
+	prctl -P -t privileged -n zone.cpu-shares -i zone apsz8001
+	or
+	/etc/adm/zonefss -l
+    * Displaying current Semaphores for zone from global zone:
+	prctl -P -t privileged -n zone.max-sem-ids -i zone zonename
+    * Display Zone settings from global:
+        zonecfg -z zonename info | egrep "cpu-shares:|max-sem-ids:"
+    * Display resource controls from the zone:
+        id -p - displays project ID
+        prctl -n zone.max-sem-ids -i prject ID
+          example:
+        	root@uxlab8# id -p
+		uid=0(root) gid=0(root) projid=1(user.root)
+		root@uxlab8# prctl -n zone.max-sem-ids -i project user.root
+		project: 1: user.root
+		NAME    PRIVILEGE       VALUE    FLAG   ACTION                       RECIPIENT
+		zone.max-sem-ids
+		        privileged      1.34K       -   deny                                 -
+		OR:
+		root@uxlab8# prctl -i project user.root
+		project: 1: user.root
+		NAME    PRIVILEGE       VALUE    FLAG   ACTION                       RECIPIENT
+		project.max-contracts
+		        privileged      10.0K       -   deny                                 -
+		        system          2.15G     max   deny                                 -
+		project.max-device-locked-memory
+		        privileged       495MB      -   deny                                 -
+		        system          16.0EB    max   deny                                 -
+		project.max-locked-memory
+		        system          16.0EB    max   deny                                 -
+		project.max-port-ids
+		        privileged      8.19K       -   deny                                 -
+		        system          65.5K     max   deny                                 -
+		project.max-shm-memory
+		        privileged      1.93GB      -   deny                                 -
+		        system          16.0EB    max   deny                                 -
+		project.max-shm-ids
+		        privileged        128       -   deny                                 -
+		        system          16.8M     max   deny                                 -
+		project.max-msg-ids
+		        privileged        128       -   deny                                 -
+		        system          16.8M     max   deny                                 -
+		project.max-sem-ids
+		        privileged        128       -   deny                                 -
+		        system          16.8M     max   deny                                 -
+		project.max-crypto-memory
+		        privileged      1.93GB      -   deny                                 -
+		        system          16.0EB    max   deny                                 -
+		project.max-tasks
+		        system          2.15G     max   deny                                 -
+		project.max-lwps
+		        system          2.15G     max   deny                                 -
+		project.cpu-cap
+		        system          4.29G     inf   deny                                 -
+		project.cpu-shares
+		        privileged          1       -   none                                 -
+		        system          65.5K     max   none                                 -
+		zone.max-swap
+		        system          16.0EB    max   deny                                 -
+		zone.max-locked-memory
+		        system          16.0EB    max   deny                                 -
+		zone.max-shm-memory
+		        system          16.0EB    max   deny                                 -
+		zone.max-shm-ids
+		        system          16.8M     max   deny                                 -
+		zone.max-sem-ids
+		        system          16.8M     max   deny                                 -
+		zone.max-msg-ids
+		        system          16.8M     max   deny                                 -
+		zone.max-lwps
+		        system          2.15G     max   deny                                 -
+		zone.cpu-cap
+		        system          4.29G     inf   deny                                 -
+		zone.cpu-shares
+		        privileged         10       -   none                                 -
+
+    * Remove a new resource setting from global zone:
+	prctl -x zone.max-sem-ids -i zone zonename
+	zonecfg -z zonename
+	zonecfg:zonename> remove rctl name=zone.max-sem-ids
+	zonecfg:zonename> verify
+	zonecfg:zonename> commit
+	zonecfg:zonename> end
+
+
+#LWPs, number of processes allowed per zone:
+    * Configuring the amount of LWPs allowed in a zone:
+	# On the frame itself, edit the file /etc/zones/zonename.xml
+	  <rctl name="zone.max-lwps">
+	    <rctl-value priv="privileged" limit="7000" action="deny"/>
+	  </rctl>
+    * Adding LWPs limit for a running zone:
+	prctl -s -n zone.max-lwps -v 8000 -t priv -e deny -i zone apsz8001
+    * Changing LWPs limit for a running zone:
+	prctl -r -n zone.max-lwps -v 8000 -t priv -e deny -i zone apsz8001
+    * Displaying current LWP setting for zone:
+	prctl -P -t privileged -n zone.max-lwps -i zone apsz8001
+    * Displaying the current LWP usage for all zones:
+	prstat -ZLn1,20
+
+#Memory Capping (rcapd)
+    * Processes
+          o Create the project into /etc/project within the zone. 
+	wsuser:100::wsuser,root::rcap.max-rss=10737418240
+	Enable rcapd right away
+	  rcapadm -E
+	Enable rcapd after the next reboot
+	  rcapadm -n -E
+	Disable rcapd
+	  rcapadm -D
+	Disable rcapd after the next reboot
+	  rcapadm -n -D
+	  Note: Use rcapadm -D to safely disable rcapd. If the daemon is killed (see the kill(1) man page), processes might be left in a stopped state and need to be manually restarted. To resume a process running, use the prun command. See the prun(1) man page for more information.
+    * With the newer version of Solaris (08/07) you can cap from the global zone
+    * To cap a running zone on the fly, be patient after running the command, it takes a few mins. 
+	rcapadm -z apsz8105 -m 5G
+    * Check the running state 
+	rcapstat -z
+    * To cap a zone permanently, edit /etc/zones/zonename.xml and add the following <mcap physcap=""> entry 
+	...
+	  <mcap physcap="2147483648"/>
+	</zone>
+    * Configuring a system project (generally catch all caping) 
+	# 4 Gig example
+	projmod -K 'rcap.max-rss=4000000000' system
+	projmod -K 'rcap.max-rss=4000000000' default
+    * Configuring the Resource Capping Daemon with Immediate Enforcement 
+	rcapadm -E -i scan=15,sample=5,report=5,config=60 -c 0 
+    * To check the status 
+	#rcapstat
+	    id project         nproc    vm   rss   cap    at avgat    pg avgpg
+	     0 system             25   98M   59M 3815M    0K    0K    0K    0K
+	     0 system             25   98M   59M 3815M    0K    0K    0K    0K
+	     0 system             25   98M   59M 3815M    0K    0K    0K    0K
+	     0 system             25   98M   59M 3815M    0K    0K    0K    0K
+	#
+	OR
+	prstat -n8 -J
+    * Caping a database thru a project (rcap doesn't handle shared memory caping) 
+	projadd p3
+	projmod -s -Usybase -K "project.max-shm-memory=(privileged,8G,deny)" p3	
+	  dbsz8014:/root #cat /etc/project 
+	  system:0::::
+	  user.root:1::::
+	  noproject:2::::
+	  default:3::::
+	  group.staff:10::::
+	  p3:100::sybase::project.max-shm-memory=(privileged,8589934592,deny)
+	Then start the database using the newtask command...
+	  cat ./ASE-12_5/install/RUN_P3CONV_STG
+	  #!/bin/sh
+	  [..]
+	  newtask -p p3 /home/sybase/ASE-12_5/bin/dataserver \
+	  -sP3CONV_STG \
+	  -d/sybmaster/P3CONV_STG/master.dat \
+	  -e/home/sybase/ASE-12_5/install/errorlog_P3CONV_STG \
+	  -c/home/sybase/ASE-12_5/P3CONV_STG.cfg \
+	  -M/home/sybase/ASE-12_5 \
+    * Changing a project on the fly 
+	prctl -n project.max-shm-memory -v 3G -r -i process 3760
+    * Checking the project restrictions on an existing process 
+	dbsz8014:/home/sybase #prctl 3762
+	process: 3762: /home/sybase/ASE-12_5/bin/dataserver -sP3CONV_STG -d/sybmaster/P3CONV_
+	NAME    PRIVILEGE       VALUE    FLAG   ACTION                       RECIPIENT
+	process.max-port-events
+	        privileged      65.5K       -   deny                                 -
+	        system          2.15G     max   deny                 
+	[..]
+
+	[edit] Loading Applications
+    * Autosys 4.5 
+	cd /etc/adm
+	wget http://jumps8002.uhc.com/Build/install-autosys.sh
+	chmod 700 install-autosys.sh
+	./install-autosys.sh -t dev -s jumps8002.uhc.com
+
+##Mounting an iso or lofi device in a zone:
+lofi is not available by default in a zone. Here how to mount an iso image from the global zone into a running zone.
+From the Global zone:
+	lofiadm -a /zones/virtual-filesystems/apsz8120/dropzone/sun_mc-3_6_1-ga.iso 
+	mount -F hsfs /dev/lofi/1 /zones/apsz8120/root/mnt
+
+
+##Global and NGZ Cluster Patch management
+    * Download the 10_Recommended.zip patch into / in the Global Zone
+    * Unzip it
+       unzip -q 10_Recommended.zip 
+    * Get all zones applications shutdowned
+    * Switch to single user mode thru
+      /etc/telinit -s 
+    * Boot all zones in single user mode
+      /etc/adm/boot-all-zones-single.sh
+    * Install the cluster using the usual
+       cd /10_Recommended; ./install_cluster -q
+    * Use zlogin zonename and check /var/sadm/patch/kernelversion/log to check if the new kernel patch is listed.
+    * Shutdown all zones
+      /etc/adm/shutdown-all-zones.sh
+    * Reboot the frame
+      init 6
+
+
+##Activating snoop and network in a zone
+    * From the GZ 
+	# zonecfg -z test
+	zonecfg:test> set limitpriv=default,net_rawaccess
+	zonecfg:test> exit
+    * Add the network device 
+	#ls -l /dev/ce
+	crw-r--r--   1 root     root      11, 94 Dec 17 20:31 /dev/ce
+	#cd /zones/zonename/dev
+	#mknod ce c 11 94
+    * Reboot the zone. 
+
+
+##Troubleshooting a zone
+    * Hanging zone 
+	global# pkill -9 -z zonename
+	global# umount -f  /zonepath/zonename

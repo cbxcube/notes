@@ -1,0 +1,86 @@
+ADD NEW NODE TO CLUSTER:
+on ssmn00dk00238 and ssmn00dk00239:
+  vi /etc/llthosts to include:
+	2 ssmn00dk00286
+  scp /etc/llthosts ssmn00dk00286:/etc
+
+on ssmn00dk00286:
+  vi /etc/llttab
+	set-node ssmn00dk00286
+	set-cluster 102
+	link ce0 /dev/ce:0 - ether - -
+	link ce1 /dev/ce:1 - ether - -
+  vi /etc/gabtab
+	/sbin/gabconfig -c -n3
+
+on ssmn00dk00238 and ssmn00dk00239:
+  vi /etc/gabtab
+	/sbin/gabconfig -c -n3
+
+on ssmn00dk00286:
+  scp ssmn00dk00239:/etc/vcsmmtab /etc
+  scp ssmn00dk00239:/etc/vxfendg /etc
+  
+  start llt and gab:
+	/etc/init.d/llt start
+	/etc/init.d/gab start
+
+  scp ssmn00dk00239:/etc/vxfenmode /etc
+  /etc/init.d/vxfen start
+  /etc/init.d/vcsmm start
+  /etc/init.d/lmx start
+ 
+  /etc/init.d/odm start
+
+  Verify GAB port memberships a,b,d,o
+	gabconfig -a
+
+
+on ssmn00dk00239:
+  cpd /etc/VRTSvcs/conf/config/main.cf
+  haconf -makerw
+  hasys -add ssmn00dk00286
+  hagrp -modify cvm SystemList -add ssmn00dk00286 2
+  hagrp -modify cvm AutoStartList -add ssmn00dk00286
+  hares -modify ora_priv Device -add ce4 0 -sys ssmn00dk00286
+  hares -modify ora_priv Device -add ce5 1 -sys ssmn00dk00286
+  hares -modify cvm_clus CVMNodeId -sys ssmn00dk00286 0
+  vi main.cf
+     Add line under the PrivNIC ora_priv stanza
+         Address @ssmn00dk00286 = "10.176.248.3"
+     Add new node to CVMNodeID entry in the cvm_clus resource:
+	 example: 
+	 OLD:  CVMNodeId = { ssmn00dk00238 = 0, ssmn00dk00239 = 1 }
+ 	 NEW:  CVMNodeId = { ssmn00dk00238 = 0, ssmn00dk00239 = 1, ssmn00dk00286 = 2 }
+  haconf -dump -makero
+  hacf -verify /etc/VRTSvcs/conf/config/main.cf
+  vi main.cf - verify all new entries are in place.
+  hastop -all -force
+
+#########################################WARNING!!!###########################################################
+#######	DO NOT RUN "hastop -all" WITHOUT THE "-force" OPTION.  The "-force" option tells VCS to stop while ###
+#######	letting the resources remain online.  If the "-force" is left off, VCS will stop and it will bring ###
+#######	the application down with it.                                                                      ###
+#########################################WARNING!!!###########################################################
+
+  scp /etc/VRTSvcs/conf/config/main.cf ssmn00dk00238:/etc/VRTSvcs/conf/config
+  scp /etc/VRTSvcs/conf/config/main.cf ssmn00dk00286:/etc/VRTSvcs/conf/config
+
+On both existing servers starting with master:
+  hastart
+  hastatus -sum - verify the resource has come online
+  
+  #enable the cluster to recognize the new node
+  /etc/vx/bin/vxclustadm -m vcs -t gab reinit
+  /etc/vx/bin/vxcluxtadm nidmap
+
+on ssmn00dk00286
+  cat /etc/llthost - determine node ID
+  gabconfig -a - verify the node ID is seen by GAB
+    If ports f,u,v, or w are present in from the gabconfig command, reboot 286
+    otherwise:
+         hastart
+  hastatus -sum - to confirm cluster status
+
+
+  

@@ -1,0 +1,166 @@
+# Destroy SNAP thru Device Group
+symclone -g devicegroup terminate -tgt  # This can take a long time for the tgt lun to vacate
+symdg show devicegroup
+...
+        LdevName              PdevName                Dev  Config        Att. Sts     (MB)
+        ----------------------------------------------------------------------------------
+        DEV001                /dev/sdr                1CD9 TDEV          (M)  RW    5242913
+...
+        LdevName              PdevName                Dev  Config        Att. Sts     (MB)
+        ----------------------------------------------------------------------------------
+        TGT001                N/A                     2C13 TDEV          (M)  RW    5242913
+...
+symld -g devicegroup remove TGT001      # TGT001 = destination LdevName
+symld -g devicegroup remove DEV001      # DEV001 = source LdevName
+symdg delete devicegroup
+
+# Adding new LUNs to existing SNAPs
+# Add new source LUN:
+symld -g devicegroup add dev LUNID
+# Add new TGT LUN:
+symld -g devicegroup add dev LUNID -tgt
+# Verify new LUNs are added to devicegroup
+symdg show devicegroup
+# Create snap of new LUNs
+symclone -g Mon_swvm_snap_bkp create -vse DEV003 sym ld TGT003 -tgt
+# Activete snap of new LUNs
+symclone -g Mon_swvm_snap_bkp activate DEV003 sym ld TGT003 -tgt
+
+
+# Meta Volume Sizing
+TDEV Size (GB) | Meta Type | Meta Members
+---------------|-----------|-------------
+25GB	       | None	   |           1
+50GB	       | None	   |           1
+100GB	       | Striped   |           2
+200GB	       | Striped   |           4
+400GB	       | Striped   |           4
+512GB	       | Striped   |           8
+800GB	       | Striped   |           8
+1024GB	       | Striped   |          16
+2048GB	       | Striped   |          16
+5000GB	       | Striped   |          40
+
+# Display all device groups 
+symdg list
+
+# Display information about a specific device group
+symdg show devicegroup_dg
+
+# Create new Device group
+symdg create devicegroup_dg
+
+# Add Source LUN to Device group
+symld -g devicegroup_dg add dev LUNID
+   symld -g mfgt97_to_mfgttst_dg add dev 2889
+
+# Create destionation LUN with same number of meta members as source in Unisphere
+
+# Scan for new lun
+symcfg discover
+
+# Add destination LUN to device group
+symld -g devicegroup_dg add dev LUNID -tgt
+  symld -g mfgt97_to_mfgttst_dg add dev 1F22 -tgt
+
+###### SNAPPING ######
+# Generate snap
+symclone -g mfgt97_to_mfgttst_dg create -vse -tgt -nop
+
+# Validate snap is generated
+symclone query -g mfgt97_to_mfgttst_dg
+
+# Wait for DBA to place DB in hotbackup
+
+# Activate snap
+symclone -g mfgt97_to_mfgttst_dg activate -tgt -nop
+
+# in Unisphere, mask destination LUN to new server
+# On client, scan for LUN
+/opt/depots/scripts/scan_rhel_hba
+  or "for i in `ls /sys/class/scsi_host/*/scan`; do echo $i ; echo "- - -" >> $i; done"
+multipath
+
+# Determine the multipath device name
+multipath -ll | grep LUNSERIALNUMBER
+  mutlipath -ll | grep 3232
+
+# Import VG with new name, and activate LVs
+vgdisplay - Make sure you see the old vgname
+vgimportclone -n vgnewname /dev/mapper/mpathq
+  vgimportclone -n vgmfgttst /dev/mapper/mpathq
+vgchange -ay vgnewname
+
+# Create mountpoints and update fstab
+
+
+###### CLONING ######
+# Generate clone
+symclone -g mfgt97_to_mfgttst_dg create -copy -differential -tgt -nop
+
+# Validate clone is generated
+symclone query -g mfgt97_to_mfgttst_dg
+
+# Wait for DBA to place DB in hotbackup
+
+# Activate clone
+symclone -g mfgt97_to_mfgttst_dg activate -consistent -tgt -nop
+
+# Monitor process for 100% completion
+symclone -g mfgt97_to_mfgttst_dg query -i 5 (5second intervals)
+
+# Verify clone is complete
+symclone -g mfgt97_to_mfgttst_dg verify (all devices should be in 'Copied' state)
+
+# Terminate the connection between target and source
+symclone -g mfgt97_to_mfgttst_dg terminate -tgt
+
+# in Unisphere, mask destination LUN to new server
+# On client, scan for LUN
+/opt/depots/scripts/scan_rhel_hba
+  or "for i in `ls /sys/class/scsi_host/*/scan`; do echo $i ; echo "- - -" >> $i; done"
+multipath
+
+# Determine the multipath device name
+multipath -ll | grep LUNSERIALNUMBER
+  mutlipath -ll | grep 3232
+
+# Import VG with new name, and activate LVs
+vgdisplay - Make sure you see the old vgname
+vgimportclone -n vgnewname /dev/mapper/mpathq
+  vgimportclone -n vgmfgttst /dev/mapper/mpathq
+vgchange -ay vgnewname
+
+# Create mountpoints and update fstab
+
+
+###### SNAPPING/CLONING TO SAME SERVER ######
+# In Unisphere, mask LUN to different server
+# Scan for LUN, and determine the new mpath ID
+# vgdisplay -> see the VG that is being snap'd/cloned
+# vgimportclone -n vgnewname /dev/mapper/mpathq -> Rename the VG associated with this LUN
+# vgexport vgnewname -> now export the VG
+# multipath -ll mpathq -> see which dev's are associated with mpath device
+# for DEV in sdo sdp sdq sdr; do echo 1 > /sys/block/${DEV}/device/delete; done; -> delete all devices associate with mpath device
+# change masking for LUN to point to final destination server and import VG
+#############################################
+
+# Recreate SNAP/CLONE - only for backup snaps - recreate existing snapped device group
+symclone -d devicegroup_dg recreate -tgt -nop -> regenerates the snap/clone
+symclone -d devicegroup_dg query -> look for recreated
+symclone -d devicegroup_dg activate -tgt -nop -> reactivates the snap
+
+# Refresh DB from CLONE - reestablishes delta to 0
+umount /filesystem
+vgdisplay -v volume_vg | grep mapper
+multipath -ll mpath##
+vgchange -a n volume_vg
+vgexport volume_vg
+symclone -g devicegroup_dg establish -tgt -> does recreate and activate
+symclone -g devicegroup_dg query -> look for copied
+vgdisplay
+vgimportclone -n volume_vg /dev/mapper/mpathq
+vgchange -a y volume_vg
+mount /filesystem
+
+

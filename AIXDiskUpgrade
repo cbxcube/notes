@@ -1,0 +1,114 @@
+INSTALLATION:
+AIX Identify disk drive for replacement:
+  run: diag
+  Select Task selection
+  Select Hot Plug Task
+  Select RAID Hot Plug Devices
+  Select your array adapter and hit F7 to commit
+  Select "Identify a Device Attached to a SCSI Hot Swap Enclosure Device"
+  <enter> a second time
+  Select the drive you are replacing and hit enter
+  The diag led will be lit on the drive you selected which will help you find which drive to pull
+
+1) Backup /mksysb file system to osbackups on ssmn00pk00071
+     mount ssmn00pk00071:/osbackups /mnt
+     tar -cvf /mnt/samn00pk00007_mksysb.tar /mksysb/
+
+2) Break hdisk0 disk out of the datavg mirror
+     unmirrorvg datavg hdisk0
+
+3) remove hdisk0 from the datavg group
+     reducevg datavg hdisk0
+
+4) remove hdisk0 from the server
+     rmdev -dl hdisk0
+
+5) physically replace hdisk0
+
+6) scan for the new disk
+     cfgmgr -v
+
+7) verify new disk is visible
+     lsdev | grep hdisk
+
+8) hdisk0 should say none; meaning not associated with a vg
+     lspv
+
+9) add the new hdisk0 into the datavg group
+     extendvg datavg hdisk0
+   If this fails saying the following:
+	0516-1162 extendvg: Warning, The Physical Partition Size of 128 requires the
+        	creation of 1093 partitions for hdisk0.  The limitation for volume group
+	        datavg is 1016 physical partitions per physical volume.  Use chvg command
+	        with -t option to attempt to change the maximum Physical Partitions per
+	        Physical volume for this volume group.
+	0516-792 extendvg: Unable to extend volume group.
+      run: chvg -t 2 datavg; then rerun the extendvg command.
+
+10) add the new hdisk0 into the mirror
+     mirrorvg datavg hdisk0
+
+11) wait for mirroring to complete
+
+12) Break hdisk1 out of datavg mirror
+     unmirrorvg datavg hdisk1
+
+13) remove hdisk1 from datavg group
+     reducevg datavg hdisk1
+
+14) remove hdisk1 from server
+     rmdev -dl hdisk1
+
+15) physically replace hdisk1
+
+16) scan for the new disk
+     cfgmgr -v
+
+17) verify new disk is visible
+     lsdev | grep hdisk
+
+18) hdisk1 should say none; meaning not associated with a vg
+     lspv
+
+19) add the new hdisk1 into the datavg group
+     extendvg datavg hdisk1
+
+20) add the new hdisk1 into the datavg mirror
+     mirrorvg datavg hdisk1
+
+BACKOUT:
+1) recreate datavg
+     smitty vg
+       select "Remove a Volume Group"
+       enter "datavg"
+       <enter>     
+       F3 - to go back to smitty vg menu
+       select "Add a Volume Group"
+       select "Add an Original Volume Group"
+         Volume group name = datavg
+         PHYSICAL VOLUME names = hdisk0
+         <enter>
+2) add hdisk1 into the datavg group
+     extendvg datavg hdisk1
+
+3) add hdisk1 into the datavg mirror
+     mirrorvg datavg hdisk1
+
+4) recreate mksysb logical volume
+     mklv -y'mksysblv' -t'jfs2' datavg 800
+
+5) recreate mksysb file system
+     smitty fs
+       select "Add / Change / Show / Delete File System"
+       select "Enhanced Journaled File Systems"
+       select "Add an Enhanced Journaled File System"
+       select "datavg"
+         Number of units = 102400
+         Mount Point = /mksysb
+	 Mount AUTOMATICALLY at system restart? = yes
+       <enter>
+
+6) copy data back into /mksysb file system
+     tar -xvf /mnt/samn00pk00007_mksysb.tar /mksysb
+
+BACOUT DURATION: 2 hours

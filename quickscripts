@@ -1,0 +1,62 @@
+Function calling at job to clean up zfs snapshots 2 months from now
+function at_job {
+       echo "Let's set a date to clean up this snapshot so we're not holding onto disk space unnecessarily."
+       at now + 2 months << EOF
+               for SNAPSHOT in `zfs list -H -t snapshot | awk '{print $1}'`
+               do
+                       zfs destroy $SNAPSHOT
+               done
+       EOF
+       echo "Here is the scheduled snapshot cleanup job:"
+       atq
+}
+
+
+
+will copy portlogd.conf.1 to portlogd.conf.[2-48]
+ ksh
+ PORT=1
+ While [ PORT -ne 48 ]
+  >do
+  >PORT=`expr ${PORT} + 1`
+  >cp portlogd.conf.1 portlogd.conf.${PORT}
+  >done
+
+
+labels newly imported LUNs:
+ ls /dev/rdsk |grep ^c9 |grep s2 |sed -e 's/s2//g'|\   - ^c9 is the controller of the new disks
+  >while read dev
+  >do
+  >format $dev < /tmp/q - /tmp/q contains two lines, l y
+  >done
+
+
+finds size of unused disks in vxvm:
+ for i in `vxdisk list | grep - | awk '{print $1}'`
+  >do
+  >vxdisk list $i | grep public
+  >done
+
+
+brings new luns to online status from online invalid:
+ for i in `vxdisk list | grep - | awk '{print $1}'`
+  >do
+  >/usr/lib/vxvm/bin/vxdisksetup -i $i
+  >done
+
+
+Installs multiple packages in Solaris:
+ for i in `ls | grep pkg`
+  >do
+  >pkgadd -d $i
+  >done
+
+
+label several disks in vxvm
+vxdisk list | grep error | grep -v c1t | awk '{print $1}' | sed -e 's/s2//g' | awk -F"d" '{print $2}' > /tmp/disknum.txt - sends list of new disks #'s to /tmp/disknum.txt.
+
+ for i in 70 71 72 73 74 75 76
+  >do
+  >DN=`expr ${i} + 22`
+  >vxdg -g a2kcon adddisk a2kcon-${DN}=c3t0d${i}s2
+  >done

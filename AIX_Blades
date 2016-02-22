@@ -1,0 +1,54 @@
+# Open console to chassis and blades:
+  ssh root@uxchassis
+
+# Display installed blades and id's
+  system> list -l 2
+  system
+        blade[1]  ux479
+        blade[3]  ux480
+        blade[5]  ux481
+        blade[7]  ux482
+        blade[9]  ux483
+        blade[11]  ux485
+        blade[13]  ux486
+	...
+
+# Open console to specific blade:
+  system> console -T system:blade[id]
+  system> console -o -T system:blade[id] - overrides existing console
+
+# Power control of blade from CLI:
+  system> power -on -T system:blade[id] - powers on blade
+  system> power -state -T system:blade[id] - displays current power status of blade
+  system> power -off -T system:blade[id] - powers off blade
+
+# KVM and MediaTray control for blades:
+  system> mt -b id - gives media tray control to blade id
+  system> kvm -b id - gives kvm control to blade id
+
+# Open console for LPARs on blades:
+  ssh padmin@uxvio
+    # list out LPARs, their current state, and LPAR ID:
+	$ lssyscfg -r lpar -F name,state,lpar_id
+		example:
+			$ lssyscfg -r lpar -F name,state,lpar_id
+			ux479vio1,Running,1
+			ux479p1,Running,2
+			ux479p2,Not Activated,3
+
+    # Open console for LPAR:
+  	$ mkvt -id LPAR_ID
+		example:
+			$ mkvt -id 3
+
+# Activate LPAR from VIO:
+  ssh padmin@uxvio
+  chsysstate -o on -r lpar -n lparname
+
+# Shutdown LPAR from VIO:
+  ssh padmin@uxvio
+  chsysstate -o osshutdown -r lpar -n lparname - perform OS shutdown
+  chsysstate -o shutdown -r lpar --immed -n lparname - perform Immediate LPAR shutdown
+  chsysstate -o shutdown -r lpar --immed --restart -n lparname - perform Immediate LPAR restart
+
+http://www.systemv.org/mmcliguide.pdf

@@ -1,0 +1,13 @@
+# Zabbix servers:
+CHI: Rhlmoninf401 10.241.8.2
+STE: rhlmoninf402 10.240.8.2
+SLO2: rhlmoninf407 10.242.8.2
+
+# Test the zabbix agent
+from the zabbix server:
+zabbix_get -s [IP,hostname] -k agent.version
+
+# Test a custom zabbix monitor
+/apps/zabbix/bin/zabbix_get -s [IP,hostname] -k system.run["sudo -u root /usr/sbin/lsof | wc -l"]
+
+# hardcode hostname in /usr/sbin/zabbix.filesystem.check.sh

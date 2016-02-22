@@ -1,0 +1,30 @@
+# ----------------------
+# machine: Lago7
+# date: January 10, 2000
+# time: 09:56:34
+# ----------------------
+#
+# running 67h 46m 23s
+# software revision: 3.65
+# last check: 06/27/99
+# next check: 06/27/00
+#
+# BEGIN DATA
+135.45 65.3 456.67
+142.87 65.4 442.17
+129.83 65.4 433.51
+132.62 65.3 416.65
+141.88 65.3 471.19
+128.43 65.2 463.38
+131.65 65.3 426.57
+139.89 65.3 422.18
+138.33 65.4 484.41
+145.46 65.3 466.69
+132.67 65.4 432.57
+149.89 65.4 433.56
+# END DATA
+# 
+# Warranty: 
+# Hadrian will not give any warranty 
+# for the correctness of the preceding
+# data, since ....

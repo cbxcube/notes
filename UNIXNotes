@@ -1,0 +1,202 @@
+# Debug sshd
+ on server experiencing issues (this will start an active ouptut of sshd):
+  /opt/quest/sbin/sshd -p 9999 -d -> "-p 9999" starts the debug session on port 9999; doesn't have to be 9999, just an unused open port;
+ ssh to the server experiencing the issue from new session on port; the debug session will display possible issues:
+  ssh -p 9999 sshd_host
+
+# Version control
+  cd /path/to/dir
+  vi newfile.sh
+  mkdir RCS -> RCS subirectory will contain the versions of newfile.sh
+  ci -i newfile.sh -> creates initializing version
+  co newfile.sh
+
+# Send notes to other users on the server:
+  1) w - to get the other users' id and tty
+     example:
+	ux161:/export/home/e29412 > w
+	  3:59pm  up 148 day(s), 17:06,  2 users,  load average: 3.69, 5.03, 6.85
+	User     tty           login@  idle   JCPU   PCPU  what
+	syh      pts/1        10:11am           16         -ksh
+	e29412   pts/2         3:59pm                      w
+  2) write userid tty
+     example:
+	ux161:/export/home/e29412 > write syh pts/1
+	hi steve
+	:)
+	^d
+
+# Fix covered mount point
+  share -F nfs -o rw=localhost,root=localhost /
+  mount -o vers=3 127.0.0.1:/ /mnt
+  chmod 755 /mnt/mount/point/to/fix
+  umount /mnt
+  unshare /
+
+
+##SED:
+To replace a character at the end of a line with a carriage return:
+  cat /tmp/file | tr -s /,/ '\n' >> /tmp/output
+or
+  cat /tmp/file | sed -e 's/,/\
+  > /g'
+To append text to the end of lines:
+  cat /tmp/file | sed -e 's/$/text/g' - will take each line in /tmp/file and add "text" to the end of each line
+
+To replace "new line" with a character such as " ":
+grep FAIL packages | awk '{print $3}' | sed ':a;N;$!ba;s/\n/ /g'
+	Update: explanation.
+	1) create a label via :a
+	2) append the current and next line to the pattern space via N
+	3) if we are before the last line, branch to the created label $!ba ($! means not to do it on the last line (as there should be one final newline)).
+	4) finally the substitution replaces every newline with a space on the pattern space (which is the whole file)
+
+
+
+##nawk to lowercase:
+cat file | nawk '{print tolower}'
+
+
+##Send an attachment via mailx-
+uuencode filename_on_server filename_to_b_attached_as | mailx -s subject email@address
+
+
+##Update mailer domains:
+  vi /etc/mail/mailertable
+    add the new domain(s) to the end of the file;
+    ie. 
+    carlsonwagonlit.com.mx                  relay:smtpgate.amer.carlson.com
+    .carlsonwagonlit.com.mx                 relay:smtpgate.amer.carlson.com
+  /usr/sbin/makemap hash /etc/mail/mailertable.db < /etc/mail/mailertable
+  /etc/init.d/sendmail stop
+  /etc/inid.d/sendmail start
+
+
+
+##lookup subnet gateway:
+nima80001:/uht_packages/AIX53/subnets.csv
+
+
+##Vi:
+:set list - displays end of line
+set -o vi - sets vi as the editor
+cat -vet filename - will show all special characters
+
+##xterm:
+xrdb -query - displays current XTerm settings
+appres XTerm - displays all possible XTerm settings available
+~/.Xresources - Sets XTerm settings for user
+xrdb -merge ~/.Xresources - merges current XTerm settings with those from user's .Xresources
+
+
+##Java versions:
+java -version - displays current java version
+
+
+##remember to use ` instead of ' when running "for i" loops
+for i in `vxdisk list| grep -'
+do
+echo $i
+done
+
+
+##Multipathing notes:
+/opt/DynamicLinkManager/bin/dlnkmgr view -lu - shows LUNS
+/opt/Dyn*/bin/dlnkmgr view -path - shows fiber paths
+/opt/Dyn*/bin/dlnkmgr view -sys - shows current HDLM settings
+/opt/Dyn*/bin/dlnkmgr set -afb on -intvl 10 - sets AutoFailback, and will check for path every 10 min.
+/opt/Dyn*/bin/dlnkmgr online - brings any offline paths online
+luxadm -e dump_map fcp_path_from_luxadm_-e_port - shows WWNs.
+
+
+##To remove files older than 3 days: find . -mtime +3 -exec rm {} \;
+	The "find . -mtime +#" says find files in this directory older than # days, the "-exec rm" removes the files, what 	does the "{} \;" part of the statement signify?
+	Mark Borgschatz (10:43 AM) - it's weird...  the {} means to place the filename of each file found from the -mtime 	#.  Then instead of executing mulitple seperate rm commands, it forms one long command line to runl.   The \ tells 	the current shell to ignore the ; and not interpret it.  So what actually happens is it generates a line that 	would look like this and then executes it:    rm core1; rm core2; rm core5; rm core21    etc....
+find . -mtime +3 -a -name '*nmhs*' -exec rm {} \; - will remove every file that is 3 days or older that contains nmhs in the filename.
+
+
+##LSOF - List Open Files:
+lsof - displays all files that are currently in use and which processes and users have said files open;
+lsof +L1 /directory - if Nlink column shows 0, means file has 0 links to process but are open.
+
+
+##sort and list by file size:
+du -sk * |sort -nr > /tmp/sort.txt
+or find /ebiz -exec du -sk {} \; | sort -nr | more will list files 
+
+
+##Copy using CPIO:
+cd /originating/directory
+find . -name "*" |cpio -puvdm /destination/directory
+
+
+##Tar:
+must be in order, -cvf / -xvf: if you use -cfv it will reference the filename "v"
+to tar a directory or file: 
+    tar -cvf /path/to/newfilename.tar /path/to/files/to/be/tarred/
+	Be sure to tar to a location that has enough space for the file.
+to untar a file:
+    tar -xvf /path/to/file.tar from the directory you want to untar to
+to tar and gzip at the sametime:
+    tar -cvf - /path/to/dir_to_b_tarred | gzip > filename.tar.gz
+to untar and ungzip at the sametime:
+    gzcat filename.tar.gz | tar -xvf -
+to unpack a .tgz file:
+    gunzip -c filename.tgz | tar -xvf -
+
+
+##scp:
+to copy to another server: scp filename jjoh105@dest_server:/var/tmp from the location of the file to be copied.
+to copy from another server: scp jjoh105@dest_server:/path/to/file from location that jjoh105 has rights to write to.
+
+
+##Check filesystem thresholds:
+fsmon config
+
+
+##Static Routes:
+netstat -rn
+To route traffic to backup interface for NFS mounts (Solaris): route add host NFS_filer_IP Bu_Interface_gateway
+To route traffic to backup interface for NFS mounts (AIX): smitty tcpip <enter>; Other Configurations; Add static route
+
+
+##Bad SSH Key:
+vi /.ssh/known_hosts, /destination_host_name (to search for destination host key), "dd" line, /111.111.111.111 (to search for destination_host_IP)
+
+
+##Give userid_A sudo access to userid_B:
+visudo
+under the "# User privilege specification" heading
+"userid_A ALL= NOPASSWD: /usr/bin/su - userid_B"
+	the NOPASSWD allows sudo without need of userid_B's password
+
+
+##Give userid_A sudo access for a command:
+under the "# User privilege specification" heading
+"userid_A ALL=path/to/command"
+
+
+##For Ingenix NIS accounts:
+NIS managed by /etc/passwd on apsa0015
+
+
+##Standard TSM restore:
+log into client as root
+DISPLAY=IP1.111.111.111:0.0
+export DISPLAY
+dsm &
+
+
+##NAS restore:
+log into client as NAS mount owner
+cd /base/NAS/mount/directory
+example:
+	df -k
+	unpiox51bu:/vol/plymouth02/facet_dev 104857600 55479568 49378032    53%    /approot
+	cd /approot
+cd .snapshot
+.0 is most recent version
+
+
+##Update Red Team page:
+vi flame:/usr/http/apache/htdocs/hints/OPS_RED/red_info.html

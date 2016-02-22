@@ -1,0 +1,94 @@
+See nima8001:/uht_packages/AIX53/VLPARs/lpars_README for further details or ask LPAR admin
+
+VIO UserID=padmin Passwd=uhgadm
+
+Provision disk to LPAR from VIO (EMC Disk only):
+
+from LPAR:
+ #lsvg -o | lsvg -i = find how much disk is available from FREE PP's
+ #lspv - find what type of SAN is used, HdiskPower = EMC, HDL=Hitachi
+
+on VIO:
+ $set -o vi = sets vi as current editor
+ $lsvg -o | lsvg -i = find how much disk is available from FREE PP's; if not enough is available, submit request to storage team for more SAN
+ $lspv = find what type of SAN is used, HdiskPower = EMC, HDL=Hitachi
+ $lspv | grep hdiskpower = note hdiskpower disks available
+ $lsmap -all | grep hdiskpower | wc -l = shows how many EMC disks are assigned to VIOs
+ $cfgdev = run from all VIOs if new disks have been added and do not appear
+ $lspv | grep hdiskpower = check to see if new disks appear, if not run "powermt config"
+ $oem_setup_env = leaves restricted shell of VIO to normal UNIX shell
+ #set -o vi = sets vi as current editor
+ #powermt config = run only if disks do not appear after cfgdev
+
+find EMC disks not assigned, run from both VIOs to make sure they match:
+ #lsmap -all | grep hdiskpower | wc -l
+ 362
+ #lsmap -all | grep hdiskpower31
+ hdiskpower31
+ hdiskpower311
+ hdiskpower312
+ hdiskpower313
+ hdiskpower314
+ hdiskpower315
+ hdiskpower316
+ #lsmap -all | grep hdiskpower32
+ #lsmap -all | grep hdiskpower30
+ hdiskpower30
+ hdiskpower300
+ hdiskpower301
+ hdiskpower302
+ hdiskpower303
+ hdiskpower304
+ hdiskpower305
+ hdiskpower306
+ hdiskpower307
+ hdiskpower308
+ hdiskpower309
+ #
+From this there are 362 disks allocated to these VIOs and hdiskpower317 is the first not used
+
+If disks do not appear after cfgdev:
+ #powermt config
+
+Run to see if pvid is set:
+ #lspv | grep hdiskpower317
+ hdiskpower317	00cffb1eccec64e7	None
+00cffb1eccec64e7 is the pvid
+If pvid is not set:
+ #chdev -l hdiskpower317 -a pv=yes = sets pvid
+ #powermt config = from 2nd VIO, pvid should now exist and match pvid from 1st VIO
+
+set MPIO reserve lock flag, opens disk for use, on all disks to be added to LPAR, from both VIO's:
+ #chdev -l hdiskpower317 -a reserve_lock=no
+ #lsattr -El hdiskpower317 = shows attributes of disk
+
+from LPAR:
+ #lsattr -El sys0 | grep Partition
+ "id_to_partition 0x800018B54A20000C Partition ID" = last 2 characters are parition ID, "0c" is parition ID
+
+from VIO:
+ #exit = return to restricted shell of VIO
+ $lsmap -all | grep vhost | grep 0c = 0c is the partition ID found in prior step
+ vhost7          U9117.570.10FFB1E-V2-C37                     0x0000000c
+ vhost17         U9117.570.10FFB1E-V2-C67                     0x0000000c
+vhost17 is the vhost adapter for the non-rootvg disk
+ $lsmap -vadapater vhost17 = lists all disks attached to the vhost adapter, disks should indicate attachment to LPAR in question
+
+from LPAR:
+ #lspv = lists used hdisk names, ie hdisk1 - hdisk23; hdisk24 would be first new disk
+
+from VIO:
+ #mkdev -vdev hdiskpower317 -vadapter vhost17 -dev dbsp8019emc24 = run from both VIO's for each disk to attach to LPAR
+
+from LPAR:
+ #cfgmgr = adds new disks
+ #lspv = shows new disks
+ #lspath = verify each new disk is listed twice, 2 vscis's
+ #chdev -l hdisk24 -a hcheck_interval=60 = add health check interval of 60 sec for each disk added
+ #extendvg emcvg hdisk24 hdisk25 hdisk26 = adds hdisk24, hdisk25, and hdisk26 to VG
+ 
+
+
+
+
+

@@ -1,0 +1,54 @@
+#3 different commands for VMWare ESXi
+vmware-cmd & vm-support
+esxcli
+vim-cmd
+
+http://kb.vmware.com/selfservice/microsites/search.do?language=en_US&cmd=displayKC&externalId=1004340
+
+#List all VM's and their respective ID's on a vhost
+vmware-cmd -l
+...
+/vmfs/volumes/45f703fb-de85b2ab-11ee-000e0cc08139/vm0090/vm0090.vmx
+/vmfs/volumes/45bf7034-96ee16f9-e770-000e0cb1dfb1/VM0110/VM0110.vmx
+/vmfs/volumes/45bf7034-96ee16f9-e770-000e0cb1dfb1/VM0029/VM0029.vmx
+...
+
+#Get status of VM
+vmware-cmd /vmfs/volumes/45f703fb-de85b2ab-11ee-000e0cc08139/vm0090/vm0090.vmx getstate
+getstate() = off
+
+#Stop VM
+vmware-cmd /vmfs/volumes/45f703fb-de85b2ab-11ee-000e0cc08139/vm0090/vm0090.vmx stop
+vmware-cmd /vmfs/volumes/45f703fb-de85b2ab-11ee-000e0cc08139/vm0090/vm0090.vmx stop hard
+
+#Start VM
+vmware-cmd /vmfs/volumes/45f703fb-de85b2ab-11ee-000e0cc08139/vm0090/vm0090.vmx start
+vmware-cmd /vmfs/volumes/45f703fb-de85b2ab-11ee-000e0cc08139/vm0090/vm0090.vmx start soft
+
+#Get VM World-ID
+vm-support -x
+...
+vmid=4187       VM0017
+vmid=4189       vm0094
+vmid=4190       VM0025
+vmid=4192       VMSNAP02 - 2.5.x
+...
+
+#Kill the VM using the VM World-ID
+vm-support -X 4187
+
+#List running VM's
+cat /proc/vmware/vm/*/names
+
+#####VIM-CMD#####
+#VM ID's
+vim-cmd vmsvc/getallvms
+
+#poweroff vm
+vim-cmd vmsvc/power.off vmid
+
+#poweron vm
+vim-cmd vmsvc/power.on vmid
+
+#vm status
+vim-cmd vmsvc/power.getstate vimd

@@ -1,0 +1,42 @@
+#to reset a blade from the Chassis manager
+ssh oaam14c -l vcadmin #passwd = w0lfB0y3
+show server names - will display all the blades in their respective bays
+	EXAMPLE:
+	OAAM14C> show server names
+
+	Bay Server Name                   Serial Number   Status   Power   UID Partner
+	--- ----------------------------- --------------- -------- ------- --- -------
+	  1 [Absent]                      
+	  2 LUX250                        MXQ94508G6      OK       On      Off 
+	  3 lux248                        MXQ93808Z5      OK       On      Off 
+	  4 MNDATTSY028                   2UX81702PC      OK       On      Off 
+	  5 MININT-PACI46F                N382MK0547      Other    Off      *  
+	  6 lux156                        MXQ83805CU      OK       On      Off 
+	  7 lux212                        MXQ9240272      OK       On      Off 
+	  8 lux146                        USM7150206      OK       On      Off 
+ 	 9 [Absent]                      
+	 10 MNDATIFM002                   2UX85108FE      OK       On      Off 
+	 11 LUX252                        MXQ945046J      Other    On      Off 
+	 12 MNDATTSY030                   2UX8180584      OK       On      Off 
+	 13 [Subsumed]                    
+	 14 [Subsumed]                    
+	 15 [Subsumed]                    
+	 16 [Subsumed]                    
+	Totals: 10 server blades installed, 9 powered on.
+
+	 * = Blade UID is blinking and a critical operation is being performed on the blade (firmware update in progress or remote console in use).
+
+reset server bay# - resets bay#
+	EXAMPLE:
+	OAAM14C> reset server 11
+
+	WARNING: Resetting the server trips its E-Fuse. This causes all power to be momentarily removed from the server. This command should only be used when physical access to the server is unavailable, and the server must be removed and reinserted. 
+
+	Any disk operations on direct attached storage devices will be affected. I/O
+	will be interrupted on any direct attached I/O devices.
+
+	Entering anything other than 'YES' will result in the command not executing.
+
+	Do you want to continue ? YES
+
+	Successfully reset the E-Fuse for device bay 11.

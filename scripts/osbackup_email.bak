@@ -1,0 +1,71 @@
+#!/bin/ksh
+#-----------------------------------------------------------------------------
+#
+#  Script: osbackup_email.sh
+#  Usage:  This script is to send a daily status of OS backups
+#
+#
+#  Comments:
+#
+#
+#
+#  By: Ed Carrigan
+#  date: 20009-06-23
+#  Copyright: (c) 2009 Carlson Companies Inc.
+#  Revision date(s): 
+#-----------------------------------------------------------------------------
+RUNFROM=ssmn00pk00071
+MAILTO="osbackupstatus@uxmailhost.carlson.com "
+[ `uname -n` != "$RUNFROM" ] && { echo "\nThis must be run on $RUNFROM...\n"
+				  exit 1; }
+
+LOG=/tmp/osbackup_email.log
+DATE=`date +%m%d%y`
+STATS_FILE=/home/uss/OSBackup/osbackupstatus_ed.html
+STATS_FILE=/home/uss/OSBackup/osbackupstatus.html
+
+# Compile Header for Report
+REPORT=/tmp/osbackup_report.$$
+echo "Subject: UNIX Daily OS Backup Report" >> ${REPORT}
+echo "MIME-Version:1.0" >> ${REPORT}
+echo "Content-Type:text/html" >> ${REPORT}
+echo "" >> ${REPORT}
+echo "<html>" >> ${REPORT}
+echo "" >> ${REPORT}
+echo "<head>" >> ${REPORT}
+echo "<meta http-equiv="Content-Language" content="en-us">" >> ${REPORT}
+echo "<meta name="GENERATOR" content="Microsoft FrontPage 4.0">" >> ${REPORT}
+echo "<meta name="ProgId" content="FrontPage.Editor.Document">" >> ${REPORT}
+echo "</head>" >> ${REPORT}
+echo "" >> ${REPORT}
+echo "<p> <b> <font size="6" face="Arial">UNIX Daily OS Backup Report</font> </b> </p>" >> ${REPORT}
+echo "<hr>" >> ${REPORT}
+echo "<body><face="Arial">" >> ${REPORT}
+echo "" >> ${REPORT}
+
+# check for failed or running backups. If any, then add a section to the report.
+
+if [ `egrep -i "failed|running" ${STATS_FILE} > /dev/null 2>/dev/null ; echo $? ` -eq 0 ] ;  then
+  
+	echo "<p align="left"><face="Arial"><font color="#ff0000" size="5" <u><strong>Failed/Running Backups - to be investigated</strong></u></font></p>" >> ${REPORT}
+	egrep "Failed|Running" ${STATS_FILE} >> ${REPORT}
+	echo "<hr>" >> ${REPORT}
+	echo "" >> ${REPORT}
+  fi
+
+echo "" >> ${REPORT}
+echo "<p align="left"><face="Arial"><font color="#000000" size="5" <u><strong>Full Backup Status - for reference</strong></u></font></p>" >> ${REPORT}
+echo "" >> ${REPORT}
+echo "" >> ${REPORT}
+egrep -v "Backup Status|This page|Cron Schedule| system support" ${STATS_FILE}  >> ${REPORT}
+
+# Add Footer Information to file
+print "</body>" >> ${REPORT}
+print "</html>" >> ${REPORT}
+
+
+# Send File
+					
+					
+rmail -t ${MAILTO} < ${REPORT}
+rm -f ${REPORT}

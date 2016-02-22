@@ -1,0 +1,81 @@
+quexf:
+[root@ep1t-wblime01]# mkdir /etc/httpd/htpasswd
+[root@ep1t-wblime01]# htpasswd -c /etc/httpd/htpasswd/.htpasswd quexf_admin
+quexf apache username: quexf_admin
+quexf apache password: St@rk3y!
+quexf mysql username: quexf_admin
+quexf mysql password: St@rk3y!
+
+[root@ep1t-wblime01]# mysql -u root -p
+...
+mysql> create database quexf;
+Query OK, 1 row affected (0.01 sec)
+mysql> GRANT SELECT,CREATE,INSERT,UPDATE,DELETE,ALTER,DROP,INDEX ON quexf.* to 'quexf_admin'@'localhost';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> show grants for 'quexf_admin'@'localhost';
++--------------------------------------------------------------------------------------------------------------------+
+| Grants for quexf_admin@localhost                                                                                   |
++--------------------------------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO 'quexf_admin'@'localhost' IDENTIFIED BY PASSWORD '*68EC8F91F551281EF47F7C4F30D7DAD80204908B' |
+| GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER ON `quexf`.* TO 'quexf_admin'@'localhost'         |
++--------------------------------------------------------------------------------------------------------------------+
+2 rows in set (0.00 sec)
+
+[root@ep1t-wblime01 database]# mysql -u quexf_admin -p
+...
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| quexf              |
++--------------------+
+2 rows in set (0.00 sec)
+
+mysql> use quexf;
+Database changed
+mysql> SOURCE /var/www/html/limesurvey/quexf/database/quexf.sql
+
+
+[root@ep1t-wblime01 html]# mysql -u root -p
+Enter password: <mysql root pword from safe>
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 10
+Server version: 5.1.73 Source distribution
+
+Copyright (c) 2000, 2013, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> CREATE USER 'limedb_admin'@'loclahost' IDENTIFIED BY 'limedb_01';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> GRANT ALL PRIVILEGES on *.* to 'limedb_admin'@'localhost'
+    -> with GRANT OPTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> CREATE USER 'limedb_user'@'%' IDENTIFIED BY 'limedb2015';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> GRANT SELECT on *.* to 'limedb_user'@'%'
+    -> ;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> CREATE USER 'limedb'@'localhost' IDENTIFIED BY 'limedb2015';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> GRANT SELECT,CREATE,INSERT,UPDATE,DELETE,ALTER,DROP,INDEX ON *.* to 'limedb'@'localhost';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SHOW GRANTS FOR 'limedb'@'localhost'
+    -> ;
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Grants for limedb@localhost                                                                                                                                        |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER ON *.* TO 'limedb'@'localhost' IDENTIFIED BY PASSWORD '*161D7CC4411653495A824761DDCC30234520394D' |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------+

@@ -1,0 +1,68 @@
+All of these steps are to be performed phsyically from the HMC Console
+1) Download media:
+	a) log into ssmn00pk00071:/uss/*yourhomedir*
+	b) ftp to the IBM server and download the fix:
+		ftp delivery04-mul.dhe.ibm.com
+		username = anonymous
+		password = anything
+		cd /ecc/hsb/H18656800
+	c) Download zip files:
+		binary
+		prompt
+		mget *.zip
+	or
+        a) go to http://www-933.ibm.com/support/fixcentral/
+	b) Under Product Group select: System p
+	c) Under Product select: Firmware and HMC
+	d) Under Processor type select: POWER5 and POWER6 class
+	e) Under Machine Type-Model select: any of them, you'll choose HMC on the next screen
+	f) Select HMC Firmware and continue
+	g) Select the HMC Image and Service Packages you need and select next
+	h) Select Download ISO image to burn to CD and click continue
+	i) Click on each of the download links to obtain the ISO images
+	j) Burn the ISO images to dvd
+1) Prepare HMC for Upgrade:
+     	a) log onto HMC as hscroot
+	b) Select "HMC Management"
+	c) Insert DVD-RAM (RAM, not ROM) disk into DVD drive
+	d) Select "Save Upgrade Data"
+	e) Select "DVD" then click "Next"
+	f) Click "Finish"
+	g) Wait for Save data task to complete, if this fails, contact IBM HMC Support 
+		(1-800-426-7378, Option 2, Customer #5943181, HMC SN 10-5D46B)
+2) Install Recovery Software upgrade:
+	a) Insert first HMC Recovery DVD (Vol 1 of 2) into DVD drive
+	b) Select "Shutdown or Restart"
+	c) Select "Restart" then click "Ok"
+	d) Wait for HMC to read the media and display the Install/Backup/Restore wizard window
+	e) Select "Upgrade" then click "Next"
+	f) Select "Upgrade from Media" then click "Next"
+	g) Click "Finish" - the upgrade process begins
+		Select option 1 and press "Enter"
+		Insert Second Recovery DVD into the drive then press enter
+3) Install HMC Software upgrade:
+	a) Wait for HMC to complete booting after Recovery software upgrade
+	b) log onto HMC as hscroot
+	c) Insert the Vol 1 of 3 of the HMC Software DVD's into the dvd drive
+	d) Select "Updates"
+	e) From the "Work" page, click on "Update HMC" to display "HMC Install Corrective Service Wizard"
+	f) At the "Current HMC Driver Info" panel, click "Next"
+	g) At the "Select Service Repository" panel, select "Removable Media", and click "Next"
+		--If you downloaded via ftp, select "Remote Server", select "NFS":
+			Remote Server = ssmn00pk00071.carlson.com
+			Resource = /uss
+			Remote directory = homedirectory
+			click next
+	h) At the "Installation and Config Options" panel, select the cd-rom, then click "Next"
+	i) At the "Select Service Package" panel, click "media image - no description", then click "Next"
+	j) At the "Confirm Service Installation" panel, click "Finish" - the installation process begins
+	k) When the process is ready for the next cd, click "Ok" and it will return to the "Select Service Repository" panel
+		Insert the next cd-rom, and start over from step "g" thru step "j"
+	l) When all the cd's are used, remove the last cd, you are prompted to reboot, click "Ok"
+	m) log back onto HMC as hscroot, perform steps "c" thru "k" to install the 7.3.5 efix, and reboot one last time
+4) Verify upgrade was successful:
+	a) Log onto the HMC as hscroot
+	b) Select "Welcome" from the "Navigation" panel
+	c) Select "About the Hardware Management Console"
+	d) Point the mouse over the HMC Version link on the "Content" panel to display Version info. Verify the version is 7.3.5
+	e) Select "Server Management" - verify both samn00pk01000 and samn00pk02000 and all LPARs are still visible.

@@ -1,0 +1,109 @@
+###WANBOOT
+jumps8002:/Jumpstart/wanbprep_sol9.sh
+enter hostname and verify IP
+
+MAC address and Memory can be obtained from <ok> prompt:
+<ok> banner
+{0} ok banner
+
+SPARC Enterprise T5220, No Keyboard
+Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
+OpenBoot 4.28.0, 65408 MB memory available, Serial #77068734.
+Ethernet address 0:14:4f:97:f9:be, Host ID: 8497f9be.
+
+
+t5220 interface is e1000g.  
+
+
+Configure bu interface later.
+
+
+to get the serial #:
+sc> showplatform
+
+
+ESD will show intranet or internet
+
+
+Disk management software to install is Sun Solstice DiskSuite
+
+disk size is MSS
+
+
+Enter memory obtained from "<ok> banner"
+
+
+after wanbprep_sol9.sh completes, run "disable-rc dbss9025"
+
+
+in /Jumpstart/dbss9025/wanboot.cmds, run one of the sets of commands from the <ok>:
+jumps8002 #cat wanboot.cmds
+#use this first section if disk already has an OS image loaded.
+#you might have to use this section if the OBP firmware isn't new enough
+boot disk -o prompt -F wanboot - install
+host-ip=10.49.38.65,router-ip=10.49.38.1,subnet-mask=255.255.255.0
+hostname=dbss9025,bootserver=http://10.48.38.87/cgi-bin/wanboot-cgi
+go
+ 
+To wanboot from the eeprom:
+
+#use this command if it is a fresh build 
+setenv network-boot-arguments host-ip=10.49.38.65,router-ip=10.49.38.1,subnet-mask=255.255.255.0,hostname=dbss9025,file=http://10.48.38.87/cgi-bin/wanboot-cgi
+boot net - install
+
+
+###UPGRADE FIRMWARE
+
+###CONFIGURE BU INTERFACE
+	vi /etc/hostname.e1000g1 < dbss9025bu
+	vi /etc/netmask < 10.50.32.0   	255.255.252.0
+	vi /etc/hosts < 10.50.34.85	dbss9025bu	dbss9026bu.uhc.com
+	ifconfig e1000g1 plumb
+	ifconfig e1000g1 10.50.34.85
+	ifconfig e1000g1 netmask + broadcast +
+	ifconfig e1000g1 up
+
+
+###RUN SETUPS
+	LDAP:
+	/etc/adm/solaris_addclient.sh
+	add +@usc:x::;:: to /etc/passwd, run pwconv, remove x from usc line in /etc/shadow
+	from mgtp8013: addldapclient.sh dbss9025.uhc.com
+
+	Solaris Volume Manager:
+	/etc/adm/sdmsetup-v240.sh
+	reboot
+	/etc/adm/sdmsetup-v240-afterboot.ksh
+
+	TSM:
+	/etc/rc3.d/S99tsminstall
+	test it: run dsmc q sched, enter proper password if necessary (wtchostname)
+	ps -ef|grep dsmc
+
+	OV:
+	addbox on mgtp8013:
+		addbox.sh -h dbss9025.uhc.com -e 000483207 -T development
+	/etc/rc3.d/S99ov-install
+	/usr/local/bin/request-ov.sh -e 000483207 -h dbss9025.uhc.com
+
+
+###CONFIGURE MULTIPATHING
+	MPXIO:
+		vi /kernel/drv/fp.conf; uncomment mpxio-disable="no"; comment mpxio-disable="yes";
+		vi /kernel/drv/vhci.conf; uncomment auto-failback="enable"
+			Append following to end of file:
+				auto-failback="enable";
+				device-type-mpxio-options-list =
+				"device-type=HITACHI OPEN-V      -SUN",
+				"load-balance-options=logical-block-options";
+				logical-block-options="load-balance=logical-block", "region-size=18";
+		vi /etc/system; append following to end of file:
+			set ssd:ssd_io_time=0x3c
+			set ssd:ssd_max_throttle=12
+		reboot -- -r
+
+
+###ISSO INFO
+	ROM Family and Date - prtconf -V
+		ROM Family = 4.28.0
+		ROM Date = 2008/01/22 21:10

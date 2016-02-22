@@ -1,0 +1,82 @@
+#!/bin/sh
+
+DATE=`/usr/bin/date +%Y%m%d-%H%M%S`
+HOSTNAME=`/usr/bin/uname -n`
+OUTFILE="/var/tmp/vxdmp_debug_info.${HOSTNAME}.${DATE}.txt"
+
+echo "# Report for ${HOSTNAME} as of `date`" >> ${OUTFILE}
+echo "#" >> ${OUTFILE}
+echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+echo "# Listing of all storage frames per Veritas on this server:" >> ${OUTFILE}
+echo "# Output of: /usr/sbin/vxdmpadm listctlr all" >> ${OUTFILE}
+/usr/sbin/vxdmpadm listctlr all | /usr/bin/sed 's/^/# /'  >> ${OUTFILE}
+echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+echo "#"  >> ${OUTFILE}
+echo "#"  >> ${OUTFILE}
+echo "#"  >> ${OUTFILE}
+
+for FRAME in `/usr/sbin/vxdmpadm listctlr all | /usr/bin/awk '$4 ~ /STK_ARRA/ || $4 ~ /SAN_VC/ || $4 ~ /XP512/ {print $NF}' | /usr/bin/sort -u`
+do
+	echo "# Checking frame ${FRAME}" >> ${OUTFILE}
+	echo "# Check number of paths to ${FRAME}" >> ${OUTFILE}
+	echo "# Output of: /usr/sbin/vxdmpadm getdmpnode enclosure=${FRAME}" >> ${OUTFILE}
+	/usr/sbin/vxdmpadm getdmpnode enclosure=${FRAME} | /usr/bin/sed 's/^/# /' >> ${OUTFILE}
+	echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+	echo "#\n#\n#" >> ${OUTFILE}
+	echo "# Checking primary/secondary for disks on ${FRAME}" >> ${OUTFILE}
+	echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+
+	for CONTROLLER in `vxdmpadm listctlr all | grep " ${FRAME}$" | awk '{print $1}'`
+	do
+		echo "# Showing primary/secondary on controller ${CONTROLLER} on ${FRAME}" >> ${OUTFILE}
+		/usr/sbin/vxdmpadm getsubpaths ctlr=${CONTROLLER} | /usr/bin/sed 's/^/# /' >> ${OUTFILE}
+		echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+		echo "#" >> ${OUTFILE}
+	done
+done
+
+echo "#\n#" >> ${OUTFILE}
+echo "# End frame section." >> ${OUTFILE}
+echo "#\n#" >> ${OUTFILE}
+echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+echo "#\n#" >> ${OUTFILE}
+echo "# Show all luns on the host (and disk groups if known)" >> ${OUTFILE}
+echo "# Output of /usr/sbin/vxdisk -o alldgs list" >> ${OUTFILE}
+echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+/usr/sbin/vxdisk -o alldgs list | /usr/bin/sed 's/^/# /' >> ${OUTFILE}
+
+echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+echo "#\n#" >> ${OUTFILE}
+echo "# Show all disk groups on the host " >> ${OUTFILE}
+echo "# Output of /usr/sbin/vxdg list" >> ${OUTFILE}
+echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+/usr/sbin/vxdg list | /usr/bin/sed 's/^/# /' >> ${OUTFILE}
+echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+echo "#\n#" >> ${OUTFILE}
+
+# root@ssmn00pk00144# /usr/sbin/vxdg list
+# NAME         STATE           ID
+# appdg        enabled,cds          1175732492.38.ssmn00pk00144
+# appdg02      enabled,cds          1237248352.53.ssmn00pk00144
+# hold_save    enabled,cds          1237248402.55.ssmn00pk00144
+# root@ssmn00pk00144#
+
+for DISK_GROUP in `/usr/sbin/vxdg list | awk 'NR==1 {next} $2 ~ /enabled/ {print $1}'`
+do
+	echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+	echo "#" >> ${OUTFILE}
+	echo "#" >> ${OUTFILE}
+	echo "# Print Verits information for disk group ${DISK_GROUP}" >> ${OUTFILE}
+	echo "# Output of /usr/sbin/vxprint -ht -g ${DISK_GROUP}" >> ${OUTFILE}
+	echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+	/usr/sbin/vxprint -ht -g ${DISK_GROUP} | /usr/bin/sed 's/^/# /' >> ${OUTFILE}
+done
+
+echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+echo "#" >> ${OUTFILE}
+echo "# End of report." >> ${OUTFILE}
+echo "#" >> ${OUTFILE}
+echo "#" >> ${OUTFILE}
+echo "#--------------------------------------------------------------------" >> ${OUTFILE}
+
+echo "# Report done.  File at ${OUTFILE}"

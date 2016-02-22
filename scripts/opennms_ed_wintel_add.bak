@@ -1,0 +1,29 @@
+#!/usr/bin/sh
+
+rm -f /home/uss/tmp/wintel_critical_servers.txt
+
+for S in `cat /home/uss/u28ts04/scripts/opennms_ed_wintel_add.list|sed 's/b$//'`
+do
+#echo $S,`dnsfind ,$S,|grep -i $S|grep -v for|cut -d, -f2,3,1|sed 's/,/./'`
+ NAME=`dnsfind ,${S},|grep -i $S|grep -v for|cut -d, -f2,5,1|sed -e 's/,amer/.amer/' -e 's/,carlson/.carlson/'`
+ NAMEB=`dnsfind ,${S}b,|grep -i $S|grep -v for|cut -d, -f2,5,1|sed -e 's/,amer/.amer/' -e 's/,carlson/.carlson/'`
+ SERVER=`echo $NAME|cut -d, -f2`
+ SERVERB=`echo $NAMEB|cut -d, -f2`
+ IP=`echo $NAME|cut -d, -f1`
+ IPB=`echo $NAMEB|cut -d, -f1`
+ PING=`/usr/sbin/ping $SERVER`
+ PINGB=`/usr/sbin/ping $SERVERB`
+ echo "$SERVER,$IP,$PING" |tee -a /home/uss/tmp/wintel_critical_servers.txt
+ echo "$SERVERB,$IPB,$PINGB" |tee -a /home/uss/tmp/wintel_critical_servers.txt
+done
+
+mailx -s "Wintel OpenNMS Server List" ecarrigan@carlson.com < /home/uss/tmp/wintel_critical_servers.txt
+
+
+exit
+
+10.176.4.2,SWMN00TB04002.amer.carlson.com,10.176.4.2
+172.16.2.49,SWMN00TB04002b.carlson.com,172.16.2.49
+10.176.4.4,SWMN00TB04004.carlson.com,10.176.4.4
+172.16.2.65,SWMN00TB04004b.carlson.com,172.16.2.65
+

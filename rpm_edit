@@ -1,0 +1,16 @@
+1) install required RPMs
+yum install rpm-build rpmdevtools
+2) add mockbuild user
+useradd mockbuild -p mockbuild -m -s /bin/bash
+3) place source rpm to edit in mockbuild homdir
+su - mockbuild
+wget http://yum.repo.com/package.src.rpm
+4) set up rpm dev tree
+rpmdev-setuptree  #this creates a rpmbuild directory that contains RPM sources directories
+5) install package.rpm locally
+rpm -ivh package.rpm
+6) edit .spec file
+vim rpmbuild/SPECS/package.spec
+7) rebuild rpm
+rpmbuild -ba rpmbuild/SPECS/package.spec
+8) new rpm is in rpmbuild/RPMS/$ARCH

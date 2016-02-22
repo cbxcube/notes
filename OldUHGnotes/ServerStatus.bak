@@ -1,0 +1,37 @@
+10.114 = Plymouth Internal Prod
+10.115 = Plymouth Internal Non-Prod
+10.116 = Plymouth backup/storage
+10.117 = Plymouth Internet hosting
+168.183 = Internet hosting
+
+10.216 = Trumbull Internal
+10.217 = Trumbull Internet Hosting
+
+10.220 = ETC Internal Prod
+10.221 = ETC Internal Non-Prod
+10.222 = ETC backup/storage
+10.223 = ETC Internet hosting
+
+10.48 = WATC Intranet Prod
+10.49 = WATC Intranet Non-Prod
+10.50 = WATC backup/storage
+10.51 = WATC Internet hosting
+
+10.4 = GDV Intranet Prod
+10.6 = ?
+10.84 = GDV Intranet Non-Prod
+
+GL Code Locations:
+1840 - Hartford/Southbury
+1923 - Trumbull
+4145 - Plymouth
+4190 - Golden Valley
+
+For Trumbull Servers:
+http://bluestravler.uhc.com/henry/ServerLocationMatrix.xls
+
+SUN Generic user id:
+UHG-ADM
+nocnoc
+
+New Builds:

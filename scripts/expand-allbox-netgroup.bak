@@ -1,0 +1,34 @@
+echo "Netgroup,Fully Qualified Name,Server,CMDB Info - If available" > /tmp/all-netgroup.xls
+cat /dev/null > /tmp/all-netgroup.txt
+for NETGROUP in `ypcat -k netgroup|grep ^all|awk '{print $1}' `
+do
+	for SVR in `/usr/local/bin/ldaps -N $NETGROUP |grep nisnetgroup| sed -e 's/nisnetgrouptriple[ :=](//' -e 's/,,)//'`
+	do
+	        SERVER=`echo $SVR|cut -d. -f1`
+		CMDB=`/usr/local/bin/cmdb $SERVER|awk -F, '{print $4, $10}'|sed 's/"//g'|grep -i ^$SERVER`
+		echo "$NETGROUP,$SVR,$SERVER,$CMDB" >> /tmp/all-netgroup.xls
+		echo "$NETGROUP,$SVR,$SERVER,$CMDB" 
+	done
+done
+
+uuencode /tmp/all-netgroup.xls all-netgroup.xls|mailx -s "Netgroups for allbox" ecarrigan@carlson.com
+
+
+exit
+
+Netgroup alltermservers
+
+[ENV=PROD ] ssmn00pk00142: alltermservers netgroup members
+szmn00pk00001.carlson.com
+szmn00pk00002.carlson.com
+szmn00pk00003.carlson.com
+szmn00pk00004.carlson.com
+szmn00pk00005.carlson.com
+szmn00pk00006.carlson.com
+szmn00pk00007.carlson.com
+
+
+
+/tmp/ed-net[7]: ssmn00dk00191.carlson.com=ssmn00dk00191:  not found
+ssmn00dk00191.carlson.com -  
+

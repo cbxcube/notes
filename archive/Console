@@ -1,0 +1,4 @@
+szmn00pk00010 - console server
+/proc/port_buffers - ports on console server, can view console from here.
+console port# - opens console to port#
+<esc><shift>a - exits console

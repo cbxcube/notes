@@ -1,0 +1,145 @@
+ccux58 # cat /util/system_info.sh
+#!/usr/bin/ksh
+# the HP/UniGraphics FAQ
+# You must be ROOT to execute this since it uses adb to
+# examine the running kernel
+#
+clear
+VER=$(uname -r | cut -d. -f2)
+REV=$(uname -r | cut -d. -f3)
+
+# Get HP-UX version
+        echo `hostname` is running HP-UX `uname -r`
+
+# get model
+        echo `hostname` is running on a model `model`
+
+pa_code ()
+{
+        if ((VER > 9))
+        then HPUX=/stand/vmunix
+        else HPUX=/hp-ux
+        fi
+
+#Get processors models and speed.
+        MODEL=$(grep -i $(model | tr "/" " " \
+        | awk '{print $NF}') /usr/sam/lib/mo/sched.models | awk '{print $NF}')
+
+        if ((REV > 22))
+        then MHZ=$(echo itick_per_tick/D \
+                | adb -o $HPUX /dev/kmem \
+                | tail -1 \
+                | awk '{print $2/10000}' )
+        else MHZ=$(echo itick_per_tick/D \
+                | adb -k $HPUX /dev/kmem \
+                | tail -1 \
+                | awk '{print $2/10000}' )
+        fi
+
+#Get number of processors
+        echo `hostname` has `/usr/sbin/ioscan -k |grep -n processor | wc -l` \
+        $MODEL $MHZ"MHz Processor(s)"
+
+# if 11iv2 or higher - get memory this way
+        if ((REV > 22))
+        then     kernel=$(/usr/sbin/kcpath -x)
+                hexval=$(echo "phys_mem_pages/A" \
+                | adb $kernel /dev/kmem|tail +2|awk '{print $2}')
+                REAL_MEM=$(echo ${hexval}=D|adb)
+                MB=$(expr ${REAL_MEM} / 256)
+        else
+                if ((VER > 10))
+                then MYSYMBOL="phys_mem_pages"
+                else MYSYMBOL="physmem"
+                fi
+
+                MB=$(echo "${MYSYMBOL}/D" \
+                | adb $HPUX /dev/kmem \
+                | grep "${MYSYMBOL}: *." \
+                | awk '{printf "%.0f MB\n",$2/256}')
+        fi
+
+echo `hostname` has $MB Memory
+        print CPU HW Support: `getconf HW_CPU_SUPP_BITS`-bit
+        print Kernel Support: `getconf KERNEL_BITS`-bit;
+}
+
+ia_code () {
+        machinfo > /tmp/machinfo
+        CPU=$(grep CPUs /tmp/machinfo | tr -d " " | cut -d "=" -f2)
+        SPEED=$(grep Clock /tmp/machinfo | tr -d " " | cut -d "=" -f2)
+        MEM=$(grep Memory /tmp/machinfo | tr -d " " | cut -d "=" -f2)
+        echo "`hostname` has $CPU x $SPEED Processor(s)"
+        echo "`hostname` has $MEM Memory"
+        rm /tmp/machinfo
+}
+
+if [  "`uname -a | grep -i ia64`" != "" ]
+then    ia_code
+else    pa_code
+fi
+
+# Get counts of the major components.
+FC=$(/usr/sbin/ioscan -funC fc | grep -c /dev)
+DVD=$(/usr/sbin/ioscan -funC disk| grep DEVICE | grep -c -E 'CD-ROM|DVD')
+DISK=$(/usr/sbin/ioscan -funC disk | grep DEVICE | grep -vc -E 'CD-ROM|DVD')
+BASE100=$(/usr/sbin/ioscan -funC lan | grep -c btlan)
+BASE1000=$(/usr/sbin/ioscan -funC lan | grep -c -E 'gelan|iether')
+TAPE=$(/usr/sbin/ioscan -funC tape | grep -ic DEVICE)
+
+# Display results of the counts gathered above.
+echo ""
+if [ $FC = 1 ]
+then echo "There is $FC Fibre Card"
+else echo "There are $FC Fibre Cards"
+fi
+if [ $BASE100 = 1 ]
+then echo "There is $BASE100 100Base-T Card"
+else echo "There are $BASE100 100Base-T Cards"
+fi
+if [ $BASE1000 = 1 ]
+then echo "There is $BASE1000 1000Base-T Card"
+else echo "There are $BASE1000 1000Base-T Cards"
+fi
+if [ $DVD = 1 ]
+then    echo "There is $DVD CD/DVD Drive"
+else    echo "There are $DVD CD/DVD drives"
+fi
+if [ $DISK = 1 ]
+then echo "There is $DISK Disk Drive"
+else echo "There are $DISK Disk drives"
+fi
+if [ $TAPE = 1 ]
+then echo "There is $TAPE Tape Drive"
+else echo "There are $TAPE Tape drives"
+fi
+echo "`/usr/sbin/ioscan -funC tape | grep DEVICE`"
+
+
+echo ""
+echo "Disk drive count is total visible devices it does not take into account"
+echo "Multi-Pathing / gatekeepers etc.  For more information in disks run the"
+echo "/util/inq command."
+
+exit
+
+#output looks like this:
+ccux58 is running HP-UX B.11.11
+ccux58 is running on a model 9000/800/N4000-55
+ccux58 has 6 PA8600 550MHz Processor(s)
+ccux58 has 6144 MB Memory
+CPU HW Support: 64-bit
+Kernel Support: 64-bit
+
+There are 2 Fibre Cards
+There are 5 100Base-T Cards
+There are 2 1000Base-T Cards
+There is 1 CD/DVD Drive
+There are 172 Disk drives
+There is 1 Tape Drive
+tape      0  0/0/1/0.0.0  stape CLAIMED     DEVICE       HP      C1537A
+
+Disk drive count is total visible devices it does not take into account
+Multi-Pathing / gatekeepers etc.  For more information in disks run the
+/util/inq command.
+

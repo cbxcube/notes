@@ -1,0 +1,23 @@
+
+ls -ld /cc2002
+df -m /cc2002
+mkdir -m 755 /cc2002
+
+cat > /home/uss/aix/matrix/nfs_mounts.txt << EOF
+
+/cc2002:
+        dev             = "/cc2002"
+        vfs             = nfs
+        nodename        = vamn00pk01020 
+        mount           = true
+        options         = bg,hard,intr
+        account         = false
+
+EOF
+
+/usr/local/bin/cpd /etc/filesystems
+cat /home/uss/aix/matrix/nfs_mounts.txt >> /etc/filesystems
+
+mount /cc2002
+
+df -m /cc2002

@@ -1,0 +1,76 @@
+#!/usr/bin/ksh
+
+# root cron file
+OUTFILE=/var/spool/cron/crontabs/root
+
+# ensure /usr/local/bin exists
+if [ ! -d /usr/local/bin ]; then
+    /usr/bin/mkdir -p /usr/local/bin
+fi
+
+# backup /usr/local/bin scripts
+if [ ! -f /home/uss/udxt109/depots/adminscps_$(hostname).tar ]; then 
+	cd /usr/local/bin
+	/usr/bin/tar cvf /home/uss/udxt109/depots/adminscps_$(hostname).tar ./*
+	cd /
+else
+	echo "INFO: Backup file already exists, no action taken"
+fi
+
+# append entry to root cron and HUP cron daemon
+CHECKIT=`grep adminscripts_solaris /var/spool/cron/crontabs/root`
+if [ "${CHECKIT}" = "" ]; then
+	# echo "" >> ${OUTFILE}
+	echo "INFO: Updating root crontab file"
+	echo "# Sync to ccsun71:/home/uss/unixadm_scripts/usr/local/bin/solaris" >> ${OUTFILE}
+	echo "30 23 * * * /usr/local/bin/rsync -avz --rsync-path=/usr/local/bin/rsync ccsun71.carlson.com::adminscripts_solaris/ /usr/local/bin > /tmp/rsync.adminscripts 2>&1" >> ${OUTFILE}
+	sleep 2
+	#/usr/bin/kill -HUP $(pgrep cron)
+	echo "INFO: Restarting cron daemon"
+	/etc/init.d/cron stop
+	sleep 2
+	/etc/init.d/cron start
+else
+	echo "INFO: root crontab entry already exists, no action taken"
+fi
+
+# check OS revision
+CHECKOS=`uname -r | awk -F. '{print $2}'`
+echo "INFO: OS Version: ${CHECKOS}"
+
+# check is rsync is already installed
+PRODNAME=`/usr/bin/pkginfo | grep rsync | awk '{print $2}'`
+CHECKRS=`/usr/bin/pkginfo -l ${PRODNAME} | grep VERSION | awk '{print $2}'`
+if [ "${CHECKRS}" = "2.6.5" ]; then
+	echo "INFO: rsync v2.6.5 already installed, no action taken"
+else
+	if [ "${PRODNAME}" = "SMCrsync" ]; then
+		/usr/sbin/pkgrm ${PRODNAME}
+	fi
+	if [ ! -d /mnt_rsync ]; then
+		/usr/bin/mkdir -p /mnt_rsync
+	fi
+	/usr/sbin/mount ccsun71.carlson.com:/jumpstart /mnt_rsync
+	/usr/sbin/pkgadd -d /mnt_rsync/Solaris${CHECKOS}/config/packages/rsync/v265 SMCrsync
+	#/usr/sbin/pkgadd -d /mnt_rsync/Solaris${CHECKOS}/config/packages/popt/v17 SMCpopt
+	/usr/sbin/umount /mnt_rsync
+	/usr/bin/rm -rf /mnt_rsync
+fi
+
+echo "Do you wish to test rsync: \c"
+#read TESTRS
+TESTRS="y"
+
+if [ "${TESTRS}" = "y" ]; then
+	echo "rsync has been located at: \c"
+	which rsync
+	sleep 2
+	/usr/local/bin/rsync -avz --rsync-path=/usr/local/bin/rsync ccsun71.carlson.com::adminscripts_solaris/ /usr/local/bin > /tmp/rsync.adminscripts 2>&1
+	echo "rsync output:"
+	/usr/bin/cat /tmp/rsync.adminscripts
+else
+	echo "INFO: no action taken"
+fi
+
+echo ""
+echo "INFO: rsync installation successful"

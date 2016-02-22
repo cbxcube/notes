@@ -1,0 +1,19 @@
+Relayout of striped volumes in VXVM:
+relayout stripe:
+	/usr/sbin/vxassist -g cpssharesdg -o bg relayout letterwriting layout=stripe ncol=+10 		cpsorashrdg58 cpsorashrdg59 cpsorashrdg60 cpsorashrdg61 cpsorashrdg62 cpsorashrdg63 		cpsorashrdg64 cpsorashrdg65 cpsorashrdg84 cpsorashrdg86
+
+	vxtask -l list - monitor how long it will take to complete the relayout
+
+find size to grow volume:
+	vxassist -g diskgroup maxgrow volume - will show how large the volume can be grown to
+		dbss0301:/ #vxassist -g cpssharesdg maxgrow reporting
+		Volume reporting can be extended by 126781440 to: 760678400 (371425Mb)
+Grow volume:	
+	vxassist -g diskgroup growto volume disksize# - will grow the volume to the given size
+	/usr/lib/fs/ufs/mkfs -F ufs -M /mount_point /dev/vx/rdks/diskgroup/volume disksize#
+	
+	or
+	
+	/etc/vx/bin/vxresize -g diskgroup volume +disksizetoadd
+
+	

@@ -1,0 +1,62 @@
+#!/usr/bin/perl -w
+#
+# $Id: fix_inetd.pl,v 1.1 2006/09/29 21:31:58 uexw062 Exp $
+#
+use strict;
+my @service_names = qw(tftp time echo discard daytime chargen 100232/10 100083/1 100221/1 100235/1 100422/1 100150/1 dtspc 100134/1 100234/1 rquotad/1 shell login exec comsat talk finger rstatd/2-4 rusersd/2-3 walld/1 sprayd/1 100424/1 name telnet uucp ftp 100068/2-5 printer 100229/1 100229/1-2 100230/1 100242/1 nrpe 100155/1 100153/1 fs);
+my $inetd_conf = "/etc/inet/inetd.conf";
+
+open(INFILE, $inetd_conf) or die "Cannot open $inetd_conf: $!\n";
+open(OUTFILE, ">/tmp/new-inetdconf.txt") or die "Cannot open /tmp/new-inetdconf.txt: $!\n";
+
+while (<INFILE>) {
+  my ($service, $junk) = split(' ', $_);
+
+  if ( grep { /^$service/ } @service_names ) {
+    printf OUTFILE "#";
+  }
+  print OUTFILE $_;
+}
+
+
+
+__DATA__
+time    stream  tcp6    nowait  root    internal
+time    dgram   udp6    wait    root    internal
+echo    stream  tcp6    nowait  root    internal
+echo    dgram   udp6    wait    root    internal
+discard stream  tcp6    nowait  root    internal
+discard dgram   udp6    wait    root    internal
+daytime stream  tcp6    nowait  root    internal
+daytime dgram   udp6    wait    root    internal
+chargen stream  tcp6    nowait  root    internal
+chargen dgram   udp6    wait    root    internal
+100232/10       tli     rpc/udp wait root /usr/sbin/sadmind     sadmind
+100083/1        tli     rpc/tcp wait root /usr/dt/bin/rpc.ttdbserverd rpc.ttdbserverd
+100221/1        tli     rpc/tcp wait root /usr/openwin/bin/kcms_server  kcms_server
+fs              stream  tcp6    wait nobody /usr/openwin/lib/fs.auto    fs
+100235/1 tli rpc/ticotsord wait root /usr/lib/fs/cachefs/cachefsd cachefsd
+100422/1      tli     rpc/tcp wait    root    /usr/sbin/rpc.mdcommd   rpc.mdcommd
+100150/1        tli     rpc/ticotsord   wait    root    /usr/sbin/ocfserv                          ocfserv
+dtspc stream tcp6 nowait root /usr/dt/bin/dtspcd /usr/dt/bin/dtspcd
+100134/1        tli     rpc/ticotsord   wait    root    /usr/lib/krb5/ktkt_warnd ktkt_warnd
+100234/1        tli     rpc/ticotsord   wait    root    /usr/lib/gss/gssd gssd
+rquotad/1       tli     rpc/datagram_v  wait    root    /usr/lib/nfs/rquotad rquotad
+shell   stream  tcp     nowait  root    /usr/sbin/in.rshd       in.rshd
+shell   stream  tcp6    nowait  root    /usr/sbin/in.rshd       in.rshd
+login   stream  tcp6    nowait  root    /usr/sbin/in.rlogind    in.rlogind
+exec    stream  tcp     nowait  root    /usr/sbin/in.rexecd     in.rexecd
+exec    stream  tcp6    nowait  root    /usr/sbin/in.rexecd     in.rexecd
+comsat  dgram   udp     wait    root    /usr/sbin/in.comsat     in.comsat
+talk    dgram   udp     wait    root    /usr/sbin/in.talkd      in.talkd
+finger  stream  tcp6    nowait  nobody  /usr/sbin/in.fingerd    in.fingerd
+rstatd/2-4      tli     rpc/datagram_v  wait    root    /usr/lib/netsvc/rstat/rpc.rstatd           rpc.rstatd
+rusersd/2-3     tli     rpc/datagram_v,circuit_v        wait    root    /usr/lib/netsvc/rusers/rpc.rusersd  rpc.rusersd
+walld/1 tli     rpc/datagram_v  wait    root    /usr/lib/netsvc/rwall/rpc.rwalld                   rpc.rwalld
+sprayd/1        tli     rpc/datagram_v  wait    root    /usr/lib/netsvc/spray/rpc.sprayd           rpc.sprayd
+100424/1        tli     rpc/ticotsord   wait    root    /usr/lib/ST/stfsloader                     stfsloader
+name    dgram   udp     wait    root    /usr/sbin/in.tnamed     in.tnamed
+telnet  stream  tcp6    nowait  root    /usr/sbin/in.telnetd    in.telnetd
+uucp    stream  tcp     nowait  root    /usr/sbin/in.uucpd      in.uucpd
+ftp     stream  tcp6    nowait  root    /usr/sbin/in.ftpd       in.ftpd -a
+

@@ -1,0 +1,23 @@
+# Add new policies
+setenforce 0
+grep searchstring /var/log/audit/audit.log | audit2allow -m semod.name > /tmp/semod.name.te
+cat /tmp/semod.name.te
+grep searchstring /var/log/audit/audit.log | audit2allow -M semod.name
+semodule -i semod.name.pp
+setenforce 1
+
+# List selinux modules
+semodule -l
+
+# remove selinux module
+semodule -r modulename
+
+# list context of files and processes
+ls -Z /dir
+ps -efZ
+
+# Set context
+chcon -u user_context /path/to/file
+
+# Restore context of files in path
+restorecon -vr /path

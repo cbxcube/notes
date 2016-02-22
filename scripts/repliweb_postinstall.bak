@@ -1,0 +1,9 @@
+fscr -c d4 4g /build
+chown oprepweb:oprepweb /build
+chmod 775 /build
+fscr -c d4 100m /opt/cssinet
+chown cssinet:cssinet /opt/cssinet
+chmod 755 /opt/cssinet
+fscr -c d4 4g /migration
+chown oprepweb:oprepweb /migration
+chmod 700 /migration

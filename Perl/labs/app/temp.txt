@@ -1,0 +1,26 @@
+  DB<1> h h
+List/search source lines:               Control script execution:
+  l [ln|sub]  List source code            T           Stack trace
+  - or .      List previous/current line  s [expr]    Single step [in expr]
+  w [line]    List around line            n [expr]    Next, steps over subs
+  f filename  View source in file         <CR>        Repeat last n or s
+  /pattern/ ?patt?   Search forw/backw    r           Return from subroutine
+  v           Show versions of modules    c [ln|sub]  Continue until position
+Debugger controls:                        L           List break/watch/actions
+  O [...]     Set debugger options        t [expr]    Toggle trace [trace expr]
+  <[<] or {[{] [cmd]   Do before prompt   b [ln|event] [cnd]  Set breakpoint
+  >[>] [cmd]  Do after prompt             b sub [cnd] Set breakpoint for sub
+  ! [N|pat]   Redo a previous command     d [ln] or D Delete a/all breakpoints
+  H [-num]    Display last num commands   a [ln] cmd  Do cmd before line
+  = [a val]   Define/list an alias        W expr      Add a watch expression
+  h [db_cmd]  Get help on command         A or W      Delete all actions/watch
+  |[|]dbcmd   Send output to pager        ![!] syscmd Run cmd in a subprocess
+  q or ^D     Quit                        R           Attempt a restart
+Data Examination:             expr     Execute perl code, also see: s,n,t expr
+  x|m expr      Evals expr in array context, dumps the result or lists methods.
+  p expr        Print expression (uses script's current package).
+  S [[!]pat]    List subroutine names [not] matching pattern
+  V [Pk [Vars]] List Variables in Package.  Vars can be ~pattern or !pattern.
+  X [Vars]      Same as "V current_package [Vars]".
+  DB<2> 
+

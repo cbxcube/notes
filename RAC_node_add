@@ -1,0 +1,180 @@
+new node requires a total of 5 IP's.
+1 SDS - needs to be plumbed up to the same interface name as the other nodes. ie. ce2, ce3, etc...
+1 SME
+1 VIP must be the same vlan as the SDS.
+2 Interconnects on the same vlan as the existing nodes interconnects
+2 fiber connections to SAN - New node needs to be zoned to the existing LUNs on the existing nodes
+
+OS Level:
+OS needs to be the same kernel/patch level on the new node as the existing nodes
+
+Add users:
+oracle userid needs to be added to the new node
+oinstall group needs to be added to the new node
+
+Mount Points:
+Create directory structure for all shared mounts on the new node
+
+/etc/vfstab:
+One node should be the primary backup node.  Setup vfstab on the backup node to include any VCS
+   mounted filesystems.  Mount at boot is set to no, no device is listed for fsck, and no options are given.
+   This /etc/vfstab entry should exist on all 3 nodes, but they should be uncommented only on the backup node.
+	example:
+	###################################BACKUPS#######################################
+	## The following 3 b_0# entries are for backup purposes only, and they do not  ##
+	## need to be mounted by the OS.  They are needed for legato to be able to     ##
+	## back them up.  Legato is only backing these filesystems from ssmn00pk00286. ##
+	## If ssmn00dk00286 has issues, migrate these entries and the fiber to tape    ##
+	## connection to another node in this RAC cluster.                             ##
+	###################################BACKUPS#######################################
+	#/dev/vx/dsk/pcdb01_rac/b_01       -       /cwtdb/pcdb01_rac/b_01      vxfs    -       no      -
+	#/dev/vx/dsk/tst1db_rac/b_01       -       /cwtdb/tst1db_rac/b_01      vxfs    -       no      -
+	#/dev/vx/dsk/tst2db_rac/b_01       -       /cwtdb/tst2db_rac/b_01      vxfs    -       no      -
+
+/etc/system:
+copy /etc/system kernel entries for oracle to new node from existing node.
+	For example, the following would be added to a Oracle 10g node /etc/system:
+	set sd:sd_max_throttle=256
+	set sd:sd_io_time=120
+
+	set shmsys:shminfo_shmmax=9663676416
+	set shmsys:shminfo_shmmin=1
+	set shmsys:shminfo_shmmni=1024
+	set shmsys:shminfo_shmseg=54
+	set semsys:seminfo_semmns=3072
+	set semsys:seminfo_semmni=160
+	set semsys:seminfo_semmap=50
+	set semsys:seminfo_semmnu=170
+
+
+INSTALL STORAGE FOUNDATION FOR RAC:
+on new node:
+mount ssmn00pk00144:/downloads /mnt
+execute:
+/mnt/SymantecStorageFoundation/install/storage_foundation_for_oracle_rac/installsfrac -installonly
+	When it prompts for a license, grab the license for VERITAS Storage Foundation for Oracle RAC on 
+	   the master node of the existing cluster using the "vxlicrep -s" command.
+
+execute:
+vxinstall
+	answer n for any license questions
+	answer n for enclosure-based naming
+	answer n for systemwide disk group or the system
+vxdisk -o alldgs list - to confirm the existing disks are available to the new node.
+	if the disks from the other server do not appear, contact the storage team
+
+Install Veritas MP1:
+execute:
+/mnt/SymantecStorageFoundation/installMP/installmp
+reboot
+
+ADD NEW NODE TO CLUSTER:
+on ssmn00dk00238 and ssmn00dk00239:
+  vi /etc/llthosts to include:
+	2 ssmn00dk00286
+  scp /etc/llthosts ssmn00dk00286:/etc
+
+on ssmn00dk00286:
+  vi /etc/llttab
+	set-node ssmn00dk00286
+	set-cluster 102
+	link ce0 /dev/ce:0 - ether - -
+	link ce1 /dev/ce:1 - ether - -
+  vi /etc/gabtab
+	/sbin/gabconfig -c -n3
+
+on ssmn00dk00238 and ssmn00dk00239:
+  vi /etc/gabtab
+	/sbin/gabconfig -c -n3
+
+on ssmn00dk00286:
+  scp ssmn00dk00239:/etc/vcsmmtab /etc
+  scp ssmn00dk00239:/etc/vxfendg /etc
+  
+  start llt and gab:
+	/etc/init.d/llt start
+	/etc/init.d/gab start
+
+  scp ssmn00dk00239:/etc/vxfenmode /etc
+  /etc/init.d/vxfen start
+  /etc/init.d/vcsmm start
+  /etc/init.d/lmx start
+ 
+  /etc/init.d/odm start
+
+  Verify GAB port memberships a,b,d,o
+	gabconfig -a
+
+
+on ssmn00dk00239:
+  cpv /etc/VRTSvcs/conf/config/main.cf
+  haconf -makerw
+  hasys -add ssmn00dk00286
+  hagrp -modify cvm SystemList -add ssmn00dk00286 2
+  hagrp -modify cvm AutoStartList -add ssmn00dk00286
+  hagrp -modify ora_priv Address -add 10.176.248.3 -sys ssmn00dk00286
+  hagrp -modify ora_priv Device -add ce4 0 -sys ssmn00dk00286
+  hagrp -modify ora_priv Device -add ce5 1 -sys ssmn00dk00286
+  hacf -verify /etc/VRTSvcs/conf/config/main.cf
+
+  hastop -all -force
+
+  scp /etc/VRTSvcs/conf/config/main.cf ssmn00dk00238:/etc/VRTSvcs/conf/config
+  scp /etc/VRTSvcs/conf/config/main.cf ssmn00dk00286:/etc/VRTSvcs/conf/config
+
+On both existing servers starting with master:
+  hastart
+  hastatus -sum - verify the resource has come online
+  
+  #enable the cluster to recognize the new node
+  /etc/vx/bin/vxclustadm -m vcs -t gab reinit
+  /etc/vx/bin/vxcluxtadm nidmap
+
+on ssmn00dk00286
+  cat /etc/llthost - determine node ID
+  gabconfig -a - verify the node ID is seen by GAB
+    If ports f,u,v, or w are present in from the gabconfig command, reboot 286
+    otherwise:
+         hastart
+  hastatus -sum - to confirm cluster status
+  
+########################### ROOT.SH NOTES #############################
+## Running Oracle root.sh, rootaddnode.sh, etc...                    ##
+## (commands will be provided by Oracle DBA at the correct time).    ##
+## look at these notes before running the scripts for the Oracle DBA ##
+#######################################################################
+
+Turn off the banner setting in sshd.
+  vi /etc/ssh/sshd_config  - comment out the banner line.
+  /etc/init.d/sshd restart
+
+The umask for root needs to be set to 0022 to make sure all files created from 
+  the scripts have the correct permissions.
+    vi /etc/custom_profile - update the umask line to 022 if it's not already.
+
+vote.loc files need to have permission of 660.  Verify location of these files with the DBA
+
+CRS_HOME (ie. /u01/crs/oracle/product/1020/crs) and ORACLE_HOME (/u01/app/oracle) 
+  need to have permissions set to 775.  This will disable ssh keys.  
+	To work around this issue, in /etc/ssh/sshd_config, change SrtictModes from "Yes" to "No" 
+	  and restart sshd.
+  These settings can be set back to the original configuration after install is complete.
+
+If running oracle 10.2.0.3 or later:
+  you may need to touch CRS_HOME/log/$HOSTNAME/cssd/$HOSTNAME.pid before the cssd-monitor script 
+    reports CRS is running.
+
+If running Oracle 10G:
+  cd /opt/VRTSvcs/rac/lib
+    If the version of Oracle 10g is 32-bit, enter:
+      cp libskgxn2_32.so /opt/ORCLcluster/lib/libskgxn2.so
+    If the version of Oracle 10g is 64-bit, enter:
+      cp libskgxn2_64.so /opt/ORCLcluster/lib/libskgxn2.so
+
+If the servers are running Openssh:
+  Move the existing /usr/local/bin/ssh and scp and link from /usr/bin/ssh and scp:
+    cd /usr/local/bin
+    mv ssh ssh.orig
+    ln -s /usr/bin/ssh ssh
+    mv scp scp.orig
+    ln -s /usr/bin/scp scp

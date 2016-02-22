@@ -1,0 +1,494 @@
+# Perl replace inline
+/usr/bin/perl -p -i'.backup' -e 's/runinterval = 1h/runinterval = 30m/g' /etc/puppet/puppet.conf
+
+# SAR to CSV
+sar -S -f /var/log/sa/sa15 | egrep -v "Average|Linux" |awk '{if ($0 ~ /[0-9]/) { print $1","$2","$4","$5","$6","$7; }  }' > /tmp/sar_swap_sa15.csv
+
+# ZSH
+http://ohmyz.sh/
+
+# Disable User List for Gnome
+cat <<EOF> /etc/dconf/db/gdm.d/00-login-screen
+[org-gnome/login-screen]
+# Do not show the user list
+disable-user-list=true
+EOF
+dconf update
+
+# Renaming root disk VG
+boot into rescue mode
+from shell:
+  vgdisplay | less -> find the vg to be renamed
+  vgrename vg_oldname vg_newname -> rename vg
+  chroot /mnt/sysimage -> mount the root disk to enable editing files
+  vi /etc/fstab -> replace vg_oldname with vg_newname everywhere
+  vi /boot/grub/grub.conf -> replace vg_oldname with vg_newname everywhere
+  mkinitrd --force /boot/initramfs.img -> rebuild the kernel with the new vg name in place
+  exit; exit; reboot
+
+# Relayout Root disk (shrink root vg)
+boot into rescue;
+skip when asked if you want to mount file systems
+at bash prompt:
+  pvscan
+  vgscan
+  vgchange -a y
+  lvscan
+  lvdisplay /dev/vg_root/lv_root
+  fsck.ext4 /dev/vg_root/lv_root
+  e2fsck -f /dev/vg_root/lv_root
+  resize2fs -p /dev/vg_root/lv_root 8G -> 8G is the new size for lv_root
+  lvreduce -L 8G /dev/vg_root/lv_root
+  lvdisplay /dev/vg_root/l_root -> confirm the new size
+  exit; exit; reboot
+
+# Repackage rpms
+rpm2cpio php-5.1.4-1.esp1.x86_64.rpm | cpio -idmv -> extracts all files from the rpm
+yum install rpm-build
+yum install redhat-rpm-config
+mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} -> create the rpm build file structure
+echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
+yum install make gcc
+
+
+# Create Repo
+# Rhel 5
+createrepo -d -s sha1 /path/to/repo
+# Rhel 6 & 7
+createrepo /path/to/repo
+
+# Find what paths are working for SAN
+#
+#lspci -nn | grep -i hba
+[root@ep1q-dbor24 ~]# lspci -nn |grep -i hba
+0b:00.0 Fibre Channel [0c04]: QLogic Corp. ISP2532-based 8Gb Fibre Channel to PCI Express HBA [1077:2532] (rev 02)
+0b:00.1 Fibre Channel [0c04]: QLogic Corp. ISP2532-based 8Gb Fibre Channel to PCI Express HBA [1077:2532] (rev 02)
+0e:00.0 Fibre Channel [0c04]: QLogic Corp. ISP2532-based 8Gb Fibre Channel to PCI Express HBA [1077:2532] (rev 02)
+0e:00.1 Fibre Channel [0c04]: QLogic Corp. ISP2532-based 8Gb Fibre Channel to PCI Express HBA [1077:2532] (rev 02)
+#
+#ls -lrt /sys/class/fc_host/host*/port_name
+[root@ep1q-dbor24 ~]# ls -ltr /sys/class/fc_host/host*/port_name
+-r--r--r-- 1 root root 4096 Aug 18 14:24 /sys/class/fc_host/host6/port_name
+-r--r--r-- 1 root root 4096 Aug 18 14:24 /sys/class/fc_host/host5/port_name
+-r--r--r-- 1 root root 4096 Aug 18 14:24 /sys/class/fc_host/host4/port_name
+-r--r--r-- 1 root root 4096 Aug 18 14:24 /sys/class/fc_host/host3/port_name
+#
+#systool -c fc_host -A "port_id"
+[root@ep1q-dbor24 ~]# systool -c fc_host -A "port_id"
+Class = "fc_host"
+
+  Class Device = "host3"
+    port_id             = "0xdb0340"
+
+    Device = "host3"
+
+
+  Class Device = "host4"
+    port_id             = "0x000000"
+
+    Device = "host4"
+
+
+  Class Device = "host5"
+    port_id             = "0x8e0300"
+
+    Device = "host5"
+
+
+  Class Device = "host6"
+    port_id             = "0x000000"
+
+    Device = "host6"
+#
+#systool -c fc_transport -v
+[root@ep1q-dbor24 ~]# systool -c fc_transport -v
+Class = "fc_transport"
+
+  Class Device = "0:2"
+  Class Device path = "/sys/class/fc_transport/target3:0:2"
+    node_name           = "0xffffffffffffffff"
+    port_id             = "0xffffffff"
+    port_name           = "0x5000d310001bea13"
+    uevent              = <store method only>
+
+    Device = "target3:0:2"
+    Device path = "/sys/devices/pci0000:00/0000:00:07.0/0000:0e:00.0/host3/rport-3:0-2/target3:0:2"
+      uevent              = <store method only>
+
+...
+
+#
+#systool -c fc_host -A "port_name"
+[root@ep1q-dbor24 ~]# systool -c fc_host -A "port_name"
+Class = "fc_host"
+
+  Class Device = "host3"
+    port_name           = "0x21000024ff2046e6"
+
+    Device = "host3"
+
+
+  Class Device = "host4"
+    port_name           = "0x21000024ff2046e7"
+
+    Device = "host4"
+
+
+  Class Device = "host5"
+    port_name           = "0x21000024ff204714"
+
+    Device = "host5"
+
+
+  Class Device = "host6"
+    port_name           = "0x21000024ff204715"
+
+    Device = "host6"
+
+#
+#systool -c fc_host -A "port_state"
+[root@ep1q-dbor24 ~]# systool -c fc_host -A "port_state"
+Class = "fc_host"
+
+  Class Device = "host3"
+    port_state          = "Online"
+
+    Device = "host3"
+
+
+  Class Device = "host4"
+    port_state          = "Linkdown"
+
+    Device = "host4"
+
+
+  Class Device = "host5"
+    port_state          = "Online"
+
+    Device = "host5"
+
+
+  Class Device = "host6"
+    port_state          = "Linkdown"
+
+    Device = "host6"
+
+#
+#multipath -ll mpath#
+[root@ep1q-dbor24 ~]# multipath -ll mpath97
+mpath97 (3514f0c5d0aa0001e) dm-9 XtremIO,XtremApp
+[size=5.0T][features=0][hwhandler=0][rw]
+\_ round-robin 0 [prio=1][active]
+ \_ 3:0:6:6 sdb        8:16   [active][ready]
+\_ round-robin 0 [prio=1][enabled]
+ \_ 3:0:7:6 sdc        8:32   [active][ready]
+\_ round-robin 0 [prio=1][enabled]
+ \_ 5:0:4:6 sdg        8:96   [active][ready]
+\_ round-robin 0 [prio=1][enabled]
+ \_ 5:0:5:6 sdi        8:128  [active][ready]
+
+#for I in sdb sdc sdg sdi; do ls -l /sys/block/${I}/device; done
+[root@ep1q-dbor24 ~]# for I in sdb sdc sdg sdi; do ls -l /sys/block/${I}/device; done
+lrwxrwxrwx 1 root root 0 Aug 18 14:18 /sys/block/sdb/device -> ../../devices/pci0000:00/0000:00:07.0/0000:0e:00.0/host3/rport-3:0-6/target3:0:6/3:0:6:6
+lrwxrwxrwx 1 root root 0 Aug 18 14:18 /sys/block/sdc/device -> ../../devices/pci0000:00/0000:00:07.0/0000:0e:00.0/host3/rport-3:0-7/target3:0:7/3:0:7:6
+lrwxrwxrwx 1 root root 0 Aug 18 15:35 /sys/block/sdg/device -> ../../devices/pci0000:00/0000:00:08.0/0000:0b:00.0/host5/rport-5:0-4/target5:0:4/5:0:4:6
+lrwxrwxrwx 1 root root 0 Aug 18 15:35 /sys/block/sdi/device -> ../../devices/pci0000:00/0000:00:08.0/0000:0b:00.0/host5/rport-5:0-5/target5:0:5/5:0:5:6
+
+######################
+# Migrate LUNs
+vgdisplay -v volumegroup | grep "PV Name"
+  example:
+	[root@ep1q-dbor23 ~]# vgdisplay -v vggl21 | grep "PV Name"
+	    Using volume group(s) on command line
+	    Finding volume group "vggl21"
+	  PV Name               /dev/mpath/mpath89  
+umount /filesystem
+vgchange -an volumegroup
+vgexport volumegroup
+multipath -ll mpath#
+  example:
+	[root@ep1q-dbor23 ~]# multipath -ll mpath89
+	mpath89 (3514f0c5d0aa00013) dm-43 XtremIO,XtremApp
+	[size=5.0T][features=0][hwhandler=0][rw]
+	\_ round-robin 0 [prio=1][active]
+	 \_ 3:0:6:9  sdbq       68:64  [active][ready]
+	\_ round-robin 0 [prio=1][enabled]
+	 \_ 3:0:7:9  sdbr       68:80  [active][ready]
+	\_ round-robin 0 [prio=1][enabled]
+	 \_ 5:0:6:9  sdbs       68:96  [active][ready]
+	\_ round-robin 0 [prio=1][enabled]
+	 \_ 5:0:7:9  sdbt       68:112 [active][ready]
+for PATH in sdbq sdbr sdbs sdbt
+do
+echo 1 > /sys/block/${PATH}/device/delete
+done
+multipath -ll mpath #
+# remask LUN
+# On destination server, scan for new LUNs
+for PATH in `ls /sys/class/scsi_host/*/scan`; do echo $PATH ; echo "- - -" >> $PATH; done
+multipath
+multipath -ll | grep LUNID
+  example:
+	[root@ep1q-dbor23 ~]# multipath -ll | grep 00013
+	mpath89 (3514f0c5d0aa00013) dm-43 XtremIO,XtremApp
+vgdisplay -v volumegroup
+vgimport volumegroup
+vgchange -ay volumegroup
+mount /filesystem
+
+# Increase swap in LVM
+swapoff -v /dev/vg_root/lv_swap -> disables lv_swap as a swap device
+lvextend -L +2G /dev/vg_root/lv_swap -> grows the swap lv by 2GB
+mkswap /dev/vg_root/lv_swap -> formats the swap space
+swapon /dev/vg_root/lv_swap -> enables the lv_swap as a swap device
+
+# Add swap to Rhel6
+lvcreate -n lv_swap -l 8g /dev/vg_root -> makes lv_swap 8GB on the vg_root volume group
+mkswap /dev/vg_root/lv_swap -> turns lv_swap logical volume into swap; copy the UUID into /etc/fstab
+   [root@ep1q-dbor30 ~]# mkswap /dev/vg_root/lv_swap
+   mkswap: /dev/vg_root/lv_swap: warning: don't erase bootbits sectors
+           on whole disk. Use -f to force.
+   Setting up swapspace version 1, size = 8388604 KiB
+   no label, UUID=1e5ce19e-3c9a-488f-a6f2-f0681ccfec21
+   [root@ep1q-dbor30 ~]# vi /etc/fstab
+
+   #
+   # /etc/fstab
+   # Created by anaconda on Wed Feb 18 15:44:24 2015
+   #
+   # Accessible filesystems, by reference, are maintained under '/dev/disk'
+   # See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+   #
+   /dev/mapper/vg_root-lv_root /                       ext4    defaults        1 1
+   UUID=93ee9ada-2873-4ac3-b524-8f56491982f5 /boot                   ext4    defaults        1 2
+   /dev/mapper/vg_root-lv_home /home                   ext4    defaults        1 2
+   /dev/mapper/vg_root-lv_opt /opt                    ext4    defaults        1 2
+   /dev/mapper/vg_root-lv_tmp /tmp                    ext4    defaults        1 2
+   /dev/mapper/vg_root-lv_var /var                    ext4    defaults        1 2
+   UUID=535f6b90-d571-4ab5-999b-d9839701baa9 swap                    swap    defaults        0 0
+   UUID=1e5ce19e-3c9a-488f-a6f2-f0681ccfec21 swap                    swap    defaults        0 0
+swapon /dev/vg_root/lv_swap -> turns on the new swap lv
+   [root@ep1q-dbor30 ~]# swapon /dev/vg_root/lv_swap
+   [root@ep1q-dbor30 ~]# free
+                total       used       free     shared    buffers     cached
+   Mem:     264261140  260918220    3342920      16352    2223412  150310300
+   -/+ buffers/cache:  108384508  155876632
+   Swap:     16781304          0   16781304
+
+
+# Firwalld on RHEL7
+firewall-cmd --list-all -> lists all in use firewall rules
+Example:
+  [root@ep1t-rhel7a1 ~]# firewall-cmd --list-all
+  public (default, active)
+    interfaces: ens192
+    sources: 
+    services: dhcpv6-client ssh
+    ports: 443/tcp 80/tcp 464/tcp 88/udp 464/udp 88/tcp 80/udp 123/udp 389/tcp 3389/tcp 636/tcp
+    masquerade: no
+    forward-ports: 
+    icmp-blocks: 
+    rich rules: 
+firewall-cmd --zone=public --add-port=80/tcp --permanent -> Opens port 80 to the public zone persistent
+firewall-cmd --reload -> reloads the iptables after making adjustments to enable the new rules
+
+
+# Adjust timezone
+cp /etc/sysconfig/clock /etc/sysconfig/clock.bkup
+mv /etc/localtime /etc/localtime.bkup
+ln -s /usr/share/zoneinfo/UTC /etc/localtime
+vi /etc/sysconfig/clock -> change to ZONE="UTC"
+
+# Adjust scsi timeout
+A comment from Rob Caldwell who suggested some changes (increasing the IO timeout) that might increase stability of VM server rhlappfrd400:
+"execute the following command to produce the udev rule, and either manually change the HDD device’s timeout entry in /sys or reboot again for the udev script to take affect."
+
+cat << EOF > /etc/udev/rules.d/99-vmware-scsi-udev.rules
+# Redhat systems
+ACTION=="add", BUS=="scsi", SYSFS{vendor}=="VMware" , SYSFS{model}=="Virtual disk", RUN+="/bin/sh -c 'echo 300 > /sys\$DEVPATH/timeout' 
+
+udevadm trigger --action="change|add" --subsystem-match="scsi" --attr-match=vendor="VMware*" --attr-match=model="Virtual disk*"
+
+
+# Add New LUNs to Oracle RAC using udev rules with multipath
+  sudo rescan-scsi-bus.sh
+  ls -ltr /dev/mapper #if you don't see new LUNs (compare WWIDs against /dev/asmdisks), you'll hve to reboot the server.
+  sudo vi /etc/udev/rule.s/99-asm-rules # Add new lines using the new WWIDs and pointing to a new asmdisk name
+  EXAMPLE:
+    ACTION=="add|change", ENV{DM_UUID}=="mpath-360a9800044315777782b442f7a396764", SYMLINK+="asmdisks/VOL011_FAC_PRD2", OWNER="oracle", GROUP="dba", MODE="0660"
+    ACTION=="add|change", ENV{DM_UUID}=="mpath-360a9800044315777782b442f7a39676a", SYMLINK+="asmdisks/VOL012_FAC_PRD2", OWNER="oracle", GROUP="dba", MODE="0660"
+
+  sudo udevadm control --reload-rules
+  sudo udevadm trigger
+
+  ls -ltr /dev/asmdisks # You should now see the new asm disks ready for the DBA
+
+# Rescue from missing /dev/root
+  rescue mode, do not start networking
+  chroot /mnt/sysimage
+  verify /etc/lvm/lvm.conf filter includes /dev/sda:
+  ie..  filter = [ "a|emcpower|","a|cciss|","r|.*|" ]
+           vs
+        filter = [ "a|/dev/sda|","a|emcpower|","a|cciss|","r|.*|" ] 
+  validate the filter by running:
+        lvs -a --config 'devices {filter = [ "a|/dev/sda|","a|emcpower|","a|cciss|","r|.*|" ] }'
+  recreate the initrd and reboot:
+    cd /boot
+    mv initrd-<kernel version>.img initrd-<kernel version>.img.old
+    mkinitrd initrd-<kernel version>.img <kernel version>
+      example:
+         mkinitrd initrd-2.6.18-371.1.2.el5.img 2.6.18-371.1.2.el5
+    exit
+    exit
+
+# Rescue from missing Grub
+  rescue mode, do not start networking
+  chroot /mnt/sysimage
+  vi /etc/grub.conf to change hd10 to hd0
+  cd /boot/grub
+  vi device.map, remove hd0 line (sda) and edit hd10 line (cciss) to say hd0
+  then run grub-install hd0
+
+# Fail over bonding
+cat /proc/net/bonding/bond0 -> look for the "Currently Active Slave:"
+ifenslave --change-active bond0 eth1 -> changes the Active Slave to eth1 for bond0
+
+#Scan for new disks
+ls /sys/class/scsi_host -> will show you all the host#'s.
+echo "- - -" > /sys/class/scsi_host/host#/scan
+rescan-scsi-bus.sh
+
+#Resize file system
+lvextend -L +512M -r -t /dev/vg00/lvol04 - will run as test with resizefs as an option
+lvextend -L +512M /dev/vg00/lvol04
+reszie2fs /dev/vg00/lvol04
+
+#How to determing switch port
+   tcpdump -i eth0 ether host 01:00:0c:cc:cc:cc -s 1500 -vv -nn
+
+#Rescue RHEL without media
+   append "init=/bin/bash" to the end of the kernel line
+   mount -o remount,rw /
+   mount /usr - if it's a separate volume
+   passwd root
+   reboot
+
+#Linux Core Dump from ILO
+   Log onto ILO
+   click on remote console tab
+   click on remote Serial Console, clicking on the window to make sure it has cursor focus
+    Esc+Ctrl+b followed by Alt+SysRq+X -> will perform a NetDump, server will REBOOT when the netdump is complete
+
+#Fixing grub to not boot from SAN
+   rescue mode, do not start networking
+   chroot /mnt/sysimage
+   vi /etc/grub.conf -> change hd10 to hd0 (might be hd4,hd2,hd# something other than 0)
+   cd /boot/grub
+   vi device.map -> remove hd0 line (sda) and edit hd10 (or hd4, hd4, hd# other than 0) line (cciss) to say hd0)
+   grub-install hd0
+
+#RPM search and repository for downloads
+   http://rpm.pbone.net/
+
+#Determine proper routes:
+   ipcalc -npmb destinationHOSTIP netmask
+
+#Xen:
+   xm list - displays xen guests running on the host
+   xm shell - will provide an "xm>" prompt which you can run "help" and "list" among other commands"
+   xm start quest_host - will start a guest virtual server guest_host
+   xm shutdown guest_host - will shutdown a guest virtual server guest_host
+   xm restore - will restore a domain from a "saved" state
+
+#RPM:
+   rpm -Uvh --oldpackage --nosignature --nodigest package.rpm - package.rpm might need to be *.rpm, haven't tested yet, to backout of upgraded pkg
+   rpm -Uvh package.rpm - installs and updates the rpm package
+   rpm -q --changelog kernel - displays kernel package updates
+   rpm -q --scripts package - displays scripts in package
+   rpm -q --querytags - shows fields to be queried
+   rpm -qa --queryformat "%{SIZE} - %{NAME}\n" | sort -n - displays a list of packages and sorted by their sizes; --queryformat uses printf syntax in the ""
+   rpm -qa --queryformat '%{NAME}-%{VERSION}.%{RELEASE}.%{ARCH}\n' | grep oracleasm -> displays all oracleasm rpms including 32vs64bit arch
+   rpm -qdf filename - displays any documentation related to filename
+   rpm -qa --last -displays most recent installs
+   rpm -V package - verifies all files related to package
+   rpm -Va - verifies all files provided by all packages
+   rpm -Vf filename - verifies all files provided by the package related to filename
+   rpm -ql package - list files assocaited with a package
+
+#Manual Kernel install:
+   rpm -ivh /tmp/kernel-package.rpm - installs the new kernel package
+   rpm -q kernel - displays the available kernel packages
+   rpm -e kernel-old.package - removes the old kernel package
+
+#Netgroups:
+   to add a netgroup to a Linux host, update the following file:
+   /etc/security/access.conf
+
+#HBA Information:
+   cat /sys/class/fc_host/*/node_name - will show HBA WWNN
+   cat /sys/class/fc_host/*/port_name - will show HBA WWPN
+   systool -c fc_host -v - will show more information about HBAs
+   systool -c scsi_host -v - 
+   systool -c fc_remote_ports -v -d
+   lsmod | grep qla
+
+#Multipathing:
+   multipath -l
+   ls -al /dev/mpath - shows the LUN devices and which dm device names they point to.
+
+#SAN Disk info:
+   systool -b scsi -v - displays LUN information
+      systool -b scsi -v | grep Device\ path | awk -F'=' '{print $2}' - displays specific LUN info
+      from this output:
+          "/sys/devices/pci0000:00/0000:00:04.0/0000:11:00.0/0000:12:01.0/host0/rport-0:0-0/target0:0:0/0:0:0:2"
+         find /sys/devices/pci0000:00/0000:00:04.0/0000:11:00.0 | grep block: - gives you LVM device names, ie sda, sdb, sdc, etc...
+      
+   find /sys/devices | grep block - will who all block devices
+
+# LVM:
+vgdisplay - displays all volume groups, and related info
+   vgdisplay volumegrp - displays all information related to volumegrp
+lvdisplay - displays all logical volumes and related info
+   lvdisplay logicalvol - displays all info related to logicalvol
+pvdisplay - displays info about all physical disks attached to the server, internal and SAN.
+List the new disk:
+  fdisk -l
+label the new disk:
+  fdisk /dev/sdb
+  n - add a new partition
+  p - primary partition
+  1 - partition number
+  1 - first cylinder
+  <enter> - selects entire disk
+  x - additional commands
+  b - move beginning of data
+  1 - parition number
+  128 - move beginning of data to 128
+  r - return to main menu
+  t - change a partition's system id
+  1 - parititon id
+  8e - Linux LVM
+  w - write the partition table to disk
+  kpartx /dev/sdb1
+	To script this for several disks:
+            $ echo "128,,8e" > inputfile
+            $ for DISK in sdb1 sdc1 sdd1 sde1
+            do
+            sfdisk -uS /dev/${DISK} < inputfile
+	    done
+Create LVM Physical Volume:
+  pvcreate /dev/sdb1
+  pvs - scan for new PV's
+Create volume group:
+  vgcreate vgname /dev/sdb1
+Create LV:
+  lvcreate -L 10g -n volname /dev/vg_volumegroup
+  mkfs -t ext4 /dev/vg_volumegroup/volname
+Add new volume to fstab:
+  mkdir -m 755 /mountpt
+  vi /etc/fstab
+  append the following:
+     /dev/mapper/vg_volumegroup-volname		/mountpt	ext4	0 0
+Grow LVM file system on the fly:
+  lvextend -L +10g -r /dev/vg_volumegroup/volname
+

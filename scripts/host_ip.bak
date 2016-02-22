@@ -1,0 +1,16 @@
+exec > host_ip.csv
+for NAME in `cat hosts_list.txt`
+do
+echo 
+# From nslookup
+
+echo $NAME,`/usr/sbin/nslookup ${NAME}|egrep -v "172.25.128.128|^Server|^$"|grep Add|cut -c11-`
+
+
+
+
+# from dnsfind output
+#egrep -i "${NAME}" qip-dnsobject.csv |egrep -iv ${NAME}[tb-]
+#sleep 5
+done
+

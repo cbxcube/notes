@@ -1,0 +1,30 @@
+Installation:
+1) Clear the metadb:
+     metadb -d c1t1d0s7
+2) Physically replace the disk:
+     After pulling the disk - devfsadm -Cv
+     Insert the new disk - devfsadm -v
+3) Label the new disk:
+     format c1t1d0 -> label -> y
+4) Partition the new disk to match the root disk:
+     prtvtoc /dev/rdsk/c1t0d0s2 | fmthard -s - /dev/rdsk/c1t1d0s2
+5) Recreate metadb's on new disk:
+      metadb -a -c 2 /dev/dsk/c1t1d0s7
+6) Synchronize the mirrors and recreate any that don't sync correctly:
+     metareplace d1 -e c1t1d0s1
+     metareplace d0 -e c1t1d0s0
+     metareplace d4 -e c1t1d0s4
+     or if the metareplace doesn't synch the mirror properly:
+      for each metadevice the doesn't synch with metareplace:
+       metadetach d1 d21
+       metaclear d21
+       metainit d21 1 1 c1t1d0s1
+       metattach d1 d21
+7) Update the bootblock on the new disk so it is bootable:
+    installboot /usr/platform/`uname -i`/lib/fs/ufs/bootblk /dev/rdsk/c1t1d0s0
+
+Backout:
+1) pull out the new disk and return it to Sun
+2) when a new disk is received, proceed to complete the disk replacement procedure again
+
+30min

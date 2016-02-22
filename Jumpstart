@@ -1,0 +1,34 @@
+JUMPSTART:
+Before taking the server down to the <ok>, verify all disks are labelled.
+
+jumpstart.carlson.com - going away, php based site
+ssmn00pk00071 - Jumpstart for Sol9
+ssmn00pk00144 - Jumpstart for Sol10
+
+vi /etc/ethers (<ok> banner, need ethernet from bu interface)
+vi /etc/hosts - add IP for bu interface to correspond to Primary name
+vi /etc/bootparams - make entry to correspond to the new server
+cd /tftpboot - contains boot files for jumpstart
+	ln -s inetboot.SUN4V.Solaris10_5-08 hex4buIP
+	ln -s inetboot.SUN4v.Solaris10_5-08 hex4buIP.SUN4v
+	(hex4buIP can be obtained by running /pbs/utils/get_hex bu.Ip.add.ress)
+cd /jumpstart/Solaris10_5-08/config
+	vi rules - add corresponding entries for new server
+	./check - verifies the rules file is ok
+	cd sysid
+	cp -rp oldserverimage newserver
+		ex. cp -rp ssmn00pk00275 ssmn00pk00276
+			where ssmn00pk00275 is an alread built server and
+			ssmn00pk00276 is your new server
+	cd newserver
+	vi sysidcfg
+		edit network_interface entries to match your new server
+	cd ../../build/10.*
+		directory contains begin.sh and finish.sh, scripts that run at the beginning and end of jumpstart.
+
+on newserver console
+<ok> boot net1:speed=100,duplex=full -v - install 
+	(there needs to be a space between the - and install)
+	(booting off net1 because we are using the bu interface to jumpstart)
+
+if boot fails after some disk partitioning, verify all disks are labelled, then start over.

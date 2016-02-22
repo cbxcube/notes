@@ -1,0 +1,109 @@
+#!/bin/ksh
+
+# Update these dumb SRM line to have redirect to /dev/null and not send mail to root.
+
+#       If srmAIX data generation has not terminated, stop before starting new day
+#0 0 * * * /var/adm/perfmgr/bin/terminate.srm ;  /var/adm/perfmgr/bin/verify.srm 
+#       Verify srmAIX data is still being generated
+#25,55 * * * * /var/adm/perfmgr/bin/verify.srm 
+#       Remove srmAIX data files older than 15 days
+#0 1 * * * /var/adm/perfmgr/bin/clean.account
+#       Create srmAIX envstat file
+#50 23 * * * /var/adm/perfmgr/bin/config.srm
+#       Create srmAIX Single File for Data Transfer
+#59 23 * * * /var/adm/perfmgr/bin/package.srm -z
+
+
+FILE=/var/spool/cron/crontabs/root
+RESTART_CRON=no  # sets itself to yes if anything needs updating
+
+crontab -l root|grep "/var/adm/perfmgr/bin/clean.account$" >/dev/null 2>&1
+        NEED_TO_CHANGE=$?
+if [ `echo ${NEED_TO_CHANGE}` = "0" ]; then
+	cp -p $FILE /cron.root
+	awk '{gsub (/clean.account$/, "clean.account > /dev/null 2>\&1")} {print }' ${FILE} > /var/tmp/new.cron
+        mv /var/tmp/new.cron ${FILE}
+	RESTART_CRON=yes
+fi
+
+
+crontab -l root|grep "/var/adm/perfmgr/bin/config.srm$" >/dev/null 2>&1
+        NEED_TO_CHANGE=$?
+if [ `echo ${NEED_TO_CHANGE}` = "0" ]; then
+	cp -p $FILE /cron.root
+	awk '{gsub (/config.srm$/, "config.srm > /dev/null 2>\&1")} {print }' ${FILE} > /var/tmp/new.cron
+        mv /var/tmp/new.cron ${FILE}
+	RESTART_CRON=yes
+fi
+
+crontab -l root|grep "/var/adm/perfmgr/bin/package.srm -z$" >/dev/null 2>&1
+        NEED_TO_CHANGE=$?
+if [ `echo ${NEED_TO_CHANGE}` = "0" ]; then
+	cp -p $FILE /cron.root
+	awk '{gsub (/package.srm -z$/, "package.srm -z > /dev/null 2>\&1")} {print }' ${FILE} > /var/tmp/new.cron
+        mv /var/tmp/new.cron ${FILE}
+	RESTART_CRON=yes
+fi
+
+
+crontab -l root|grep "/var/adm/perfmgr/bin/terminate.srm ; /var/adm/perfmgr/bin/verify.srm" >/dev/null 2>&1
+        NEED_TO_CHANGE=$?
+if [ `echo ${NEED_TO_CHANGE}` = "0" ]; then
+	cp -p $FILE /cron.root
+	awk '{gsub (/verify.srm/, "verify.srm > /dev/null 2>\&1")} { gsub(/terminate.srm ;/,"terminate.srm > /dev/null 2>\&1 ; ")} {print }' ${FILE} > /var/tmp/new.cron
+        mv /var/tmp/new.cron ${FILE}
+	RESTART_CRON=yes
+fi
+
+crontab -l root|grep "/var/adm/perfmgr/bin/verify.srm$" >/dev/null 2>&1
+        NEED_TO_CHANGE=$?
+if [ `echo ${NEED_TO_CHANGE}` = "0" ]; then
+	cp -p $FILE /cron.root
+	awk '{gsub (/verify.srm$/, "verify.srm > /dev/null 2>\&1")} {print }' ${FILE} > /var/tmp/new.cron
+        mv /var/tmp/new.cron ${FILE}
+	RESTART_CRON=yes
+fi
+
+
+
+if [ `echo ${RESTART_CRON}` = "yes" ]; then
+        chown root:sys ${FILE}
+        chmod 600 ${FILE}
+
+	# If AIX, then kill cron and it respawns re-reading the updated crontab
+	if [ `uname -s` = "AIX" ]; then
+		echo SRM crontab entires needed fixing - restarting cron
+		kill `ps -ef|grep /usr/sbin/cron|grep -v grep|awk '{print $2}'`
+		sleep 5
+		echo post restart check of cron
+		ps -ef|grep /usr/sbin/cron|grep -v grep
+	fi
+	
+	# If SunOS, then stop and start cron to re-read the updated crontab
+        if [ `uname -s` = "SunOS" ]; then
+                echo SRM crontab entires needed fixing - restarting cron
+                kill `ps -ef|grep /usr/sbin/cron|grep -v grep|awk '{print $2}'`
+                sleep 3
+		/etc/init.d/cron start
+		sleep 3
+                echo post restart check of cron
+                ps -ef|grep /usr/sbin/cron|grep -v grep
+        fi
+
+
+	# If HP-UX, then stop and start cron to re-read the updated crontab
+        if [ `uname -s` = "HP-UX" ]; then
+                echo SRM crontab entires needed fixing - restarting cron
+                kill `ps -ef|grep /usr/sbin/cron|grep -v grep|awk '{print $2}'`
+                sleep 3
+		/sbin/init.d/cron start
+		sleep 3
+                echo post restart check of cron
+                ps -ef|grep /usr/sbin/cron|grep -v grep
+        fi
+
+
+fi
+
+echo "Post fix for SRM lines, should have redirect to > /dev/null"
+crontab -l|egrep -i "perfmgr|srm"

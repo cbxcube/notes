@@ -1,0 +1,77 @@
+        Netlsnr oracle_listener (
+                Critical = 0
+                Owner = oracle
+                Home = "/usr/oracle/product/9.2.0.8.64bit"
+                TnsAdmin = "/usr/oracle/product/9.2.0.8.64bit/network/admin"
+                Listener = listener_1526
+                EnvFile = "/usr/oracle/product/9.2.0.8.64bit/.profile"
+                RestartLimit = 1
+                )
+
+        Oracle oracle_boap5 (
+                Critical = 0
+                Sid = boap5
+                Owner = oracle
+                Home = "/usr/oracle/product/9.2.0.8.64bit"
+                Pfile = "/usr/oracle/admin/boap5/pfile/initboap5.ora"
+                EnvFile = "/usr/oracle/product/9.2.0.8.64bit/.profile"
+                )
+
+
+Netlsnr oracle_listener11g (
+	Critical = 0
+	Owner = oracle
+	Home = "/usr/oracle/product/11.2.0.2"
+	TnsAdmin = "/usr/oracle/product/11.2.0.2/network/admin"
+	Listener = listener_1521
+	EnvFile = "/usr/oracle/product/11.2.0.2/.profile
+	RestartLimit = 1
+	)
+Oracle oracle_boa11g (
+	Critical = 0
+	Sid = tmp11g
+	Owner = oracle
+	Home = "/usr/oracle/product/11.2.0.2"
+	Pfile = "/usr/oracle/admin/tmp11g/pfile/inittmp11g.ora"
+	EnvFile = "/usr/oracle/product/11.2.0.2/.profile"
+	)
+
+hares -add oracle_boa11g Oracle oracle
+hares -modify oracle_boa11g Enabled 1
+hares -modify oracle_boa11g Critical 0
+hares -modify oracle_boa11g Sid tmp11g
+hares -modify oracle_boa11g Owner oracle
+hares -modify oracle_boa11g Home /usr/oracle/product/11.2.0.2
+hares -modify oracle_boa11g Pfile /usr/oracle/admin/boap5/pfile/initboap5.ora
+hares -modify oracle_boa11g EnvFile /usr/oracle/product/11.2.0.2/.profile
+
+hares -add oracle_listener11g Netlsnr oracle
+hares -modify oracle_listener11g Enabled 1
+hares -modify oracle_listener11g Critical 0
+hares -modify oracle_listener11g Owner oracle
+hares -modify oracle_listener11g Home /usr/oracle/product/11.2.0.2
+hares -modify oracle_listener11g TnsAdmin /usr/oracle/product/11.2.0.2/network/admin
+hares -modify oracle_listener11g Listener listener_1521
+hares -modify oracle_listener11g EnvFile /usr/oracle/product/11.2.0.2/.profile
+hares -modify oracle_listener11g RestartLimit 1
+
+hares -link oracle_listener11g oracle_ip_mnicb
+hares -link oracle_listener11g oracle_mnt_dbawork
+hares -link oracle_boa11g oracle_mnt_archdest
+hares -link oracle_boa11g oracle_mnt_db01
+hares -link oracle_boa11g oracle_mnt_db02
+hares -link oracle_boa11g oracle_mnt_db03
+hares -link oracle_boa11g oracle_mnt_db04
+hares -link oracle_boa11g oracle_mnt_db05
+hares -link oracle_boa11g oracle_mnt_db06
+hares -link oracle_boa11g oracle_mnt_db07
+hares -link oracle_boa11g oracle_mnt_db08
+hares -link oracle_boa11g oracle_mnt_db09
+hares -link oracle_boa11g oracle_mnt_db10
+hares -link oracle_boa11g oracle_mnt_dbawork
+hares -link oracle_boa11g oracle_mnt_dbredo1
+hares -link oracle_boa11g oracle_mnt_dbredo2
+hares -link oracle_boa11g oracle_mnt_dbredo3
+hares -link oracle_boa11g oracle_mnt_dbredo4
+hares -link oracle_boa11g oracle_mnt_dbredo5
+hares -link oracle_boa11g oracle_mnt_dbredo6

@@ -1,0 +1,61 @@
+1) Confirm OSBackups and Explorer are current
+    from ssmn00pk00144:
+      ls -ltr /osbackups/ssmn00dk00230 - verify time stamp is less than a week old
+        if the files are older than a week:
+          /usr/local/bin/backos.sh
+    from ssmn00dk00230:
+      ls -ltr /home/uss/bin/explorer/servers/ssmn00dk00230 - verify time stamp is less than a week old
+        if the files are older than a week:
+          /home/uss/bin/explorer/bin/run_explorer.ksh -i
+2) Gather OBP NVRAM settings:
+     eeprom nvramrc >> /home/uss/ujmj003/nvram.out
+3) Unzip patch and copy to / directory
+     cp /home/uss/ujmj003/140685-02.zip /var/tmp
+     unzip /var/tmp/140685-02.zip
+     cp /var/tmp/140685-02/flash-update* /
+     chmod 755 /flash-update*
+4) Verify it is safe to shut the server down
+5) Shut server down to "ok>" prompt:
+     shutdown -g 60 -y -i 0 "Server is shutting down in 60 seconds.  Please save your work and log off.  Thanks --Jeff Johnson CRC-C-UNIX"
+6) from the "ok"> prompt:
+     setenve auto-boot? false
+     boot disk /flash-update-SunFire245
+       When prompted - enter "sa" to select all available firmware releases; then "cont" to continue the install; Enter to continue
+7) Return to the "ok>" prompt:
+     you should automatically be returned to the "ok>" prompt, if not, perform a "STOP B" to halt the boot and return to the OBP
+8) Verify the successful flash update of the firmware:
+     .version
+       should display:
+         OBP 4.30.4, POST 4.30.4, OBDIAG 4.30.4
+9) Reboot server:
+     setenv auto-boot? true
+     boot
+
+
+1) Confirm OSBackups and Explorer are current
+    from ssmn00pk00144:
+      ls -ltr /osbackups/ssmn00dk00230 - verify time stamp is less than a week old
+        if the files are older than a week:
+          /usr/local/bin/backos.sh
+    from ssmn00dk00230:
+      ls -ltr /home/uss/bin/explorer/servers/ssmn00dk00230 - verify time stamp is less than a week old
+        if the files are older than a week:
+          /home/uss/bin/explorer/bin/run_explorer.ksh -i
+2) Gather OBP NVRAM settings:
+     eeprom nvramrc >> /home/uss/ujmj003/nvram.out
+3) Verify it is safe to shutdown the server - application should be offline
+4) Unzip patch and copy to / directory
+     cp /home/uss/ujmj003/140685-02.zip /var/tmp
+     unzip /var/tmp/140685-02.zip
+     /var/tmp/140685-02/unix.flash-update.SunFire245.sh
+         - server will reboot automatically after firmware install is completed
+5) After server is back online:
+     prtconv -V
+       should display:
+         OBP 4.30.4, POST 4.30.4, OBDIAG 4.30.4
+6) Verify NVRAMRC:
+     eeprom nvramrc >> /tmp/nvram.post
+     cat -vet /var/tmp/nvram.out
+     cat -vet /tmp/nvram.post
+       compare files if the current nvramrc is different, repair it to look like the old.
+         eeprom nvramrc="devalias rootdisk /pci@1e,600000/pci@0/pci@a/pci@0/pci@8/scsi@1/disk@0,0 devalias rootmirr /pci@1e,600000/pci@0/pci@a/pci@0/pci@8/scsi@1/disk@1,0

@@ -1,0 +1,43 @@
+#!/usr/bin/ksh
+
+
+cp  /home/uss/qip/qip-dnsobject.csv /tmp/qip-dnsobject.csv
+for IP in `grep specific /opt/opennms/etc/discovery-configuration.xml|awk -F">" '{print $2}'|awk -F"<" '{print $1}'`
+do
+  #grep -i "$IP," /tmp/qip-dnsobject.csv |egrep ","|grep -v search|sed -e 's#,Works.*,,-1,#,#' -e 's/,3,,/,/' -e 's/Server.*-1,/,/' -e 's/,,,/,/'
+  grep -i "$IP," /tmp/qip-dnsobject.csv |sed -e 's#,Works.*,,-1,#,#' -e 's/,3,,/,/' -e 's/Server.*-1,/,/' -e 's/,,,/,/'
+done
+exit
+
+172.28.18.135,ccux64,,,carlson.com,Server,"",,,,,-1,0,,,-1,"notification1.carlson.com.",3,,
+172.28.18.140,ccux68,,,carlson.com,Server,"",,,,,-1,0,,,-1,,3,,
+172.28.16.195,ccux59gsp,,,carlson.com,Server,"",,,,,-1,0,,,-1,,3,,
+ 
+10.32.221.26,ssne01pk00176,amer.carlson.com,Server,"",,Service Desk,CHW Omaha,402-501-9999 Opt 1,-1,0,,,-1,,
+10.32.221.28,ssne01pk00214,amer.carlson.com,Server,"CWGT E2 Server",,Service Desk,CHW Omaha,402-501-9999 Opt 1,-1,0,,,-1,"ssne01pk00214.carlson.com.",
+172.28.23.67,SSMN00PK00079,carlson.com,"CCSUN79.carlson.com.",
+
+172.16.5.252,ssmn00pk00272b,carlson.com,,,
+172.16.5.253,ssmn00pk00273b,carlson.com,,,
+172.16.5.254,ssmn00pk00274b,carlson.com,,,
+
+
+ /home/uss/qip/qip-dnsobject.csv*\n"
+  exit 1
+fi
+
+echo "Named (DNS) database (${NAME}) created on: ${DATE}."
+
+if [ ${LOOP} -gt 1 ]; then
+  echo "\n  ***** Using older database than the current one. *****  \n"
+fi
+
+echo "\n... searching for string:  ${*} \n"
+
+if [ "${1}" = "-d" ]; then
+  shift
+  egrep -i "${1}" ${NAME}
+else
+  egrep -i "${1}" ${NAME} | grep -v 'SSMN00PK00209.carlson.com'
+
+

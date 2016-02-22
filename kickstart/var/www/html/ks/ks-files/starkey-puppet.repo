@@ -1,0 +1,7 @@
+[starkey-puppet]
+name=Starkey Puppet Repo - $releasever - $basearch
+baseurl=https://ep1p-apbuild01.starkey.com/repos/puppet-repo/$releasever/$basearch
+enabled=1
+gpgcheck=0
+sslverify=1
+sslcacert=/usr/share/pki/ep1p-apbuild01.starkey.com/ca.crt

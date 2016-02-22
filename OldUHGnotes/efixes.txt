@@ -1,0 +1,11 @@
+e-fixes
+nima8001:/export/lpp_source/lpp_source53_05sp5/emgr/ppc/DUPSYN_SP5.070216.epkg.Z
+DUPPNG_SP5.070216.epkg.Z
+secldapdbg.070525.epkg.Z
+
+scp files to server
+
+emgr -e file.epkg.Z
+
+
+

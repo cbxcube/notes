@@ -1,0 +1,18 @@
+#Grow snapmirror volume
+1) on destination filer
+   snapmirror -> manage -> advanced for the volume to grow
+   quiesce -> break
+   OR
+   from cli:
+   snapmirror quiesce destfiler:/destination/volume
+   snapmirror break destfiler:/destination/volume
+2) from cli:
+   vol options volname fs_size_fixed off
+3) Grow volume on both the source and destination
+4) from cli:
+   vol restric volname
+5) snapmirror -> manage -> advanced
+   initialize
+   OR
+   from cli:
+   snapmirror initialize -S sourcefiler:/source/volume destfiler:/destination/volume

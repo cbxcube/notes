@@ -1,0 +1,114 @@
+    *  Booting in pre single user mode 
+
+boot -m milestone=none
+
+    * Booting in single user-mode 
+
+boot -m milestone=single-user
+
+    * Modes available: 
+
+none 
+single-user 
+multi-user 
+multi-user-server 
+all 
+
+Service Management Facility (SMF) Turning off/on a service
+
+    * For example ssh 
+
+svcadm enable -t network/ssh:default
+svcadm disable -t network/ssh:default
+or
+svcadm restart network/ssh:default
+
+    * Reloading sshd configuration 
+
+svcadm restart network/ssh:default
+
+ZFS
+
+    * Creating a pool (mirrored) 
+
+zpool create poolname mirror emcpower0a emcpower1a
+
+    * Creating a filesystem and mounting it 
+
+zfs create poolname/test
+zfs set mountpoint=/test poolname/test
+
+    * Displaying the properties of a filesystem 
+
+zfs get -o property,value,source all bigpool/var-mail-compressed
+
+    * Checking IO usage 
+
+zpool iostat -v poolname 1
+
+Hints
+
+    * Adding network raw access in a zone 
+
+[..]
+<zone name="apsz0013" zonepath="/zones/apsz0013" autoboot="true" pool="work2-pool" limitpriv="default,net_rawaccess">
+[..]
+  <device match="/dev/ip"/>
+</zone>
+
+    * Oracle can use ISM or DISM in a Container with U3 (11/06) 
+
+Using zonecfg -z zonename
+
+set limitpriv=default,proc_lock_memory
+
+OR
+
+[..]
+<zone name="apsz0013" zonepath="/zones/apsz0013" autoboot="true" pool="work2-pool" limitpriv="default,proc_lock_memory">
+[..]
+
+Troubleshooting
+
+    * System not booting in multiuser mode 
+
+Run the svcs -x command to figure what the issue is:
+
+svcs -x
+
+    * fsck needed on / or /usr 
+
+vsmd0008:/root #svcs -x
+svc:/system/filesystem/usr:default (read/write root file systems mounts)
+ State: maintenance since Fri Mar 23 12:10:43 2007
+Reason: Start method exited with $SMF_EXIT_ERR_FATAL.
+   See: http://sun.com/msg/SMF-8000-KS
+   See: /etc/svc/volatile/system-filesystem-usr:default.log
+Impact: 43 dependent services are not running.  (Use -v for list.)
+
+vsmd0008:/root #cat  /etc/svc/volatile/system-filesystem-usr:default.log
+[ Mar 23 12:10:02 Enabled. ]
+[ Mar 23 12:10:15 Executing start method ("/lib/svc/method/fs-usr") ]
+The / file system (/dev/vx/rdsk/bootdg/rootvol) is being checked.
+/dev/vx/rdsk/bootdg/rootvol: UNREF FILE  I=30383  OWNER=root MODE=100555
+/dev/vx/rdsk/bootdg/rootvol: SIZE=80396 MTIME=Nov  9 17:55 2006  (RECONNECTED)
+/dev/vx/rdsk/bootdg/rootvol: LINK COUNT FILE I=30383  OWNER=root MODE=100555
+/dev/vx/rdsk/bootdg/rootvol: SIZE=80396 MTIME=Nov  9 17:55 2006  COUNT 0 SHOULD BE 1
+/dev/vx/rdsk/bootdg/rootvol: LINK COUNT INCREASING
+/dev/vx/rdsk/bootdg/rootvol: UNEXPECTED INCONSISTENCY; RUN fsck MANUALLY.
+
+WARNING - Unable to repair the / filesystem. Run fsck
+manually (fsck -F ufs /dev/vx/rdsk/bootdg/rootvol).
+
+[ Mar 23 12:10:43 Method "start" exited with status 95 ]
+
+
+Run fsck
+
+fsck -y /
+
+Then clear the state
+
+svcadm clear /system/filesystem/usr:default
+
+And ctrl-d out.... 

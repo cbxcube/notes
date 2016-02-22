@@ -1,0 +1,290 @@
+#!/usr/bin/ksh
+# Script:       patrol_monitor.sh:
+# Usage:        Script will be used as a command line tool
+#               to monitor the PatrolAgent status.
+# Author:       Steven D. Johnsen
+#               CSS Unix: PDT:Unix Software Engineering.
+#
+# @(#) PatrolAgent monitoring script
+#
+# Description:  Script will be scheduled via cron to monitor the PatrolAgent
+#               If the PatrolAgent is found to be down, it will attempt to
+#               start the PatrolAgent $MAXPASS times before a ticket is generated
+#               every startup attempt will send an email to $MAILTO.
+#      
+#               This script errs on the side to always try and start patrol
+#               if needed no matter if an email or ticket can be generated or not..
+#
+# Options:      Essientially the script can run as default or with a couple of 
+#               arguments that override the default values.  However, the script
+#               was actually intended to be used via the arguments versus using
+#               the defaults.  The defaults are stop-gap only.
+#
+#               The below requirements defined by Mike Fox:
+#               -m = Maximum number of passes this script will execute before it
+#                    will create a ticket
+#               -s = Who gets the email when PatrolAgent is found to be down (occurs
+#                    everytime PatrolAgent is down).
+#
+# COPYRIGHT (c) 2005 Carlson Companies Inc.
+# Modified: ver.1.0.0 07/11/2005 - Initial Concept
+#           ver 1.1.0 09/06/2005 - Changes for self running test. . .
+#           ver 1.1.0 09/19/2005 - Move check for self running test closer to script start
+#           ver 1.2.0 09/25/2005 - Additonal grep -v to tune self running test. . .
+#           ver 1.2.1 10/03/2005 - another grep -v for self running test. . .
+#                                  and move genenv subroutine out of chkstatus subroutine.
+#
+M=1    # Script release or enhancement rollup
+N=2    # enhancements or bug rollup
+B=1    # Bugfix
+
+VER="v${M}.${N}.${B}"
+
+HM_Date=`date +%H:%M`              # Hour and Minute script started.
+PDAEMON="PatrolAgent"              # Daemon being watched by this script
+WKDIR="/opt/patrol"                # WorkDirecotory of this script
+MONFILE="${WKDIR}/.patrol.monitor" # Hidden file to contain temporary
+                                   # script controls
+LF="${WKDIR}/.patrol_monitor.log"  # The friendly log file.
+MAXLFSIZE=200                      # Maximum Log file size in K
+
+DEFMAXPASS=3
+MAXPASS=${DEFMAXPASS}              # DEFAULT value for the number of
+                                   # times this script will be allowed
+                                   # to run sequentially with patrol down
+
+DEFMAILTO="root"
+MAILTO="${DEFMAILTO}"              # Default smtp address, root will auto route
+                                   # to all CSS unix admins.
+TIVSERV=tivoli			   # Target tivoli instance
+
+MAXPASSSET=0                       # 0 = values not set 1 = set # dont change this value
+SMTPSET=0                          # 0 = values not set 1 = set # dont change this value
+
+# Functions used in this script
+tme()
+{
+    DT=`date +%Y%m%d.%H%M%S`
+}
+
+usage()
+{
+    echo "\n${PDAEMON} [-m integer]  [-s smtpaddress] -V"
+    echo "\n-m    Integer value override the default maximum number"
+    echo "      of times this script will execute with ${PDAEMON}"
+    echo "      being down"
+    echo "-s    To override the default notification email address"
+    echo "      multiple smtp address can only be done internally"
+    echo "      in this script, not on command line at this time."
+    echo "-v    Display the script version"
+    exit
+}
+
+mail_routine()
+{
+    tme ; echo "${DT}: Sending email to ${MAILTO} & klovrien" >> ${LF}
+    echo "${MSG}" | mailx -s "Patrol_monitor.sh ${HN} info:" ${MAILTO},klovrien@carlson.com
+}
+
+ticket_routine()
+{
+    if [ ${#POSTEBIN} -gt 0 ] ; then
+        tme ; echo "${DT}: Creating TAC Ticket" >> ${LF}
+        MSG="Creating Ticket, PatrolAgent Exceeded ${MAXPASS} start attempts ${HN}" ; mail_routine
+        ${POSTEBIN} -S ${TIVSERV} -m "Patrol failed to start on ${HN} time=${HR}:${MN}_${AMPM}_${DAY}" \
+                    -r CRITICAL status=OPEN hostname=${HN} config_item="PATROLAGENT - ${HN}" \
+                    sub_source="/PatrolAgent/FailedStartup" CSS_SME CSS_SME
+    else
+        tme ; echo "${DT}: ***ERROR:UNABLE To create TAC Ticket" >> ${LF}
+    fi
+}
+
+chklog()
+{
+if [ -f ${LF} ] ; then
+    LFSIZE=`du -sk ${LF}| awk '{print $1}'`
+    if [ ${LFSIZE} -gt ${MAXLFSIZE} ] ; then
+        mv ${LF} ${LF}.old
+    fi
+fi
+}
+
+genenv()
+{
+    if [ ${GENENVSET} -eq 0 ] ; then
+        tme ; echo "${DT}: genenv not set - Determining O/S type: \c" >> ${LF}
+        case `uname -s` in
+            HP-UX ) echo "[O/S:HP-UX]" >> ${LF}
+                    POSTEBIN="/opt/local/fswatch/bin/postemsg.hp"
+                    MSG="PatrolAgent Down, starting Patrol Agent"
+                    PATROLSTART="/sbin/init.d/patrol"
+                    PATROLSTOP="/sbin/init.d/patrol"
+                    HR=`date +%I | sed 's/ //g'`
+                    MN=`date +%M`
+                    AMPM=`date +%p`
+                    DAY=`date +%D`
+                    if [ ! -f  ${POSTEBIN} ] ; then
+                        MSG="postemsg not found, logic error"
+                        mail_routine
+                        POSTEBIN=
+                    fi
+                    ;;
+            SunOS ) echo "[O/S:SunOS]" >> ${LF}
+                    POSTEBIN="/opt/local/fswatch/bin/postemsg.sun"
+                    MSG="PatrolAgent Down, starting Patrol Agent"
+                    PATROLSTART="/etc/init.d/patrol"
+                    PATROLSTOP="/etc/init.d/patrol"
+                    HR=`date +%l | sed 's/ //g'`
+                    MN=`date +%M`
+                    AMPM=`date +%p`
+                    DAY=`date +%D`
+                    if [ ! -f  ${POSTEBIN} ] ; then
+                        MSG="postemsg not found, logic error"
+                        mail_routine
+                        POSTEBIN=
+                    fi
+                    ;;
+            * )     echo "[O/S:unknown]" >> ${LF}
+                    tme ; echo "${DT}: [genenv] doesnt know how to start patrol" >> ${LF}
+                    MSG="PatrolAgent Down, Unknown O/S type, unable to start PatrolAgent"
+                    mail_routine
+                    ;;
+        esac
+    else
+        tme ; echo "${DT}: genenv already set - skipping set" >> ${LF}
+    fi
+}
+
+chkstatus()
+{
+    GENENVSET=0
+    PDAEMONVAL=`ps -ef |grep -v grep |grep ${PDAEMON}`
+
+    if [ ${#PDAEMONVAL} -eq 0 ] ; then
+        # PatrolAgent is Down - do something
+        tme ; echo "${DT}: ${PDAEMON} not running" >> ${LF}
+        if [ -f ${MONFILE} ] ; then
+            . ${MONFILE}
+            if [ $PASS -ge ${MAXPASS} ] ; then
+                tme ; echo "${DT}: [PASS=${PASS}]Maximum passes exceeded:CONTROL=${MAXPASS}" >> ${LF}
+                let PASS+=1
+                mv ${MONFILE} ${MONFILE}.tmp
+                cat ${MONFILE}.tmp | sed s/^PASS=[0-9]*/PASS=${PASS}/ > ${MONFILE}
+                rm ${MONFILE}.tmp
+                genenv ; GENENVSET=1
+                ticket_routine
+            else
+                let PASS+=1
+                tme ; echo "${DT}: [PASS=${PASS}]Incremented" >> ${LF}
+                mv ${MONFILE} ${MONFILE}.tmp
+                cat ${MONFILE}.tmp | sed s/^PASS=[0-9]*/PASS=${PASS}/ > ${MONFILE}
+                rm ${MONFILE}.tmp
+            fi
+        else
+            echo "PASS=1" > ${MONFILE}
+        fi
+        # Start patrol
+        DownList=`ps -ef | grep -i patrol | grep -v patrol_monitor | grep -v grep`
+        genenv ; GENENVSET=1
+        ${PATROLSTOP} stop   >> ${LF} 2>&1
+        sleep 20
+        ${PATROLSTART} start >> ${LF} 2>&1
+        sleep 20
+        StartList=`ps -ef | grep -i patrol | grep -v patrol_monitor | grep -v grep`
+        MSG="PatrolAgent Down:Attempted Restart on ${HN}\n\nBefore:\n${DownList}\n\nAfter:\n${StartList}" ; mail_routine
+    else
+        # PatrolAgent is running, clean up workfile
+        if [ -f ${MONFILE} ] ; then
+            tme ; echo "${DT}: Patrol Agent Running, cleaning up trigger file" >> ${LF}
+            rm ${MONFILE}
+        fi
+    fi
+}
+
+# MAIN
+# Below is essientially the beginnging of the script
+
+# check to see if previous patrol_monitor still running
+PROCS=`ps -ef | grep patrol_monitor.sh | egrep -v 'grep|sh -c|vi |cpv '`
+HN=`uname -n | sed y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/`
+
+# egrep doesn't handle $. . ., so include additional grep -v here.
+PATROLMONRUN=`echo "${PROCS}" | grep -v ${HM_Date} | grep -v $$ | wc -l`
+if [ ${PATROLMONRUN} -gt 0 ] ; then
+    MSG="Concurrent execution: patrol_monitor.sh detected: exiting\n${PROCS}"
+    tme ; echo "${DT}:***WARNING: Concurrent execution of script detected: exiting" >>${LF}
+    mail_routine
+    exit
+fi
+
+if [ $# -eq 0 ] ; then
+    tme ; echo "${DT}:***WARNING: Using Default Values:" >> ${LF}
+else
+    while [ $# -gt 0 ]
+    do
+        if [[ "$1" = "-m" || "$1" = "-M" ]] ; then
+            MAXPASSSET=1
+        fi
+        if [[ "$1" = "-s" || "$1" = "-S" ]] ; then
+            SMTPSET=1
+        fi
+ 
+        case $1 in
+        -m|-M ) MAXPASS=$2
+                MAXPASS=`echo ${MAXPASS} |sed s/[a-zA-Z]//g`
+                if [ ${#MAXPASS} -gt 0 ] ; then 
+                    shift 2
+
+                    MAXPASST=`echo "${MAXPASS}" | sed s/[0-9]//g`
+                    if [ ${#MAXPASST} -ne 0 ] ; then
+                        tme ; echo "${DT}:*** ERROR: Characters in -m argument not understood." >> ${LF}
+                        MSG="*** ERROR: Characters in -m argument not understood"
+                        mail_routine
+                        usage
+                    elif [[ ${MAXPASS} -eq 0 || ${MAXPASS} -eq 1 ]] ; then
+                        tme ; echo "${DT}:***WARNING: VALUES 0 or 1 cannot be used for this argument." >> ${LF}
+                        tme ; echo "${DT}:Using Default Values maxpass:" >> ${LF}
+                        MSG="VALUES 0 or 1 cannot be used for -m argument, using default"
+                        MAXPASS=${DEFMAXPASS}
+                        mail_routine
+                    fi
+                else
+                    tme ; echo "${DT}:***WARNING: Integer argument required for $1" >> ${LF}
+                    tme ; echo "${DT}:Using Default Values maxpass:" >> ${LF}
+                    MSG="Integer value expected for -m, using default value"
+                    MAXPASS=${DEFMAXPASS}
+                    mail_routine
+                fi
+                ;;
+
+        -s|-S ) MAILTO=$2 ; 
+                if [ ${#MAILTO} -gt 0 ] ; then 
+                    shift 2
+                else
+                    MAILTO=${DEFMAILTO}
+                    tme ; echo "${DT}:***WARNING: Using Default Values smtp address:" >> ${LF}
+                    shift
+                    MSG="Using Default smtp address, please validate argument to -s option"
+                    mail_routine
+                fi
+                ;;
+
+        -[Vv] ) echo "patrol_monitor:${VER}"
+                exit 0 ;;
+
+            * ) usage ;;
+        esac
+    done
+fi
+
+
+if [ ${MAXPASSSET} -ne 1 ] ; then
+    tme ; echo "${DT}:***WARNING: MAXPASS value not set on command line."     >> ${LF}
+fi
+if [ ${SMTPSET} -ne 1 ] ; then
+    tme ; echo "${DT}:***WARNING: SMTPADDRESS value not set on command line." >> ${LF}
+fi
+
+# Command line arguments should be understood, now exectute the functions.
+chklog
+chkstatus

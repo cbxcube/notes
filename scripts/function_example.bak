@@ -1,0 +1,12 @@
+cpx ()
+{
+
+DATE=`.doj_update.date +%Y%m%d-%H%M`
+
+echo "Copying file ${1} to ${1}.${DATE}"
+/usr/bin/cp -p ${1} ${1}.${DATE}
+
+}
+
+
+cpx edd

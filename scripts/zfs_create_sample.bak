@@ -1,0 +1,19 @@
+cd /
+
+zfs create -o mountpoint=/cwtsw -o quota=10g -o reservation=10g p298-1/cwtsw
+
+zfs create p298-1/cwtapp
+zfs create -o mountpoint=/cwtapp/q28test1a -o quota=5g -o reservation=5g p298-1/cwtapp/q28test1a
+zfs create -o mountpoint=/cwtapp/q28test2a -o quota=5g -o reservation=5g p298-1/cwtapp/q28test2a
+zfs create -o mountpoint=/cwtapp/d28dit1a -o quota=5g -o reservation=5g p298-1/cwtapp/d28dat1a  
+zfs create -o mountpoint=/cwtapp/q28trn1a -o quota=5g -o reservation=5g p298-1/cwtapp/q28trn1a  
+zfs create -o mountpoint=/cwtapp/d01ets -o quota=5g -o reservation=5g p298-1/cwtapp/d01ets    
+zfs create -o mountpoint=/cwtapp/q28pc1a -o quota=5g -o reservation=5g p298-1/cwtapp/q28pc1a 
+
+zfs create p298-1/cwtlog
+zfs create -o mountpoint=/cwtlog/q28test1a -o quota=40g -o reservation=40g p298-1/cwtlog/q28test1a
+zfs create -o mountpoint=/cwtlog/q28test2a -o quota=40g -o reservation=40g p298-1/cwtlog/q28test2a
+zfs create -o mountpoint=/cwtlog/d28dit1a -o quota=40g -o reservation=40g p298-1/cwtlog/d28dat1a  
+zfs create -o mountpoint=/cwtlog/q28trn1a -o quota=40g -o reservation=40g p298-1/cwtlog/q28trn1a  
+zfs create -o mountpoint=/cwtlog/d01ets -o quota=40g -o reservation=40g p298-1/cwtlog/d01ets    
+zfs create -o mountpoint=/cwtlog/q28pc1a -o quota=40g -o reservation=40g p298-1/cwtlog/q28pc1a 

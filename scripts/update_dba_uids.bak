@@ -1,0 +1,16 @@
+#!/bin/sh
+
+/usr/bin/cp -p /etc/passwd /etc/passwd.`date +%Y%m%d-%H%M`
+/usr/bin/cp -p /etc/shadow /etc/shadow.`date +%Y%m%d-%H%M`
+
+usermod -u 6112 -g 275 ukxr135
+usermod -u 6191 -g 275 urxc320
+usermod -u 6090 -g 275 ugxp079
+usermod -u 6500 -g 275 ulxl241
+userdel udxh309
+userdel uwxe026
+userdel unxc162
+userdel udxb261
+userdel u18cg49
+userdel uexw062
+userdel u02io83

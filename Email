@@ -1,0 +1,46 @@
+#Test Email
+telnet smtp.domain.com 25
+EHLO domain.com
+MAIL FROM:jjohnson@hostname-02.domain.com
+RCPT TO: jeff.johnson@thomsonreuters.com
+DATA
+Subject: TEST
+
+This is a test messages.
+.
+QUIT
+
+Example:
+[root@vmmgtnagios-02 postfix]# telnet smtp.paisleyhosting.com 25
+Trying 10.11.1.15...
+Connected to smtp.paisleyhosting.com.
+Escape character is '^]'.
+220 mail.paisleyhosting.com ESMTP Postfix
+helo
+501 Syntax: HELO hostname
+EHLO
+501 Syntax: EHLO hostname
+EHLO paisleyhosting.com
+250-mail.paisleyhosting.com
+250-PIPELINING
+250-SIZE 10240000
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 DSN
+MAIL FROM:jjohnson@vmmgtnagios-02.paisleyhosting.com
+250 2.1.0 Ok
+RCPT TO: jeff.johnson@thomsonreuters.com
+250 2.1.5 Ok
+DATA
+354 End data with <CR><LF>.<CR><LF>
+Subject: TEST
+
+This is a test messages.
+.
+250 2.0.0 Ok: queued as A25346807F
+QUIT
+221 2.0.0 Bye
+

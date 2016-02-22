@@ -1,0 +1,83 @@
+#Open HA for writing:
+haconf -makerw
+
+#Save and close HA:
+haconf -dump -makero
+
+#Disablel resource:
+hares -modify resource Enabled 0 - disables resource so it will not be included as part of the cluster
+
+#Offline a resource on hostname:
+hares -offline resource -sys hostname
+
+#Make a resource non-critical:
+hares -modify resource Critical 0
+
+#Modify resource settings:
+hares -modify b_01_mnt MountPoint /cwtdb/pcdb01_rac/b_01
+hares -modify b_01_mnt BlockDevice /dev/vx/dsk/pcdb01_racdg/b_01
+hares -modify b_01_voldg CVMDiskGroup pcdb01_racdg
+
+#Online a resource on hostname:
+hares -online resource -sys hostname
+
+#Make a resource critical:
+hares -modify resource Critical 1
+
+#Enable a resource:
+hares -modify resource Enabled 1
+
+#Resource dependency
+hares -link parent_res child_res
+
+#Group dependency
+hagrp -link parent_grp child_grp online soft remote  #parent requires child to come online on any system in the cluster before starting, but will not fault if child faults.
+
+
+#Stop and start clustering
+     1) Freeze cluster and stop HA:
+         from ux517:
+         haconf -makerw
+         hagrp -freeze oracle -persistent
+         hagrp -freeze falcon -persistent
+         haconf -dump -makero
+         hastatus -sum ( to verify )
+         hastop -all -force
+     2) Disable inter-cluster communications:
+         From all 3 servers in the cluster:
+         vxfenconfig -U (disable port b)
+         gabconfig -a (to verify no port b)
+         gabconfig -U (disable port a)
+         gabconfig -a (to verify no port a)
+         lltstat -nvv (review link status)
+         lltconfig (check llt kernel module status)
+         lltconfig -U (stop llt kernel module)
+         lltconfig (confirm llt is stopped)
+     3) Have Network change the VLans on the ports and swap nxge0 with bge1 so they are on different switches
+         from ux517:
+         snoop -d bge1
+         snoop -d nxge0
+         snoop -d nxge1
+     4) Wait for Oracle to be completed before commencing
+     5) Restart inter-cluster communication:
+         On all 3 servers in the cluster:
+         lltconfig -c (reconfigure llt)
+         lltconfig (verify kernel module is running)
+         gabconifg -c -n3 (reconfigure gab on the 3 node cluster)
+         vxfenconfig -c (reconfigure fencing)
+         gabconifg -a (port a and b should be connecting on all 3 servers)
+     6) Restart HA on all 3 servers in the cluster:
+         on all 3 servers in the cluster:
+         hastart
+     7) Unfreeze the cluster
+         haconf -makerw
+         hagrp -unfreeze <service group> -persistent
+         hastatus -sum ( to verify )
+     8) Remve old falcon 5138 resources to clean up cluster:
+         hares -delete falcon_app_5138
+         hares -delete falcon_tomcat_5138_2bofa
+         hares -delete falcon_tomcat_5138_bofa
+         hares -delete falcon_tomcat_5138_fic
+         hares -delete falcon_tomcat_5138_par3
+         haconf -dump -makero
+

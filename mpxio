@@ -1,0 +1,203 @@
+MpxIO Configuration Cheat Sheet
+MPxIO for Solaris10
+
+
+1) stmsboot -D fp -e - configures server to use mpxio for multipathing and will discount the internal disks from mpath
+
+
+
+Note: This Section is for Solaris 10 only.
+
+Note: Other edits are possible; however, the following will provide a sound basis of configuration.
+
+Note: A reconfiguration reboot is required upon completion.
+
+1) To enable MpxIO, edit the /kernel/drv/fp.conf file.
+Change:
+
+ mpxio-disable="yes";
+
+To:
+
+ mpxio-disable="no"; 
+
+2) To enable auto failback, edit the /kernel/drv/scsi_vhci.conf file.
+Change:
+
+ auto-failback="disable"; 
+
+To:
+
+ auto-failback="enable";  
+
+3) For proper MpxIO load balancing, edit the /kernel/drv/scsi_vhci.conf file.
+
+Add the following lines:
+
+Note: IT IS VERY IMPORTANT TO PROVIDE THE CORRECT NUMBER OF BLANK SPACES IN LINE 2, 5 and 8
+
+device-type-scsi-options-list =
+"HP      OPEN", "symmetric-option";
+symmetric-option = 0x1000000;
+device-type-mpxio-options-list=
+"device-type=HP      OPEN", "load-balance-options=logical-block-options";
+logical-block-options="load-balance=logical-block", "region-size=18";
+
+device-type-mpxio-options-list =
+"device-type=HITACHI OPEN-V      -SUN",
+"load-balance-options=logical-block-options";
+logical-block-options="load-balance=logical-block", "region-size=18";
+
+
+Note: to configure mpxio for IBM-UniversalXport drives in the test lab. The configuration line in /kernel/drv/scsi_vhci.conf:
+
+device-type-scsi-options-list =
+"IBM 1742", "symmetric-option";
+symmetric-option = 0x1000000;
+
+For EMC Symetrix:
+
+device-type-scsi-options-list =
+"EMC     SYMMETRIX", "symmetric-option";
+symmetric-option = 0x1000000;
+
+4) To ensure proper I/O timeout value and to minimize overflowing the queue, edit the /etc/system file.
+
+Add:
+
+set ssd:ssd_io_time=0x3c
+set ssd:ssd_max_throttle=12
+    * For XP arrays, use set ssd:ssd_max_throttle=16
+
+5) Perform a reconfiguration reboot.
+
+	#  reboot  --  -r
+
+6) Confirm new mpxio drive (the path will be /scsi_vhci/ssd@)
+
+itl56:/root #ls -l /devices/scsi_vhci/ssd\@g600a0b8000129cd20000000f42ea22f7
+ssd@g600a0b8000129cd20000000f42ea22f7/
+ssd@g600a0b8000129cd20000000f42ea22f7:a
+ssd@g600a0b8000129cd20000000f42ea22f7:a,raw
+ssd@g600a0b8000129cd20000000f42ea22f7:b
+ssd@g600a0b8000129cd20000000f42ea22f7:b,raw
+ssd@g600a0b8000129cd20000000f42ea22f7:c
+ssd@g600a0b8000129cd20000000f42ea22f7:c,raw
+ssd@g600a0b8000129cd20000000f42ea22f7:d
+ssd@g600a0b8000129cd20000000f42ea22f7:d,raw
+ssd@g600a0b8000129cd20000000f42ea22f7:e
+ssd@g600a0b8000129cd20000000f42ea22f7:e,raw
+ssd@g600a0b8000129cd20000000f42ea22f7:f
+ssd@g600a0b8000129cd20000000f42ea22f7:f,raw
+ssd@g600a0b8000129cd20000000f42ea22f7:g
+ssd@g600a0b8000129cd20000000f42ea22f7:g,raw
+ssd@g600a0b8000129cd20000000f42ea22f7:h
+ssd@g600a0b8000129cd20000000f42ea22f7:h,raw
+
+
+
+
+MPxIO for Solaris9
+
+1) To enable MpxIO, edit the /kernel/drv/scsi_vhci.conf file.
+
+Change:
+
+ 
+mpxio-disable="yes";
+
+To:
+ 
+mpxio-disable="no";
+
+Change:
+
+ 
+auto-failback="disable";
+
+To:
+
+auto-failback="enable";
+
+2) If you have Hitachi Disk add these lines for proper load-balancing:
+
+device-type-mpxio-options-list =
+"device-type=HITACHI OPEN-V      -SUN",
+"load-balance-options=logical-block-options";
+logical-block-options="load-balance=logical-block", "region-size=18";
+
+device-type-scsi-options-list =
+"HP      OPEN", "symmetric-option";
+symmetric-option = 0x1000000;
+device-type-mpxio-options-list=
+"device-type=HP      OPEN", "load-balance-options=logical-block-options";
+logical-block-options="load-balance=logical-block", "region-size=18";
+
+3) If your local disks are FC attached, ie. V480/490, V880/490 you need to disable local ports from MPxIO.
+
+Determine local port:
+dbss8005 #echo | format
+Searching for disks...done
+
+
+AVAILABLE DISK SELECTIONS:
+       0. c1t0d0 <SUN146G cyl 14087 alt 2 hd 24 sec 848>
+          /pci@9,600000/SUNW,qlc@2/fp@0,0/ssd@w21000014c3a31bcd,0
+       1. c1t1d0 <SEAGATE-ST314670FSUN146G-055A cyl 14087 alt 2 hd 24 sec 848>
+          /pci@9,600000/SUNW,qlc@2/fp@0,0/ssd@w21000014c3a36a6f,0
+       2. c6t50060E8004572421d0 <HITACHI-OPEN-V-SUN-5006 cyl 3821 alt 2 hd 15 sec 512>
+          /pseudo/dlmndrv@1/dlmfdrv@w50060e8004572421,0
+       
+Your internal disk's paths is listed below the disks.
+c1t0d0 = /pci@9,600000/SUNW,qlc@2/fp@0,0/ssd@w21000014c3a31bcd,0
+
+To disable that FC port add this line to /kernel/drv/fp.conf
+
+name="fp" parent="/pci@9,600000/SUNW,qlc@2" port=0 mpxio-disable="yes";
+
+4) Add IO timeout and queue depth settings to /etc/system.
+
+set ssd:ssd_io_time=0x3c
+set ssd:ssd_max_throttle=12
+
+5) Reconfigure reboot server
+
+touch /reconfigure
+init 6
+
+
+Troubleshooting
+
+Checking the current state
+
+root @nes-06 # luxadm display /dev/rdsk/c6t60060E8004575A000000575A00000802d0s2
+DEVICE PROPERTIES for disk: /dev/rdsk/c6t60060E8004575A000000575A00000802d0s2
+  Vendor:               HITACHI 
+  Product ID:           OPEN-V      -SUN
+  Revision:             5005
+  Serial Num:           50 0575A0802
+  Unformatted capacity: 57344.062 MBytes
+  Write Cache:          Enabled
+  Read Cache:           Enabled
+    Minimum prefetch:   0x0
+    Maximum prefetch:   0x0
+  Device Type:          Disk device
+  Path(s):
+
+  /dev/rdsk/c6t60060E8004575A000000575A00000802d0s2
+  /devices/scsi_vhci/ssd@g60060e8004575a000000575a00000802:c,raw
+   Controller           /devices/pci@8,600000/SUNW,qlc@1/fp@0,0
+    Device Address              50060e8004575a08,0
+    Host controller port WWN    210000e08b14b812
+    Class                       primary
+    State                       ONLINE
+   Controller           /devices/pci@8,600000/SUNW,qlc@2/fp@0,0
+    Device Address              50060e8004575a18,0
+    Host controller port WWN    210000e08b14a717
+    Class                       primary
+    State                       ONLINE
+
+
+Links
+
+http://docs.sun.com/source/819-0139/ConfiguringMultipathing.html 

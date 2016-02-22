@@ -1,0 +1,59 @@
+#One last rsync before changing the mounts
+rsync -av /opt/ISS/* /new_ISS
+rsync -av /opt/psoft/* /new_psoft
+rsync -av /opt/tuxedo81/* /new_tuxedo81
+rsync -av /u01/* /new_u01 
+
+
+#/opt/ISS
+df -h /opt/ISS - to verify the existing size of /opt/ISS
+df -h /new_ISS
+umount /new_ISS
+umount /opt/ISS
+vi /etc/vfstab
+ - comment out the following line:
+	/dev/vx/dsk/appdg/iss         /dev/vx/rdsk/appdg/iss       /opt/ISS       vxfs  3   yes  -
+ - uncomment the following line:
+	#/dev/md/dsk/d51		/dev/md/rdsk/d51	/opt/ISS	ufs	3	yes	-
+mount /opt/ISS
+df -h /opt/ISS - to verify /dev/md/dsk/d51 is mounted at /opt/ISS and is the same size as before the change
+
+
+#u01
+df -h /u01 - to verify the existing size of /u01
+df -h /new_u01
+umount /new_u01
+umount /u01
+vi /etc/vfstab
+ - comment out the following line:
+	/dev/vx/dsk/appdg/u01         /dev/vx/rdsk/appdg/u01       /u01           vxfs  3   yes  -
+ - uncomment the following line:
+	#/dev/md/dsk/d52		/dev/md/rdsk/d52	/u01		ufs	3	yes	-
+mount /u01
+df -h /u01 - to verify /dev/md/dsk/d52 is mounted at /u01 and is the same size as before the change
+
+
+#/opt/tuxedo81
+df -sk /opt/tuxedo81 - to verify the existing size of /opt/tuxedo81
+df -k /new_tuxedo81
+umount /new_tuxedo81
+rm -r /opt/tuxedo81/*
+vi /etc/vfstab
+ - uncomment the following line:
+	#/dev/md/dsk/d53		/dev/md/rdsk/d53	/opt/tuxedo81	ufs	3	yes	-
+mount /opt/tuxedo81
+df -h /opt/tuxedo81 - to verify /dev/md/dsk/d53 is mounted at /opt/tuxedo81 and is the same size as before the change
+
+
+#/opt/psoft
+df -h /opt/psoft - to verify the existing size of /opt/psoft
+df -h /new_psoft
+umount /new_psoft
+umount /opt/psoft
+vi /etc/vfstab
+ - comment out the following line:
+	/dev/vx/dsk/appdg/psoft       /dev/vx/rdsk/appdg/psoft     /opt/psoft     vxfs  3   yes  -
+ - uncomment the following line:
+	#/dev/md/dsk/d54		/dev/md/rdsk/d54	/opt/psoft	ufs	3	yes	-
+mount /opt/psoft
+df -h /opt/psoft - to verify /dev/md/dsk/d54 is mounted at /opt/psoft and is the same size as before the change.

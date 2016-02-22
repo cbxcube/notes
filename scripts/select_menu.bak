@@ -1,0 +1,229 @@
+#!/bin/ksh
+############################################################
+# This script will let the user dazel use sudo.  The script
+# is needed because the DAZEL commands require environment
+# variables set before the commands can be used.
+#
+# 6/28/2000 -- Created -- RDB
+#
+#
+#
+#
+############################################################
+
+clear
+
+##########################################
+#
+# Source in DAZEL environment variables
+#
+##########################################
+#
+. /opt/dazel/etc/setup_env.sh
+
+##########################################
+#
+# Set script variables & define functions
+#
+##########################################
+#
+bold=`tput smso`
+norm=`tput rmso` 
+
+start_server()
+{
+	      clear
+	      PS3='server name? '
+	      INVALID_CHOICE=""
+              echo "Enter the DAZEL server you wish to START..."
+	      echo
+	      select dazelserv in \
+                	xm \
+			nm \
+			pm \
+			aim \
+			cm \
+			jqm_rdc \
+			jqm_rad \
+			jqm_fax \
+			jqm_01 \
+			jqm_pager \
+			jqm_od \
+			jqm_02 \
+			dlm_03 \
+			dlm_02 \
+			dsm_email \
+			dsm_rdc \
+			dsm_lpr \
+			dsm_rad \
+			dlm_01 \
+			dsm_fax \
+			dsm_od \
+			dsm_01 \
+			dsm_fax2 \
+			dsm_pager \
+			cp \
+			lpg
+	      do
+                /opt/dazel/repository/bin/start_server $dazelserv
+                echo
+                echo
+		/opt/dazel/repository/bin/server_status $dazelserv
+                sleep 4
+                DISPLAY_MESSAGE=""
+                main
+              done
+
+} # END start_server
+
+
+stop_server ()
+{
+              clear
+	      PS3='server name? '
+	      INVALID_CHOICE=""
+              echo "Enter the DAZEL server you wish to STOP..."
+	      echo
+	      select dazelserv in \
+                	xm \
+			nm \
+			pm \
+			aim \
+			cm \
+			jqm_rdc \
+			jqm_rad \
+			jqm_fax \
+			jqm_01 \
+			jqm_pager \
+			jqm_od \
+			jqm_02 \
+			dlm_03 \
+			dlm_02 \
+			dsm_email \
+			dsm_rdc \
+			dsm_lpr \
+			dsm_rad \
+			dlm_01 \
+			dsm_fax \
+			dsm_od \
+			dsm_01 \
+			dsm_fax2 \
+			dsm_pager \
+			cp \
+			lpg
+              
+	      do
+                /opt/dazel/repository/bin/stop_server $dazelserv
+                echo
+                echo
+		/opt/dazel/repository/bin/server_status $dazelserv
+                sleep 4
+                DISPLAY_MESSAGE=""
+	        main
+              done 
+
+} # END stop_server
+
+
+shutdown_server ()
+{
+	      clear 
+	      PS3='shutdown type? '
+	      INVALID_CHOICE=""
+              echo "SHUTDOWN ALL DAZEL Servers..."
+	      echo
+	      select shuttype in \
+                	normal \
+			force 
+	      do
+                /opt/dazel/custom/server_shutdown $shuttype
+                echo
+                echo
+                DISPLAY_MESSAGE=""
+                main
+              done
+ 
+} # END shutdown_server
+
+
+startup_server ()
+{
+              clear
+	      INVALID_CHOICE=""
+              /opt/dazel/custom/server_startup
+              echo
+              echo
+	      /opt/dazel/repository/bin/server_status
+              sleep 10 
+              DISPLAY_MESSAGE=""
+              main
+
+} # END startup_server
+
+
+main ()
+{
+clear
+INVALID_CHOICE=yes
+while [ "$INVALID_CHOICE" != "no" ]
+do
+  clear
+  echo "\t\t${bold}${DISPLAY_MESSAGE}${norm}"
+  echo
+  echo
+  echo "${bold}Enter the DAZEL command you would like to perform${norm}"
+  echo
+  echo
+  echo "\t 1)  start_server"
+  echo "\t 2)  stop_server"
+  echo "\t 3)  server_shutdown"
+  echo "\t 4)  server_startup"
+  echo "\t 0)  EXIT"
+  echo
+  echo " Please Enter your selection : \c"
+  read dselect
+ 
+   case $dselect in 
+	  1 ) start_server 
+	      INVALID_CHOICE=""
+              ;;
+
+	  2 ) stop_server
+              INVALID_CHOICE=""
+              ;; 
+
+
+	  3 ) shutdown_server 
+              INVALID_CHOICE=""
+              ;;
+
+
+
+          4 ) startup_server 
+              INVALID_CHOICE=""
+              ;;
+
+
+	  0 ) clear 
+               exit 1
+               ;;
+
+
+          * )  INVALID_CHOICE=yes
+               DISPLAY_MESSAGE="   ***($dselect) INVALID CHOICE - TRY AGAIN ***"
+               ;;
+    esac
+
+done # while loop
+
+} # END main
+
+
+##########################################
+#
+# Call first function to get things off... 
+#
+##########################################
+#
+
+main

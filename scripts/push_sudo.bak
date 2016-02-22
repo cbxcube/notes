@@ -1,0 +1,185 @@
+#!/usr/bin/ksh
+#-----------------------------------------------------------------------------#+
+#  Script: push_sudo                     		                      #+
+#  Usage:  This script will push /opt/local/sudo/etc/sudoers to all box hosts #+
+#               This script runs as follows:                                  #+
+#                    ./usr/local/bin/push_sudo /opt/local/sudo/etc/sudoers    #+      
+#  Comments: This script must run from ccux18 (master sudoers)		      #+
+#            Must be superuser or root to run this script       	      #+
+#            /tmp/update_sudoers.log is a history of the last update   	      #+
+#  By: Mike Feist      							      #+
+#  date: 11/27/2000    							      #+
+#  Copyright: (c) 2000 Carlson Companies Inc.				      #+
+#  Revision date(s): 04/08/01 By Mike Feist                                   #+
+#                    Added to the function: move_sun_file to check the        #+
+#		     sudoers path; it can be: /etc/sudoers or the new path    #+
+#		     /opt/local/sudo/etc/sudoers			      #+
+#                                                                             #+
+#                    07/16/01 By Josh Thorstad                                #+
+#		     Removed the need to specify the sudoers file             #+
+#		     Optimized code, faster on failures                       #+
+#		     Removed bad error message seen on some Sun systems       #+
+#                                                                             #+
+# 		     12/30/04 Moved to ccux65. ERC                            #+
+#		     09/15/05 ERC. Added support to push to CM 4.1x hosts     #+
+#			      which do not allow remsh access.  	      #+
+#		     2005/09/19 DWLT					      #+
+#				Modified script for scp functionality, and    #+
+#				moved it to ssmn00pk00071 for ssh/scp         #+ 
+#				access reasons				      #+	
+#  2005/09/28 ukxl098 Added display message, adn echo . to show progress      #+	    
+#                     Added lockfile logic, no visudo during push_sudo        #+
+#                                                                             #+
+#-----------------------------------------------------------------------------#+
+
+function push_sudoers {
+	if [ "${1}" != "" ]; then
+		_movefile ${1}
+	else
+		while [ ${i} -le 2 ]
+		do
+			if [ ${i} -eq 1 ]; then
+				_movefile ${HOSTHPUX}
+             			((i = i + 1))
+             			push_sudoers
+			elif [ ${i} -eq 2 ]; then
+				_movefile ${HOSTSOLA}
+	     			((i = i + 1))
+             			# we are not using sudoers on aix servers
+             			# push_sudoers
+			fi
+		done
+	fi
+}
+
+function _movefile {
+	echo "\nPushing sudoers file, please be patient. . .\n"
+	HOSTFILE=${1}
+	echo "" >> ${OUTPUT}
+	echo "`date`: Pushing file ${RUNFROM}:${FILE} to..." >> ${OUTPUT}
+	echo "" >> ${OUTPUT}
+	for LINE in `cat ${HOSTFILE} | grep -v '^#'`
+	do
+		HOST=`echo ${LINE} | cut -d: -f1`
+		CONN=`echo ${LINE} | cut -d: -f2`
+		OSVER=`${CONN} ${HOST} "uname -r"`
+                OSTYP=`${CONN} ${HOST} "uname -s"`	
+
+		if [ "${HOSTFILE}" = "/home/uss/unixadm_data/hosts_hpux.tbl" ]; then
+                	DESTDIR=/opt/local/sudo/etc
+                	DESTFILE=${DESTDIR}/sudoers
+        	elif [ "${HOSTFILE}" = "/home/uss/unixadm_data/hosts_sun.tbl" ]; then
+			if [ "${OSVER}" = "5.7" ]; then	
+                		DESTDIR=/opt/local/sudo/etc
+                		DESTFILE=${DESTDIR}/sudoers
+			else
+                		DESTDIR=/usr/local/etc
+                		DESTFILE=${DESTDIR}/sudoers
+			fi
+		else
+			if [ "${OSTYP}" = "HP-UX" ]; then
+				DESTDIR=/opt/local/sudo/etc
+                        	DESTFILE=${DESTDIR}/sudoers
+			elif [ "${OSTYP}" = "SunOS" ]; then
+				if [ "${OSVER}" = "5.7" ]; then
+                                	DESTDIR=/opt/local/sudo/etc
+                                	DESTFILE=${DESTDIR}/sudoers
+                        	else
+                                	DESTDIR=/usr/local/etc
+                                	DESTFILE=${DESTDIR}/sudoers
+                        	fi
+			fi
+        	fi
+
+		if [ "${CONN}" = "remsh" ]; then
+			${CONN} ${HOST} "mkdir -p ${DESTDIR}; cp -p ${DESTFILE} ${DESTFILE}.${DATE}"  >> ${OUTPUT} 2>/dev/null
+			rcp -p ${FILE} ${HOST}:${DESTFILE}                                            >> ${OUTPUT} 2>/dev/null
+			${CONN} ${HOST} "chown root:root ${DESTFILE}; chmod 0440 ${DESTFILE}"         >> ${OUTPUT} 2>/dev/null
+		elif [ "${CONN}" = "ssh" ]; then
+			${CONN} ${HOST} "mkdir -p ${DESTDIR}; cp -p ${DESTFILE} ${DESTFILE}.${DATE}"  >> ${OUTPUT} 2>/dev/null
+			scp -p ${FILE} ${HOST}:${DESTFILE}                                            >> ${OUTPUT} 2>/dev/null
+			${CONN} ${HOST} "chown root:root ${DESTFILE}; chmod 0440 ${DESTFILE}"         >> ${OUTPUT} 2>/dev/null
+		fi
+
+		echo ".\c"	# something to indicate progress. . .
+
+		if [ $? -ne 0 ]; then
+			echo "  ${HOST}\t\t@ ${DESTFILE} \t\t\t... Failed!" >> ${OUTPUT} 2>&1
+		else	
+			echo "  ${HOST}\t\t@ ${DESTFILE} \t\t\t... Successful!" >> ${OUTPUT} 2>&1
+		fi
+	done	
+	echo			# char return after the . line
+}
+
+#####
+# Start of the Script
+#####
+
+# variables - original
+#SUDIR=/opt/local/sudo/etc
+#FILE=${SUDIR}/sudoers
+#RUNFROM=ccux65
+#OUTPUT="/tmp/update_sudoers.log"
+#CANT_RSH=`cat /usr/local/bin/cant_rsh`
+#MAILTO=root@uxmailhost.carlson.com
+
+# variables - new
+SUDIR=/usr/local/etc
+FILE=${SUDIR}/sudoers
+RUNFROM=ssmn00pk00071
+OUTPUT=/tmp/push_sudo.log
+#CANT_RSH=`cat /usr/local/bin/cant_rsh`
+#MAILTO=dtan@carlson.com
+MAILTO=root@uxmailhost.carlson.com
+LOCKFILE=/usr/local/bin/visudo.lock
+
+HOSTHPUX=/home/uss/unixadm_data/hosts_hpux.tbl
+HOSTSOLA=/home/uss/unixadm_data/hosts_sun.tbl
+HOSTTEMP=""
+
+echo "INFO: Checking for lockfile ${LOCKFILE}..."
+if [ ! -f ${LOCKFILE} ]; then
+	echo "INFO: Creating lockfile ${LOCKFILE}..."
+	touch ${LOCKFILE}
+else
+	echo "WARN: Lockfile ${LOCKFILE} exists, someone may be currently editing the sudoers file,"
+	echo "WARN: please try again in a few minutes!"
+	exit 1
+fi
+
+DATE=`date +%Y%m%d-%H%M`
+
+i=1
+
+[ `uname -n` != "${RUNFROM}" ] && { echo "\nThis should be run from host ${RUNFROM}...\n" 
+                                  exit 1; }
+
+echo "####### `who -m` #######" | tee ${OUTPUT}
+echo "Please document what you have changed." | tee -a ${OUTPUT}
+echo "When you are done, hit <ENTER> to continue." | tee -a ${OUTPUT}
+echo "Log file @ ${OUTPUT} can be tailed to monitor progress of this script." | tee -a ${OUTPUT}
+echo "Changes:" | tee -a ${OUTPUT}
+read CHANGES
+echo "" >> ${OUTPUT}
+echo "  ${CHANGES}" >> ${OUTPUT}
+
+if [ $# -ge 1 ]; then
+	echo ${1} > /tmp/HOSTTEMP.tbl
+	HOSTTEMP=/tmp/HOSTTEMP.tbl
+	push_sudoers ${HOSTTEMP}
+	rm -f ${HOSTTEMP}
+else
+	push_sudoers ${HOSTTEMP}
+fi
+
+# Now push setup the ssmn00pk00071 web sudo file
+#remsh ssmn00pk00071 /usr/local/bin/web_sudo
+#chown p00unx ${OUTPUT}
+#su - p00unx -c /home/uss/p00unx/push_sudo_rce
+#	mailx -s "Push_Sudo Results" ${MAILTO} < ${OUTPUT} >/dev/null
+#exit
+
+echo "Push Complete, emailing ${OUTPUT} to ${MAILTO}..."
+mailx -s "Push_Sudo Results" ${MAILTO} < ${OUTPUT} >/dev/null
+rm -f ${LOCKFILE}

@@ -1,0 +1,49 @@
+#!/bin/bash
+
+OS=`uname`
+
+#echo $OS
+
+echo `date` >> /tmp/autofs.out
+
+if [ "${OS}" = "Linux" ]
+then
+	RUNNING=`ps -ef|grep -v grep | grep automount | awk '{print $2}'`
+#	RUNNING=`service autofs status | awk '{print $5}'`
+	echo $RUNNING
+	if [ -z ${RUNNING} ]
+	then
+		echo "autofs is not running... starting..." >> /tmp/autofs.out
+#		if [ -f /var/run/autofs.pid ]
+#		then
+#			rm /var/run/autofs.pid
+#		fi
+		service autofs stop >> /tmp/autofs.out
+		service autofs start >> /tmp/autofs.out
+	else
+		echo "autofs is running... exiting..." >> /tmp/autofs.out
+		exit 0
+	fi
+elif [ "${OS}" = "SunOS" ]
+then
+#	echo $RUNNING
+	RUNNING=`ps -ef|grep automount | grep -v grep | wc -l`
+	if [ ${RUNNING} -gt 0 ]
+	then
+		echo "autofs is running... exiting..." >> /tmp/autofs.out
+		exit 0
+	else
+		OSVER=`uname -a | awk '{print $3}'`
+		if [ "${OSVER}" = "5.10" ]
+		then
+			echo "autofs is not running... starting..." >> /tmp/autofs.out
+			svcadm restart autofs >> /tmp/autofs.out
+		else
+			echo "autofs is not running... starting..." >> /tmp/autofs.out
+			/etc/init.d/autofs start >> /tmp/autofs.out
+		fi
+	fi
+else
+	print "OS Out of scope... Exiting"
+	exit 0
+fi

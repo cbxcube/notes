@@ -1,0 +1,95 @@
+Pre-Work:
+1) check file systems to see what's local and not system related:
+     a) df -k | egrep -v "c:|vx" - look for file systems that are local but aren't OS related, ie /apps, /usr/db2, /export/home
+	1) record the size of the local file systems for after the OS reinstall is complete
+	2) Backup these file systems to a location that has enough free space :
+	     a) Try to find a local SAN based file system that has enough free space and tar up the local file system to it:
+                 rsync -avuz /localfilesystem /SAN/filesystem
+	     b) If you don't have enough SAN disk available, you might be able to find disk space on an external host.  You can 		 use rsync to copy the data over:
+		   rsync -avuz --rsync-path=/path/to/rsync/onremotesystem -e ssh SRC:/filesystem DEST:/filesystem
+                     example:
+                        from fiadmin:
+                           rsync -avuz --rsync-path=/usr/local/bin/rsync -e ssh ux417:/apps/ /HOME/e29412/ux417/apps
+	     c) we will run rsync once more before we bring the OS down prior to rebuild so we have a current copy.
+     b) Backup /etc to reference after OS reinstall is complete, ie /etc/vfstab, /etc/hostname.*, etc...:
+	     a) rsync -avuz /etc /SAN/filesystem
+     c) make note of the existing static routes and save for post install:
+	     a) netstat -rn > /SAN/filesystem/ux417.static
+     d) Make a list of installed packages to diff after rebuild:
+	     a) pkginfo -l > /SAN/filesystem/ux417.pkginfo.long
+	     b) pkginfo | sort -n > /SAN/filesystem/ux417.pkginfo.sort
+     e) Make a backup of all crontabs:
+	     a) rsync -avuz /var/spool/cron/crontabs /SAN/filesystem
+
+2) Prepare jumpstart for the reinstall:
+     a) Find and follow the Sun Solaris JET Jumpstart Installation procedures to prepare the jumpstart server for the reinstall
+
+Upgrade:
+3) Begin the reinstall:
+     a) again, find and follow the Sun Solaris JET Jumpstart Installation procedures to perform the jumpstart/wanboot
+     b) from OBP:
+	IF FIRMWARE IS AT A HIGH ENOUGH LEVEL:
+		ux346 = setenv network-boot-arguments host-ip=10.32.5.83,router-ip=10.32.1.254,subnet-mask=255.255.0.0,hostname=ux346,file=http://10.32.5.117:443/cgi-bin/wanboot-cgi
+		ux416 = setenv network-boot-arguments host-ip=172.21.102.209,router-ip=172.21.102.248,subnet-mask=255.255.255.0,hostname=ux416,file=http://10.32.5.117:443/cgi-bin/wanboot-cgi
+		ux219 = setenv network-boot-arguments host-ip=168.230.153.49,router-ip=168.230.153.62,subnet-mask=255.255.255.240,hostname=ux219,file=http://10.32.5.117:443/cgi-bin/wanboot-cgi
+		setenv network-boot-arguments host-ip=,router-ip=,subnet-mask=,hostname=,file=http://jumpstart.server.ip.address:443/cgi-bin/wanboot-cgi
+		boot net - install
+	IF FIRMWARE IS TOO LOW OF A LEVEL, BOOT OFF CDROM FIRST:
+		boot cdrom -o prompt -F wanboot - install
+		boot> prompt
+		host-ip? clients.IP.addres.123
+		subnet-mask? clients.subnet.mask.0
+		router-ip? clients.gateway.IP.123
+		hostname? clientshostname
+		http-proxy?
+		client-id?
+		aes?
+		3des?
+		sha1?
+		bootserver? https://jumpstart.server.ip.address:443/cgi-bin/wanboot-cgi
+		boot> go
+
+4) Follow thru the ServerBuild checklist (SOP UNIX Engineering Server Build Checklist)
+     a) rejoin vas
+	   ie - vastool -u jeffreyjohnson join -f -c "ou=ah,ou=unix managed,ou=servers,dc=fiaspdev,dc=org" -n ux417 fiaspdev.org
+		vgptool clean
+		vgptool apply
+		vastool flush
+     b) update cfengine
+	   if host is in domain other than corp or fiasp.net:
+		touch /etc/cf_auto_maps
+	   remove old entry from ux330:/var/cfengine/ppkeys:
+		sudo rm /var/cfengine/ppkeys/root.ipaddress.pub
+	   run cfengin update:
+		cfagent -qv
+     c) remove /u01
+           ie - zfs destroy rpool/u01
+
+5) Recreate and restore local file systems and import SAN:
+     a) Create the mountpoints and update /etc/vfstab with the mountpoints
+         zfs create -o mountpoint=/usr/db2 -o quota=10g -o reservation=10g rpool/db2
+	 ...
+         mkdir -m 755 /u01
+         mkdir -m 755 /dba_work
+         mkdir -m 755 /db01
+	 ...
+    b) Restore data to local file systems:
+         1) from fiadmin:
+		rsync -avuz --rsync-path=/usr/local/bin/rsync -e ssh /HOME/e29412/ux417/usr_db2/ ux417:/usr/db2
+                rsync -avuz --rsync-path=/usr/local/bin/rsync -e ssh /HOME/e29412/ux417/apps/ ux417:/apps
+                rsync -avuz --rsync-path=/usr/local/bin/rsync -e ssh /HOME/e29412/ux417/export_home/ ux417:/export/home
+    c) Install Veritas Storage Foundation:
+    d) Copy SAN and NFS file systems entries from backup of /etc/vfstab
+
+6) Restore other files/settings needed for this specific host:
+    a) recreate any interface startups from backups of /etc
+         e.g. hostname.bge2
+    b) Update hosts file to match original from backup of /etc/hosts
+    c) Recreate static routes - check the backup of /etc for startup scripts that will create the necessary static routes.
+
+7) Reinstall any applications that may have been overwritten during rebuild:
+    a) pkginfo | sort -n > /var/tmp/sorted.pkgs
+    b) diff /var/tmp/sorted.pkgs /SAN/filesystem/ux417.pkginfo.sort - look for anything that sticks out
+    c) contact any support team that may need to reinstall applications
+
+8) Reboot and confirm everything starts up correctly before handing off to the customer for application start/checkout.

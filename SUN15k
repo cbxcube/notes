@@ -1,0 +1,201 @@
+from domain:
+prtdiag -v:
+Slot ID column:
+/SB09/PO/B0 - indicates 15K system board 09, processor 0, bank 0
+
+ssh sunman
+ssh f15ksc - pword solaris
+
+root@f15ksc0 # su - sms-svc
+f15ksc0:sms-svc:1> showplatform
+
+PLATFORM:
+=========
+Platform Type: Sun Fire 15000
+
+CSN:
+====
+Chassis Serial Number: 0326AK202F
+
+COD:
+====
+Chassis HostID: 5014936Y02NC3
+Proc RTUs installed: 0
+PROC Headroom Quantity: 0
+Proc RTUs reserved for domain A: 0
+Proc RTUs reserved for domain B: 0
+Proc RTUs reserved for domain C: 0
+Proc RTUs reserved for domain D: 0
+Proc RTUs reserved for domain E: 0
+Proc RTUs reserved for domain F: 0
+Proc RTUs reserved for domain G: 0
+Proc RTUs reserved for domain H: 0
+Proc RTUs reserved for domain I: 0
+Proc RTUs reserved for domain J: 0
+Proc RTUs reserved for domain K: 0
+Proc RTUs reserved for domain L: 0
+Proc RTUs reserved for domain M: 0
+Proc RTUs reserved for domain N: 0
+Proc RTUs reserved for domain O: 0
+Proc RTUs reserved for domain P: 0
+Proc RTUs reserved for domain Q: 0
+Proc RTUs reserved for domain R: 0
+
+
+Available Component List for Domains:
+=====================================
+Available Component List for domain gdvp4shrora1:
+ SB0 SB1 SB2 SB3 SB4 SB5 SB6 SB7 SB8 SB9 SB10 SB11 SB12 SB13 SB14 SB15 SB16 SB17
+ IO0 IO1 IO2 IO3 IO4 IO5 IO6 IO7 IO8 IO9 IO10 IO11 IO12 IO13 IO14 IO15 IO16 IO17
+
+Available Component List for domain gdvp4hciapp1:
+ SB0 SB1 SB2 SB3 SB4 SB5 SB6 SB7 SB8 SB9 SB10 SB11 SB12 SB13 SB14 SB15 SB16 SB17
+ IO0 IO1 IO2 IO3 IO4 IO5 IO6 IO7 IO8 IO9 IO10 IO11 IO12 IO13 IO14 IO15 IO16 IO17
+
+Available Component List for domain gdvp4shrora2:
+ SB0 SB1 SB2 SB3 SB4 SB5 SB6 SB7 SB8 SB9 SB10 SB11 SB12 SB13 SB14 SB15 SB16 SB17
+ IO0 IO1 IO2 IO3 IO4 IO5 IO6 IO7 IO8 IO9 IO10 IO11 IO12 IO13 IO14 IO15 IO16 IO17
+
+Available Component List for domain gdvp4rdmapp1:
+ SB0 SB1 SB2 SB3 SB4 SB5 SB6 SB7 SB8 SB9 SB10 SB11 SB12 SB13 SB14 SB15 SB16 SB17
+ IO0 IO1 IO2 IO3 IO4 IO5 IO6 IO7 IO8 IO9 IO10 IO11 IO12 IO13 IO14 IO15 IO16 IO17
+
+Available Component List for domain dbsd0007:
+ SB0 SB1 SB2 SB3 SB4 SB5 SB6 SB7 SB8 SB9 SB10 SB11 SB12 SB13 SB14 SB15 SB16 SB17
+ IO0 IO1 IO2 IO3 IO4 IO5 IO6 IO7 IO8 IO9 IO10 IO11 IO12 IO13 IO14 IO15 IO16 IO17
+
+Available Component List for domain F:
+ No System boards
+ No IO boards
+
+Available Component List for domain G:
+ No System boards
+ No IO boards
+
+Available Component List for domain H:
+ No System boards
+ No IO boards
+
+Available Component List for domain I:
+ No System boards
+ No IO boards
+
+Available Component List for domain J:
+ No System boards
+ No IO boards
+
+Available Component List for domain K:
+ No System boards
+ No IO boards
+
+Available Component List for domain L:
+ No System boards
+ No IO boards
+
+Available Component List for domain M:
+ No System boards
+ No IO boards
+
+Available Component List for domain N:
+ No System boards
+ No IO boards
+
+Available Component List for domain O:
+ No System boards
+ No IO boards
+
+Available Component List for domain P:
+ No System boards
+ No IO boards
+
+Available Component List for domain Q:
+ No System boards
+ No IO boards
+
+Available Component List for domain R:
+ No System boards
+ No IO boards
+
+
+Domain Ethernet Addresses:
+==========================
+Domain ID   Domain Tag        Ethernet Address
+A           gdvp4shrora1      0:0:be:a8:3e:16
+B           gdvp4hciapp1      0:0:be:a8:3e:17
+C           gdvp4shrora2      0:0:be:a8:3e:18
+D           gdvp4rdmapp1      0:0:be:a8:3e:19
+E           dbsd0007          0:0:be:a8:3e:1a
+F           -                 0:0:be:a8:3e:1b
+G           -                 0:0:be:a8:3e:1c
+H           -                 0:0:be:a8:3e:1d
+I           -                 0:0:be:a8:3e:1e
+J           -                 0:0:be:a8:3e:1f
+K           -                 0:0:be:a8:3e:20
+L           -                 0:0:be:a8:3e:21
+M           -                 0:0:be:a8:3e:22
+N           -                 0:0:be:a8:3e:23
+O           -                 0:0:be:a8:3e:24
+P           -                 0:0:be:a8:3e:25
+Q           -                 0:0:be:a8:3e:26
+R           -                 0:0:be:a8:3e:27
+
+
+Domain configurations:
+======================
+Domain ID   Domain Tag        Solaris Nodename       Domain Status
+A           gdvp4shrora1      gdvp4shrora1           Running Solaris
+B           gdvp4hciapp1      -                      Powered Off
+C           gdvp4shrora2      gdvp4shrora2           Running Solaris
+D           gdvp4rdmapp1      gdvp4rdmapp1           Running Solaris
+E           dbsd0007          dbsd0007               Running Solaris
+F           -                 -                      Powered Off
+G           -                 -                      Powered Off
+H           -                 -                      Powered Off
+I           -                 -                      Powered Off
+J           -                 -                      Powered Off
+K           -                 -                      Powered Off
+L           -                 -                      Powered Off
+M           -                 -                      Powered Off
+N           -                 -                      Powered Off
+O           -                 -                      Powered Off
+P           -                 -                      Powered Off
+Q           -                 -                      Powered Off
+R           -                 -                      Powered Off
+
+
+addboard & deleteboard:
+ -d domaintag -> from the Domain Tag column
+ SB## -> the system board that is being added or deleted from this domain
+f15ksc0:sms-svc:2> deleteboard -d gdvp4rdmapp1 SB10 -> deletes the SB10 system board from domain gdvp4rdmapp1
+f15ksc0:sms-svc:2> addboard -d gdvp4rdmapp1 SB10 -> adds the SB10 system board to the gdvp4rdmapp1 domain
+f15ksc0:sms-svc:2> addboard -d gdvp4rdmapp1 -c configure SB10 -> add the "-c configure" if this is a new board for this domain
+**NOTE**
+   -these commands can take several minutes
+
+assign SB10
+assign SB10 done
+poweron SB10
+.....
+poweron SB10 done
+test SB10
+........                      
+test SB10 done
+connect SB10
+........
+connect SB10 done
+configure SB10
+..
+configure SB10 done
+..
+notify online SUNW_cpu/cpu320
+notify online SUNW_cpu/cpu321
+notify online SUNW_cpu/cpu322
+notify online SUNW_cpu/cpu323
+............                  
+notify add capacity (4 cpus)
+notify add capacity (1048576 pages)
+notify add capacity SB10 done
+
+
+from domain:
+prtdiag -v - check for SB## that was added or removed to confirm

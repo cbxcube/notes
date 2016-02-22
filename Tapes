@@ -1,0 +1,52 @@
+# Replace cleaning cartridge
+https://ts3310/main_IBM3576.htm
+username = ibm
+password = ts3310
+select 'Manage Cartridges' -> 'Cleaning Cartridges'
+check cartridge to be replaced, select 'Remove' from action drop down menu
+physically remove cartridge from jukebox
+insert new cartridge in jukebox, select 'SYSTEM' library on jukebox -> 'Operations' -> 'Insert Cleaning Media'
+log back onto site, verify new cartridge is viable with proper number of cleanings remaining (50)
+
+
+# EJECT TAPES -> Complete before 10am when Iron Mt typically arrives
+1) Log onto ep1p-apnsr01
+2) cd /nsr/scripts
+3) ./ejt_full_tapes -> 
+	select 1 (Create the Full Tapes file)
+	select 2 (Send File to Iron Mtn)
+	select 3 (Create the withdraw scripts)
+	select 4 (Exit)
+4) cd /var/tmp
+5) Run each withdraw script, pulling out tapes before proceeding to the next script. Monitor Networker for (ready)
+6) ssh admin@ap1p-apav18 -> su - root
+7) cd /nsr/scripts
+8) ./ejt_full_tapes _>
+	select 1 (Create the Full Tapes file)
+	select 2 (Send File to NWServer)
+	select 3 (Create the Withdraw scripts)
+	select 4 (exit)
+9) cd /var/tmp
+10 Run each withdraw script, pulling out tapes before proceeding to the next script. Monitor Networker for (ready)
+11) On ep1p-apnsr01
+	crontab -l -> run the following script located in crontab: "/nsr/scripts/av_to_im > /nsr/logs/av_to_im.log 2>&1"
+12) Place tape cases in shipping dock on top shelf in 2nd from right cabinet on dock. 
+
+# INSERT NEW TAPES -> Can be completed whenever, but prior to end of day to repopulate ejected tapes
+1) Prepare tapes for inserting into library -> take picture of labels to make sure script works correctly
+2) if using script, Kick off script prior to inserting the tapes
+	on ep1p-apnsr01
+	cd /opt/depots/admin/nathan/insert_tapes
+	./insert_tapes
+	Insert tapes into library drawers; wait for doors to be scanned
+	Log into library LCD -> username: ibm; password:ts3310
+	hit <enter> -> wait for script to complete before adding more tapes in
+3) if adding tapes manually
+	take picture of all tapes labels
+	Insert tapes into library drawers: wait for doors to be scanned
+	Log into library LCD -> username: ibm; password:ts3310
+	nsrjb -Y -o recycble -S slot# (slot # is slot holding tape)
+	#We need more NonFull tapes than Full tapes
+	nsrjb -Y -L -b NonFull -S slot# -> labels tape in the NonFull pull
+	nsrjb -Y -L -b Full -S slot# -> labels tape in the Full pull
+

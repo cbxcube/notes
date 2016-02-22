@@ -1,0 +1,39 @@
+INSTALLATION: 
+1) See attached document to add new LUNs
+2) vxdg init itd02dg itd02dg01=newdisk1 to create new disk group
+3) for i in 2 3 4 5 6
+   do
+   vxdg -g itd02dg adddisk itd02dg0${i}=newdisk${i}
+   done
+4) for i in 1 2 3 4 5 6
+   do
+   vxassist -g itd02dg make itd02_d0${i} `vxassist -g itd02bkdg maxsize newdisk${i} | awk '{print $4}'`
+   done
+5) for i in 1 2 3 4 5 6
+   do
+   vxedit -g itd02dg set user=oracle group=oinstall itd02_d0${i}
+   done
+6) vxdg init itdg02bkdg itd02bkdg01=newdisk7 - create bkup disk group
+7) for i in 8 9 10 11
+   do
+   DSKNUM=`expr ${i} - 6`
+   vxdg -g itd02bkdg adddisk itd02bkdk0${i}=newdisk${i}
+   done
+8) vxassist -g itd02bkdg maxsize - will provide the total amount of disk space
+9) vxassist -g itd02bkdg make itd02bk `vxassist -g itd02bkdg maxsize | awk '{print $4}'`
+10) newfs -F vxfs -o largefiles /dev/vx/rdsk/itd02bkdg/itd02bk
+11) mkdir /itd02bk;chmod 755 /itd02bk;
+12) vi /etc/vfstab - add following line:
+    /dev/vx/dsk/itd02bkdg/itd02bk /dev/vx/rdsk/itd02bkdg/itd02bk /itd02bk vxfs 3 yes largefiles,mincache=closesync,suid
+13) mount /itd02bk; chown oracle:oinstall /itd02bk
+BACKOUT: 
+1) umount /itd02bk; rmdir /itd02bk
+2) cpv /etc/vfstab - remove the itd02bk entry
+3) vxdg destroy itd02bkdg
+4) vxdg destroy itd02dg
+5) for i in 1 2 3 4 5 6 7 8 9 10 11
+   do
+   /etc/vx/bin/vxdiskunsetup newdisk${i}
+   done
+6) perform opposite steps in attached document to remove the new LUNs
+BACKOUT DURATION: 1hour

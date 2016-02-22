@@ -1,0 +1,31 @@
+# Install puppet agent on RHEL4
+http://adamreid.ca/posts/Kickstarting-Puppet-On-Centos4.html
+
+# Clean up old puppet cert
+sudo puppet cert clean rhlspainf200.fairisaac.com
+
+# With Foreman
+scp -pr rhlkicinf401:/etc/puppet/modules/modulename rhlforinf401:/apps/puppet-modules
+remove any RCS
+
+umask 0022
+
+## Synchronize working directory:
+cd /apps/puppet-modules
+sudo git pull
+#
+### If adding/updating an existing file:
+## Add/update files in the modules relative to this directory, then
+cd /apps/puppet-modules
+sudo git add .
+#
+### If permanently deleting one or more files:
+sudo git rm -f /apps/puppet-modules/<module>/path/to/file
+#
+### Commit and Push changes to git Origin master branch:
+sudo git commit -m "Explaination of changes made"
+sudo git push origin master
+#
+### Synchronize git Origin master branch with local /etc/puppet/environments/production/modules directory:
+sudo /etc/puppet/syncPuppetModules.sh
+

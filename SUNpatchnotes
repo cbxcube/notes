@@ -1,0 +1,123 @@
+# create links in the patch bundle so the new builds use them:
+    # cd 10_Recommended
+    # for patches in `cat patch_order`
+    # do
+    # ln -s patches/$patches .
+    # done
+
+
+# Download latest patch bundle:
+   Open case with Terix for new patch bundles for Solaris 9 and 10
+   Terix will provide download instructions
+
+
+# Patch testing and preparation: 
+   if ./installcluster comes back with usage statement, try "./installcluster --s10cluster" instead
+   Prepare patch cluster for FIOps:
+   Build Sol9 and Sol10 lab servers and install the patch bundles and updated packages to verify they work
+   Edit the installcluster script and repackage bundle:
+      find the "passcode_confirmed=" entry and change it to "passcode_confirmed=true" - this will allow the patch bundle to install 
+	  without adding the passcode
+      find "# set low water mark on free space in accordance with DAP patching requirements:
+	change the minimum size requirements so it doesn't require 2gb of space in /var
+	  change req_kb_var_run=$(( 10000 + max_patch_size_kb + 2 * contents_size_kb ))
+		to
+	  req_kb_var_run=200000
+
+
+#      Set up installcluster script to include zfs snapshot
+          zboot=`zfs list | grep "rpool " | awk '{print $1}'`
+	  if [ ${zboot} = "rpool" ]
+	  then
+		zfs snapshot -r rpool@`date '+%Y%m%d'` 
+		if [ $? != 0 ]
+                then
+			echo "Snapshot failed.  This is not required, patching will continue..."
+		else
+			echo "Snapshot succeeded.  Continuing with patching..."
+		fi
+	  else
+		echo "ZFS boot not used.  No snapshot will be created.  Continuing with patching..."
+		sleep 5
+	  fi
+   tar or zip patch bundle directory
+	tar -xvf 10_Recommended.tar 10_Recommended
+	zip -r 10_Recommended.zip 10_Recommended - preferred method
+
+
+# Check current version of utilities against what's installed:
+   for PKG in `pkginfo -l | grep SMC | awk '{print $2}'`
+   do
+     print -n ${PKG} "   ";pkginfo -l ${PKG} | grep VERSION | awk '{print $2}'
+   done
+   if any packages do not match what is currently in the patch level document download from jumpstart server:
+      ssh ux255
+      cd /jumpstart/pkgs/custom/sparc
+      scp -pr SMCpkg server:/patches
+
+# Check current version of PowerPath
+   pkginfo -l EMCpower | grep VERSION
+   if the Version does not match what is currently indicated in the patch level document, download from jumpstart server:
+      ssh ux255
+      cd /jumpstart/Software/SAN/powerpath
+      scp EMCPower*.tar server:/patches
+      on server:
+	 cd /patches
+	 tar -xvf EMCPower*.tar	
+	 pkgrm EMCpower
+	 pkgadd -d . EMCpower
+	 pkginfo -l EMCpower | grep VERSION - verify the VERSION matches the patch level document
+
+# /opt/jet/Clients/common.files/install_stb.sh - updates Explorer and sneep
+
+
+# Updating utilities
+download new tools from sunfreeware to a common location:
+   Download Solaris 8 packages for every package except lsof.  Because of icompatibility lsof requires a separate package for each
+     version of Solaris, so downdload lsof for Sol8, Sol9, and Sol10.
+   ux255:/jumpstart/pkgs/pkg_updates
+
+convert to standard Sun packages (use pkgtrans):
+   cd /jumpstart/pkgs/pkg_updates
+   for PKG in `ls -1 | awk -F"." '{print $1}'``
+   do
+     gunzip ${PKG}.gz
+     pkgtrans ./${PKG} .
+     rm ${PKG}
+   done
+
+tar updates for ease of transfers:
+   cd /jumpstart/pkgs
+   tar -cvf /jumpstart/pkgs/pkg_updates.tar.date updates
+
+scp to server to be patches:
+   scp /jumsptart/pkgs/pkg_updates.tar.date server:/patches
+
+untar pkg_updates.tar.date:
+   cd /patches
+   tar -xvf pkg_updates.tar.date
+
+boot into single user:
+   init 0
+   boot -s
+
+upgrade packages:
+   cd /patches/pkg_updates
+   for PKG in `ls -1`
+   do
+     pkgrm ${PKG} - reply "y" to every question
+     pkgadd -d . ${PKG} - reply "y" to every question
+   done
+
+verify upgrade packages are installed:
+   for PKG in `ls -1`
+   do
+     echo ${PKG}
+     pkginfo -l ${PKG} | grep VERSION
+   done
+
+run cfagent to make sure any custom files are up to date:
+   cfagent -qv
+
+after testing has been satisfied with the new packages, add them to the standard build image:
+   cp /jumpstart/pkgs/pkg_updates/SMC* /jumpstart/pkgs/custom/sparc

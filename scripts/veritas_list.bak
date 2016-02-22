@@ -1,0 +1,1 @@
+grep VRTS /home/uss/bin/explorer/servers/*/explorer*/${OPT}|cut -d/ -f7,10-|egrep "vxvm|vcs |netbp"|sort -u|sed 's/, Bin*//'|sed 's#/pkginfo-i.out:# #'|sed 's/application/	/'|sed 's/system/	/'|sed 's/optional/	/'>/tmp/ed

@@ -1,0 +1,24 @@
+Test ssh:
+start -> run -> cmd
+cd "d:\Program Files (x86)\CyberArk\Password Manager\bin"
+plink.exe hostname -ssh -P 22
+example: plink.exe lux498.fairisaac.com
+
+expect logs (Really good if client is failing due to SSH errors):
+From Cyber-Ark web interface:
+search hostname
+find SID
+on CPM:
+run explorer
+d:\Program Files (x86)\CyberArk\Password Manager\Logs\ThirdParty\safename-SID.Expect
+example: FIASPORTNET-Root-FIASPORTNET-Root-Root-S-1-5-21-354235899-96403635-1163603250-14171.Expect = lux497.fairisaac.com
+
+Expect UNIX Prompts:
+d:\Program Files (x86)\CyberArk\Password Manager\bin\UNIXprompts.ini
+Expect LOGs
+d:\Program Files (x86)\CyberArk\Password Manager\Logs\ThirdParty\servenameSID.Expect
+
+Error log files:
+d:\Program Files (x86)\CyberArk\Password Manager\Logs\pm_error
+
+

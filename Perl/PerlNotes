@@ -1,0 +1,760 @@
+# shebang line:G
+	#!/usr/bin/perl -Tw
+		-T is for "taint" checking which is useful for security checking
+		-w is for warnings which checks for possible errors
+		-c is for dry run, kind of like -w except it does not actually execute anything.
+		-v gives version of perl
+
+# man pages:
+	MANPATH=$MANPATH:/usr/perl5/man
+	man perl
+	man perlrun - execution info
+	man perldata - data structure info
+	man perlsyn - synatx info
+	man perlop - operators
+	man perlfunc - built in functions
+	man perlfaq - FAQ's
+	man perlre - regular expressions
+	perldoc - command for perl documentation
+
+# example:	
+	use 5.010; - will let you use 5.10 new functions
+	\n = new line
+	print "Welcome"
+	print "to"
+	print "perl!'
+		Welcome to perl!
+	say "Welcome"
+	say "to"
+	say "Perl!"
+		Welcome
+		to
+		Perl!
+	print "The value of NUM^2 is",($NUM**2),"more text.\n";		#imbedded calculation in print statement
+
+# Operators
+	$COUNT++		#incrementes COUNT by 1
+	$x+2			#increments x by 2
+	$x++			#increments x by 1
+	$x+10			#increments x by 10
+	. 	#appends strings
+	<=>	#comparison of values
+		3 <=> 2;  - returns 1 ("<" = "-1","=" = "0", ">" = "1")
+		a <=> a;  - returns 0	
+	$dice1 = int(rand(6))+1		#$dice1 will have a random value between 1 and 6
+	
+
+# Quick testing (if left then right)
+# 	Logical AND
+	$x = (4 - 4 && "snoopy" );	# if left is true (non-zero), $x will be "snoopy", if left is 0 (4-4=0), $x will be 0
+	$x = (4 + 2 && "snoopy");	# left is true (4+2 = 6), $x = snoopy
+#	Logical OR
+	$x = (4 - 4 || "snoopy");	# if left is false (zero), $x will be "snoopy", if left is non-zero (4-4=0), $x will be 0
+	$x = (4 + 2 || "snoopy");	# if left is true (4+2 = 6), $x is 0
+
+	
+
+# STDIN or STDOUT
+	< or << = standard in (STDIN or 0)
+	> or >> = standard out (STDOUT or 1)
+	2> = standard error out (STDERR or 2)
+	"2> /dev/null" = sends errors to /dev/null
+	"sqlplus ....... << EOF
+		SELECT
+		...
+	EOF"
+	"format $DISK < /tmp/q"
+
+	print "What is your favorite color? ";
+	system 'tput bold"		#turns the users input bold
+	$in = <STDIN>;
+	print "Your favorite color is $in\n";
+	system 'tput rmso"		#reverts to normal input
+	
+	$_ = <STDIN>;			#waits for enter to be pressed
+
+	chomp ($var)	#cuts the \n off the end of a variable
+		$in = chomp (<STDIN>);
+		chomp ($in = <STDIN>);
+	chop ($var)	#cuts the last character off the end of a string and returns that character including \n
+
+# String Search
+	index (string, target [, start]);
+	rindex (string, target [, start];	
+	
+	$a = substr(string, start[, length]); - data from string starting at the "start" position for "length" characters and puts that in $a
+	substr(string, start[, lenght]) = $a; - replaces $a in the string from "start" position for "length"
+		or
+	$replaced = substr(string, start[, length][,newtext]); $replaced is the substituted text
+
+# Control structures: If, for, while loops
+	false = 0, undef, "", "0"
+	true = everything else
+	if (!$var) {true statment'}	# if $var is undef, then execute true statement
+	if (test) {
+		true statement;
+	}
+
+	if (test) {
+		true statement;
+	} else {
+		false statement;
+	}
+
+	if (test) {
+		true statement;
+	} elsif (test) {
+		true statement;
+	} else {
+		false statement;
+	}
+
+	unless (test) {
+		false statement;
+	} else {
+		true statement;
+	}
+	
+	while (test) {
+		true statement;
+	}
+
+	until (test) {
+		true statement;
+	}
+
+	do {
+		statements;
+	} until (test);
+
+	do {
+		statements;
+	} while (test);
+
+	for ($i=0; $i<=10; $i++) {
+		statements;
+	}
+		for ($i = 0, $j = 10; $i <= 10; $i++, $j--) {
+			statements;
+		}
+
+	foreach $i (LIST) {
+		statements;
+	}
+
+	Here Documents:
+		print <<sometag;
+			<the text to be printed>
+		sometag
+
+	statement if condition;
+	statement unless condition;
+	statement while condition;
+	statement until condition;
+	statement for condition;
+		print "$a Workd!\n" if $a eq "Hello";
+		print $b++,"\n" until $b == 6;
+
+#Loop Controls
+	last - Exit the loop
+	next - Skip the rest of the block and begin the next iteration
+	redo - Restart the current iteration
+
+#Switch or case statments:
+	{
+	  ($a == 1) && do { print "1 selected\n"; last; }
+	  ($a == 2) && do { print "2 selected\n"; last; }
+	  ($a == 3) && do { print "3 selected\n"; last; }
+	  print "None of the above]n";
+	}
+
+	
+	use 5.010;
+	given ( $a ) {
+	  when ($a == 1){ say "1 selected" ; }
+	  when ($a == 2){ say "2 selected" ; }
+	  when ($a == 3){ say "3 selected" ; }
+	  default { say "None of the above." ; }
+	}
+
+	given ( $a) {
+	  when ($a % 2 == 0){ say "multiple of 2" ; continue ; }
+	  when ($a % 3 == 0){ say "multiple of 3" ; continue ; }
+	  when ($a % 5 == 0){ say "multiple of 5" ; }
+	  default { say "Not a multiple of 2, 3, or 5."; }
+	}
+
+#Arrays:     ###Arrays always begin with @
+	@arra = (1, 3, 5, 7, 11, 13, 17); 	#array @arra contains prime numbers
+	@arrb = (1 .. 5);			#array @arrb contains a list of numbers from 1 thru 5
+	@arrc = (1, 2, "new york", "london");	#array @arrc contains mixed values
+	@arrd = qw/text1 text2 text3/;		#array @arrd contains text values in an array delimited by ' '
+	
+	@arre = ("mercury", "venus", "earth", "mars");
+	$x = $arre[0]; #mercury
+	$y = $arre[2]; #earth
+	$w = $arre[-1]; #mars	 "-" pulls from the right
+	$z = $arre[-3]; #venus
+	$last = $#arre	#3;	the last index number in the array
+	$c = $arre[$#arre] #mars;	pulls the last element out of the array
+	
+	$arre = (@arre, "jupiter"); #adds jupiter to the end
+	$arre = ("sun", @arre); # adds sun to the front
+
+	$num_elements = $#arre + 1;	#returns length of array
+	$num_elements = @arre;		#returns length of array
+
+	for ($i=0; $i<=$#arre; $i++) {
+		print "Element $i contains $arre[$i]\n";
+	}
+	
+	foreach $element ($arre) {
+		print "$element ";
+	}
+	
+	"$_" is the "Default Variable"
+	foreach (@arre) {		#this foreach loop will print out each element in array @arre
+		print "$_ ";
+	}
+	
+	#slices:
+		@slicea = @arre[1, 3];	#array @slicea will contain venus and mars
+		@sliceb = @arre[0..2];  #array @sliceb will contain mercury, venus, earth
+
+		@arre[0, 1, 3] = ("jupiter", "neptune", "pluto");  #will replace the values in index 0 with "jupiter, 1 with "neptune", etc...
+		@arre[1, 3] = @arre[3, 1]; # will swap elements 1 and 3
+
+	#<> in arrays:
+		@all = <>;	#used for opening a file for reading from the command line
+		
+		@all = <>;
+		print "@all[2]\n"
+
+		$ scriptname.plx inputfile		#returns line 3 from inputfile
+
+	#@ARGV: # an array of all command line arguments
+		$num_of_cmd_line_args = @ARGV;
+	
+		foreach (@ARGV) {
+			print "Option ", ++$i,": $_\n";
+		}
+
+		for (@ARGV) {		#Does the same as the previous foreach loop
+			print "Option ", ++$i,": $_\n";
+                }
+	#Multi-dimensional arrays:
+		@marr = ( [11,12,13],
+			  [14,15,16]) ; # two dimensional array of 2x3 elements
+
+		$x = $marr[1][2] ; # 16
+
+
+	#Array Functions:
+	 	#shift: Removes the first element of an array
+		$opt = shift @ARGV #$opt will be the first argument
+		
+		#unshift: Adds an element to the beginning of an array
+		$Array_Length = unshift(@Array, "new_element"); #Will append "new_element to the beginning of @Array
+								#$Array_Length will contain the element count
+			
+		#push: Adds an element to the end of an array
+		$newlen = push(@planet, "jupiter"); #Will append Jupiter to the end of an array
+						    #$newlen will contain the new # of elements in the array
+
+		#pop: Removes an element from the end of an array
+		$last = pop @planet;	#will remove the last element from @planet and will store that value in $last				
+		
+		#splice: Pulls a set of elements out of an array and stores them in a new array
+		@hot = splice(@planet, 0, 2);	#pulls elements 0 and 1 out of @planet and puts them in @hot
+			splice(@array, startpos, #ofelementstopull);
+		@hot = splice(@planet, 1, 5);   #pulls elements 1, 2, 3, 4, and 5 and stores them in @hot
+
+		splice(@hot, 1, 1, "mars");	#replace element 1 in @hot,for only 1 element, and replace it with "mars"
+			splice(@array, elementpos, #ofelementstooverwrite, itemtoinsert);
+
+		#reverse: Reverses the array
+			@rev = reverse(@array); #@rev contains the opposite of @array
+
+		#print:
+			print "\@planet = @planet\n";		#will print elements with space as the delimiter
+			print "\@planet = ",@planet,"\n";	#will print elements with no spaces
+
+			$" = "--";	#will set the delimiter to --
+
+		#split: splits strings into substrings by scanning for a separator
+			$passwd = "alf:x:86:30:alfons:/export/home/alf:/bin/ksh";
+
+			@passwd = split(/:/, $passwd); 
+				#@passwd will contain (alf x 86 30 alfons /export/home/alf /bin/ksh) after the split
+			@passwd = split(/ /, $passwd); will split the data in the array based on the " " delimiter
+			@passwd = split(//, $passwd); will split out every character into a separate element in the array
+			@passwd = split('', $passwd); will split out every charactar based on space but will ignore extra spaces
+			@passwd = split(/:/, $passwd, 4); will pull the data as 4 elements using : as the delimiter
+
+		#join: concats the elements of a list using a delimiter
+			$line = join("::", @words);  #joins words from @words and puts them in $line replacing the " " with "::"
+
+		#sort: sorts the elements in an array
+			@sorted_arr = sort @arr;	sorts @arr and puts that data in @sorted_arr
+			@alpha_sort = sort{ $a cmp $b } @arr;
+			@rev_alpha_sort = sort{ $b cmp $a } @arr;
+			@num_sort = sort{$a <=> $b} @arr;
+			@sorted = sort{$a <=> $b || $a cmp $b} @arr;
+
+		#grep:
+			@garr = grep /^a/, @arr; will find any elements that begin with "a" and store them in @garr
+
+		#back quotes and commands:
+			@files = `/usr/bin/ls /etc`;
+			chomp(@files);
+			$count = @files;
+			print "@files\n";
+			print "$count files listed\n";
+
+		#qx: similar to back quotes
+			$upstats = qx/uptime/;
+			@temp = split /,/, $upstats; #removes commas
+			$tempstr = join " ", @temp; #rejoins with spaces instead of commas
+			@up = split ' ', $tempstr; #remove all spaces
+
+#Hashes:  Unordered set of elements
+	use keys to look up elements
+	similar to awk
+	%fflint = ( "name" => "flintstone",
+		    "fname" => "fred",
+		    "job" => "stonecutter");
+	  or
+	%fflint = ( "name", "flintstone", "fname", "fred", "job", "stonecutter");
+
+	%hash = ( "key1", "value",
+		  "key2", "value",
+		  "key3", "value");
+	print "key1 = $hash{key1}\n";
+	print "key2 = $hash{key2}\n";
+
+	#Hash functions:
+		#keys: returns list of all keys in the hash
+			@k = keys (%flint); #returns keys and stores them in array @k
+			$k = keys (%flint); #returns the keys and stores them in $k
+
+		#values: returns the values of a hash as a list
+			@v = values %flint; #stores the values of a hash into array @v
+			$v = values %flint; #returns the number of values in a hash
+
+		#each: returns one key and one value in every call
+			($k, $v) = each %flint; # stores the next key and value in $k and $v
+
+	#Iteration:
+		#for loop with keys
+			foreach $k (keys (%flint)) {
+				print "$k --> $flint{$k}\n";
+			}
+			     or
+			foreach (keys (%flint)) {
+				print "$_ --> $fflint{$_}\n";
+			}
+
+		#while loop with each
+			while (($k,$v) = each %flint ) {
+				print "$k --> $v\n";
+			}
+
+		#sort with keys - sorts the keys
+			foreach $key (sort keys %flint) {
+				print "$key => $fflint{$key}\n";
+			}
+
+		#reverse #swap keys with values
+			%rev = reverse(%flint);	#swaps keys and values
+			foreach $value (sort keys(%rev)) {
+				print "$value <-- $rev{$value}\n";
+			}
+
+	#Adding, Removing, testing elements
+		#Adding
+			$flint{friend} = "barney";  #adds new key "friend" with a value of "barney" to %flint
+		
+		#Removing
+			undef $flint{name}; #The value of key "name" is now undefined or ""
+			delete $flint{job}; #The job key has been removed from %flint
+
+			undef %flint;	#can remove the entire hash from memory
+
+		#testing
+			$flint{animal} = undef;
+			@test = (name fname job friend animal wife child);
+			foreach $testkey (@test) {
+				print "exists" if exists $flint{$testkey};
+				print "defined" if defined $flint{$testkey};
+				print "\n";
+			}
+
+	#Slices
+		@flint{"fname", "job"} = ("wilma", "secretary");  #will replace the value in fname with wilma and the value in job with secretary
+
+	#%ENV - a hash that contains all the environment variables
+		$path = $ENV{PATH}	#stores the PATH environment value in $path
+		
+		foreach $VAR (sort keys %ENV) {
+			print "$VAR: $ENV{$VAR}\n";
+		}
+
+	#Frequency counts - counts how many times something appears
+		@logs = `last`;
+		foreach $_ (@logs) {
+		  @temp = split(\ \, $_); # the first field will be in $temp[0]
+		  next unless @temp	#skip blank lines
+		  $users{$temp[0]}++;	#Add +1 to $users for each user name found
+		}
+	
+	
+	
+#FIle I/O
+	#the <> file handle
+		while (<>) {
+			print $_;
+		}  #will print everyline from a file given as the argument to the script
+
+	#printf - formated print
+		printf [FILEHANDLE] FORMAT, LIST;
+			printf "%15s %5d %4.2f\n", "a", 5, 5.1;
+				s = string (15 characters possible)
+				d = decimals (5 decimal point)
+				f = floating points (4 left of decimal, 2 right of decimal)
+				- = left justified
+				+ - right justified
+				a               00005 0005.10
+	
+	#sprintf - allows the assigning of a formated string to a variable
+		sprintf FORMAT, LIST;
+			$fstring = sprintf FORMAT, LIST;
+			$output = sprintf "%-12s %8s %10s\n", "Character", "ASCII", "Dec ASCII";
+
+	#Regular Expressions
+		=~ - binding operator
+		m// - matching operator # m// is the default operator
+			if ($line =~ m/ere/) {...
+			  or
+			if ($line =~ /ere/) {...
+
+		while (<>) {	#while the input file has data
+			if ($_ =~ /ab/) {	#search each line in the input file for "ab"
+				print "$_"; 	#print out the line that has "ab"
+			}
+		}
+		...
+			if (/ab/) {   #does the exact same thing as the previous if statement
+				print;
+			} 
+		...
+			print if (/ab/);  #does the same thing as the previous if
+
+		#metacharacters
+			. = any single character
+			[...] = chars within brackets are a range or a list
+			[^..] = not in this range or list
+			\ = next character is literal
+			| = or operator; multiple pattern to be matched alternatively
+
+			/a.c/ = will find anything that has "a", followed by any other character, followed by "c"
+			/a.[abd-z]/ = will find anything that starts with "a", followed by any character, followed by a,b,d thru z
+			/a[0-9][a-z]/ = will find anything that starts with "a", follwed by a number 0-9, followed by a letter a-z
+			/a[^0-9][^0-9]/ = will find anything that starts with "a", follwed by a char not 0-9, followed by a not 0-9
+			/[0-9]\+[0-9]/ = will find anything that starts with a number 0-9 followed by a "+" follwed by another number
+			/[a.[a-zA-Z]/ = "a" followed by any character, followed by a-z or A-Z
+
+			/bc|a6/ = will find any time a "bc" or a "a6" shows up
+
+			#Default Character classes:
+				\d = digit class; aka [0-9]
+				\D = not digit class; aka [^0-9]
+				\w = word-building class; aka [a-zA-Z0-9]
+				\W = not word-building class; aka [^a-zA-Z0-9]
+				\s = white space; aka [\r\t\n\f]
+				\S = not white space; aka [^\r\t\n\f]
+				/a\D\D/ = an "a" followed by not a digit, followed by not a digit
+				/\d\W/ = a digit, followed by not a word-building character
+			
+			/...\s./ = 3 characters followed by white space followed by another character
+		
+		#Anchors
+			^ = beginning of the line
+			$ = end of the line
+			\b = end of a word
+			\B = beginning of a word
+
+			/^a6/ = will return any line that begins with a6
+			/..c$/ = will return any line that ends with a char, followed by a char, ending in c
+			/ab\b/ = will find any word that ends with ab
+			/ab\B/ =  will find any word that starts with ab
+
+		#Quantifiers
+			* = appears zero or more times
+			+ = previous char is repeated one or more times
+			? = previous char must appear one time or not at all
+			{n} = previous char appears exactly n times
+			{m,n} = previuos char appears m to n times
+			{m, } = previous char appears m or more times
+			(..) = groups chars together for use in alternation
+
+			/a5555*/ = will return "a" followed by 3 fives, followed by 0 or more 5's
+			/a5555+/ = will return "a" followed by 3 fives, followed by 1 or more 5's
+			/a5?\D/ = will return "a" followed by a 5 (or not) followed by not a digit
+			/a5{4}\D/ = will return "a" followed by 4 5's followed by not a digit
+			/a5{3,5}\D/ = will return "a" followed by 3,4, or 5 5's, followed by not a digit
+			/a5{4, }\D/ = will return "a" followed by 4 or more 5's, followed by not a digit
+			/(55){2}/ = will return any time 55 is repeated twice
+	
+	#Capturing
+		$lf =~ /(\w+),\s(\w+)/);
+			inside the () is captured
+		while (<>) {
+			/(.*):.*:.*:.*:(.*):.*:.*/;
+			$login = $1;
+			$comment = $2;
+			print "login: $1;\n";
+			print "comment: $2;\n";
+
+	#Back-referencing
+		
+	#Greediness
+		if ($string =~ /(f.*r)/) {  #will grab from the first f to the last r
+		if ($string =~ /(f.*?r)/) { #will grab from the first f to the first r
+
+	#Special Vars
+		$& = Contains the matchign part of the whole string
+		$` = Contains the left part of the string (before the matching position)
+		$' = Contains the right part of the string (after the matching position)
+		$+ = Contains the last match in parenthesis
+
+			$var = 'quadrangle';
+			$var =~ /d(.)/;	#matches "dr"
+			print "\$` $`\n"; #what's before "dr"
+			print "\$' $'\n"; #what's after "dr"
+			print "\$& $&\n"; #what matched /d(r)/
+			print "\$+ $+\n"; #what matched (r)
+
+	#Substitute
+		$string =~ s/match/replacement/;
+
+			$string = "This not a string with."
+			$string =~ s/not/is/;   #will substitute "not" with "is"
+			print "$string \n";
+
+		#Modifiers
+			$string =~ s/Not/is/i;  #the "i" will ignore case
+			$string =~ s/Not/is/ig; #the "g" means all "not"'s will be replaced with is
+
+	#Delimiters
+		$string =~ m:DD/MM/YY:  #":" is the new delimiter
+
+	#Translation
+		$string =~ tr/a/A/;  # capitalizes any "a"'s in $string
+		$string =~ tr/a-z/A-Z/; #capitalizes all letters in $string
+
+	#Squeezing - takes out duplicates
+		$string = "aaaabbbbcccddddd";
+		$string =~ tr/a-z/a-z/s; #removes all repeating letters
+
+	#Complement
+		$string =~ tr/a-z/_/c; #anything that's not a-z, replace with a _
+
+	#Truncating
+		$string =~ tr/a-z/a-c; #anything past "c" is a "c"
+
+	#Smart Match Operator
+		~~ = smart match operator
+		
+		
+# Filehandles and files
+	written in uppercase - always
+	
+	#opening and reading
+		open FILENAME, "<temp.pl" or die "Open failed!\n";
+		print "File Opened successfully!\n";
+		close FILENAME;
+
+		open - opens a file
+		close - closes a file
+		die - kills the program
+
+		open FILENAME, "badfile.pl" or die "Open failed: $!\n";
+			$! will contain the error from why the open failed
+
+		while ($line=<FILENAME>) {	#reads each line of FILENAME
+			or
+		while (<FILENAME>) {
+
+		@lines = <FILENAME>; #pull (slurp) the lines from FILENAME into array @lines
+
+		while (<FILENAME>) {
+		  chomp;  #Remove \n from $_
+
+	#Reading from DATA
+		everything after "__END__" in the script is your DATA
+		<DATA> is a special, built in file handle
+			@lines = <DATA>; #slurp <DATA> into @lines
+
+			foreach $lines (@lines) {
+				print $lines;
+			}
+			print "-----EOF------";
+
+			__END__
+			Hans Schmidt
+			Rafaela
+			more
+			text
+			taed
+
+	#Writing
+		open FILEHANDLE, ">filename.txt"; opens filename.txt for writing
+		open FILEHANDLE, ">>filename.txt"; appends any new data to the end of filename.txt
+
+		
+		open IN, "names1.txt" or die "Open failed: $!\n";
+		open OUT, ">out.txt" or die "Open failed: $!\n";
+
+		while (<IN>) {
+		  print OUT "Out data: $_";  #prints data to OUT
+		}
+		
+		close IN;
+		close OUT;
+		
+	#Modifying "print"
+		$, - Changes the separator in print
+		$\ - Changes the end of line in print
+
+		print "aa","bb";
+		print "cc","dd";
+			"aabbccdd"
+		$, = "--"; #changes the print separator to "--"
+		$\ = "\n"; #changes the print end of line to "\n"
+		print "aa","bb";
+		print "cc","dd";
+			"aa--bb"
+			"cc--dd"
+
+
+	#STDOUT and STDERR
+		print STDOUT "This line is printed to STDOUT\n";
+		print STDERR "This is an error sent to STDERR\n";
+
+		STDERR is the screen by default
+			2> filename # 2 is STDERR
+
+	#the "system" command
+		system "cal"; # will run the UNIX "cal" command in a separate shell so the perl script can continue running
+		print `cal`; # will display the UNIX "cal" output but the perl script will wait for cal to complete before continuing
+
+		system "ping -s $host" and die "cmd failed: $!\n"; #using "and" here because system "" returns 0 if successful
+
+	#Filehandles to processes
+		open LS, "ls -l |"; #Open ls as a filehandle or "ls -l" is piped into LS
+		$_ = <LS>; #reads the first line of LS into $_ which will be overwritten shortly
+
+		while (<LS>) {
+		   print; #print the current line or $_
+
+		   @lines = split ' ';	#split, and remove white space
+		   $bytes = $bytes +$lines[4];  #get number of bytes and add them to $bytes
+		   $count++;	#count the number of the files/dirs
+		}
+		close LS
+
+	#Piping
+		$filename = shift(@ARGV); #grabs the first argument off the cmdline and puts that in $filename
+		open INPUT, $filename or die "Open failed: $!\n";
+		open OUT,"| wc" or die "output failed: $!\n";	
+
+	#basic text database
+		
+		
+#Subroutines and Modules
+	using the "strict" pragma or perl -T
+	sub subroutine {  #defines subroutine
+		statement;
+		statement;
+		...
+	}
+
+	sub ();  #calls subroutine sub()
+	&sub (); #calls subroutine &sub()
+	$sub; #calls subroutine sub()
+	$xyz = sub1() + sub2();  #calls subroutines sub1() and sub2()
+
+	hello();   #calls subroutine hello()
+	sub hello{  #defines subroutine hello()
+	   print "Hello World!\n";
+	}
+	
+	sub hello; # lets perl know hello is a subroutine for future referance
+
+	$ret = names(); #$ret will contain the status of the last command unless "return" is defined in the subroutine
+
+	@_ # any value passed to a subroutine is stored in array @_
+
+	sub myuc{
+	  $copy_of_name = $_[0]; #$_ here is the @_ array
+	  $copy_of_name = uc($copy_of_name);
+	  return $copy_of_name;	#returns $copy_of_name as the result of the subroutine
+	}
+
+	"my" variables are "local" variables that stay within the code block in which they're defined
+	  $hero = "Batman";
+	  print "\$hero in main: $hero\n";
+	  {
+	     my $hero = "Robin";
+	     print "\$hero in block1: $hero\n";  #will print Robin
+	  }
+	  {
+	     my $hero = "Batgirl";
+	     print "\$hero in block2: $hero\n";  #will print Batgirl
+	  }
+	  print "\$hero in main: $hero\n"; #will return Batman
+
+	#local variables
+		local $var = data; 	#will define the variable through this block and any other block within this block
+
+	#pragmas
+		use strict;
+		  - will force use of non-global variables unless explicitly told to do so
+		sub printall{
+		  my $car = "Pinto";
+		   printsk();
+		   printcar($car);
+		}
+		
+		sub printsk{
+		  my $sidekick = "Batgirl";
+		  print "$sidekick\n";
+		}
+	
+		sub printcar{
+		  my $car = $_[0];
+		  print "$car\n";
+		}
+	
+	#wantarray()
+		- will return array value in a subroutine if the data is being returned into an array
+
+	#libraries
+		.pl - standard extension for Perl library
+		no shebang
+		contains just functions
+		ends with true or "1"
+	
+		@INC is the library path for perl; "perl -V" displays this path	
+		unshift(@INC, "/path/to/library"); #adds /path/to/library to the front of @INC
+		require "mathlib.pl" #functions in mathlib.pl are now available in the script
+
+	#Package
+		Helps prevent subroutines that are named the same in libraries
+
+		package pkgname; - will name this library as a package pkgname
+
+		using packages in scripts:
+			my $var = pkgname::sub(data);  - will specifically call sub() from pkgname perl library
+
+

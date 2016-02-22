@@ -1,0 +1,352 @@
+http://mamer.cs.sonoma.edu/shells_and_init_files.html
+
+SHELLS AND THEIR INIT FILES
+
+KSH-SOLARIS
+Now executing /etc/profile
+Executed at login time.
+System wide profile.
+Should include pathing and basic shell variable values.
+
+The bare minimum path.
+
+PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/bin/X11:/usr/ucb:/usr/local/java/java/bin
+export PATH
+MANPATH=/usr/man:/usr/local/man:/usr/share/man
+export MANPATH
+
+
+Executing ~/.profile
+Executed at login time.
+User defined pathing and variables.
+
+If the user want to add local pathing, it should be something like the 
+following:
+
+PATH=$PATH:$HOME/bin:.
+export PATH
+
+Note, this shell appears to only execute the start up files on login.
+all sub-process shells inherit their path and environment from the 
+parrent process. (from the /etc/profile and ~/.profile)
+
+CSH-SOLARIS
+Now executing /etc/.login
+Executed at login time.
+System wide profile.
+Should include pathing and basic shell variable values.
+
+The bare minimum path.
+
+set path=(/usr/local/bin /usr/bin /bin /usr/local/bin/X11 /usr/ucb /usr/local/java/java/bin)
+set manpath=(/usr/man /usr/local/man)
+
+
+Now executing ~/.cshrc
+Executed at login time and when ever a shell is started up or spauned.
+User defined pathing and variables.
+
+If the user want to add local pathing, it should be something like the 
+following:
+
+set path=($path $HOME/bin .)
+
+
+Now executing ~/.login
+Executed at login time.
+Users should add any environment variables or recodes the want to exist in their
+interactive environment in this file.
+
+an example of one would be as follows:
+setenv EDITOR emacs
+
+BSH-SOLARIS
+
+Now executing /etc/profile
+Executed at login time.
+System wide profile.
+Should include pathing and basic shell variable values.
+
+The bare minimum path.
+
+PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/bin/X11:/usr/ucb:/usr/local/java/java/bin
+export PATH
+MANPATH=/usr/man:/usr/local/man:/usr/share/man
+export MANPATH
+
+
+Now executing ~/.bash_profile
+Executed at login time.
+User defined pathing and variables.
+
+This file checkes for the existance of ~/.bashrc and sources it,
+if it exists. (~/.bashrc is where the pathing should be added for
+local users stuff.)
+
+Local environmental variables should be added to this files.
+
+Now Executing ~/.bashrc
+Executed at login and when new shell is started up.
+User defined pathing and variables.
+
+If the user want to add local pathing, it should be something like the 
+following:
+
+PATH=$PATH:$HOME/bin:.
+export PATH
+
+TCSH-SOLARIS
+Now executing /etc/.login
+Executed at login time.
+System wide profile.
+Should include pathing and basic shell variable values.
+
+The bare minimum path.
+
+set path=(/usr/local/bin /usr/bin /bin /usr/local/bin/X11 /usr/ucb /usr/local/java/java/bin)
+set manpath=(/usr/man /usr/local/man)
+
+
+Now executing ~/.cshrc
+Executed at login time and when ever a shell is started up or spauned.
+User defined pathing and variables.
+
+If the user want to add local pathing, it should be something like the 
+following:
+
+set path=($path $HOME/bin .)
+
+
+Now executing ~/.login
+Executed at login time.
+Users should add any environment variables or recodes the want to exist in their
+interactive environment in this file.
+
+an example of one would be as follows:
+setenv EDITOR emacs
+
+LINUX.CS.SONOMA.EDU
+
+KSH-LINUX
+Now executing /etc/profile
+Executed at login time.
+System wide profile.
+Should include pathing and basic shell variable values.
+
+The bare minimum path.
+
+PATH=/usr/local/bin:/usr/bin:/bin:/usr/X11R6/bin:/usr/local/scripts:/usr/local/java/bin
+export PATH
+
+
+Executing ~/.profile
+Executed at login time.
+User defined pathing and variables.
+
+If the user want to add local pathing, it should be something like the 
+following:
+
+PATH=$PATH:$HOME/bin:.
+export PATH
+
+Note, this shell appears to only execute the start up files on login.
+all sub-process shells inherit their path and environment from the 
+parrent process. (from the /etc/profile and ~/.profile)
+
+CSH-LINUX
+Now executing /etc/csh.cshrc
+Executed at login time and any time a shell is initialized
+System wide file.
+Should include pathing.
+
+The bare minimum path.
+
+setenv PATH "/usr/local/bin:/usr/bin:/bin:/usr/X11R6/bin:/usr/local/scripts:/usr/local/java/bin"
+
+Now executing /etc/csh.login
+Executed at login only.
+System wide file.
+Should include basic environment variables and interactive pathing
+
+The bare minimum would be:
+
+setenv MANPATH "/usr/man:/usr/local/man"
+setenv EDITOR emacs
+
+
+
+Now executing ~/.cshrc
+Executed at login time and when ever a shell is started up or spauned.
+User defined pathing and variables.
+
+If the user want to add local pathing, it should be something like the 
+following:
+
+set path=($path $HOME/bin .)
+
+Now executing ~/.login
+Executed at login time.
+Users should add any environment variables or recodes the want to exist in their
+interactive environment in this file.
+
+an example of one would be as follows:
+setenv EDITOR emacs
+
+BASH-LINUX
+Now executing /etc/profile
+Executed at login time.
+System wide profile.
+Should include pathing and basic shell variable values.
+
+The bare minimum path.
+
+PATH=/usr/local/bin:/usr/bin:/bin:/usr/X11R6/bin:/usr/local/scripts:/usr/local/java/bin
+export PATH
+
+Now executing ~/.bash_profile
+Executed at login time.
+User defined pathing and variables.
+
+This file checkes for the existance of ~/.bashrc and sources it,
+if it exists. (~/.bashrc is where the pathing should be added for
+local users stuff.)
+
+Local environmental variables should be added to this files.
+
+Now Executing ~/.bashrc
+Executed at login and when new shell is started up.
+User defined pathing and variables.
+
+If the user want to add local pathing, it should be something like the 
+following:
+
+PATH=$PATH:$HOME/bin:.
+export PATH
+
+TCSH-LINUX
+Now executing /etc/csh.cshrc
+
+
+
+Now executing /etc/csh.login
+
+
+
+Now executing ~/.cshrc
+Sourcing SSU standard files
+Now executing /usr/local/lib/ssu.cshrc
+Now executing /usr/local/lib/ssu.alias
+Sourcing users aliases files standard files
+Now executing ~/.alias
+
+
+
+Now executing ~/.login
+Now executing /usr/local/lib/ssu.login
+
+
+
+
+FROM THE MAN PAGES
+SHELL=/bin/bash - on ZIPPY.CS.SONOMA.EDU
+
+/etc/profile
+The systemwide initialization file, executed for login
+shells
+~/.bash_profile
+The personal initialization file, executed for login
+shells
+~/.bashrc
+The individual per-interactive-shell startup file
+~/.inputrc
+Individual readline initialization file
+
+SHELL=/bin/csh - on ZIPPY.CS.SONOMA.EDU
+
+/etc/.login.
+
+When the shell executes a shell script that attempts to exe-
+cute a non-existent command interpreter, the shell returns
+an erroneous diagnostic message that the shell script file
+does not exist.
+
+~/.cshrc Read at beginning of execution by each
+shell.
+~/.login Read by login shells after .cshrc at
+login.
+~/.logout Read by login shells at logout.
+~/.history Saved history for use at next login.
+/etc/.login.
+
+When the shell executes a shell script that attempts to exe-
+cute a non-existent command interpreter, the shell returns
+an erroneous diagnostic message that the shell script file
+does not exist.
+
+SHELL=/bin/ksh - ZIPPY.CS.SONOMA.ED
+
+/etc/profile
+/etc/suid_profile
+$HOME/.profile
+/tmp/sh*
+/dev/null
+
+SHELL=/bin/tcsh - ZIPPY.CS.SONOMA.EDU
+
+/etc/csh.cshrc Read first by every shell. ConvexOS, Stel-
+lix and Intel use /etc/cshrc and NeXTs use
+/etc/cshrc.std. A/UX, AMIX, Cray and IRIX
+have no equivalent in csh(1), but read this
+file in tcsh anyway. Solaris 2.x does not
+have it either, but tcsh reads /etc/.cshrc.
+(+)
+
+/etc/csh.login Read by login shells after /etc/csh.cshrc.
+ConvexOS, Stellix and Intel use /etc/login,
+NeXTs use /etc/login.std, Solaris 2.x uses
+/etc/.login and A/UX, AMIX, Cray and IRIX
+use /etc/cshrc.
+
+~/.tcshrc (+) Read by every shell after /etc/csh.cshrc or
+its equivalent.
+
+~/.cshrc Read by every shell, if ~/.tcshrc doesn't
+exist, after /etc/csh.cshrc or its
+equivalent. This manual uses `~/.tcshrc' to
+mean `~/.tcshrc or, if ~/.tcshrc is not
+found, ~/.cshrc'.
+
+~/.login Read by login shells after ~/.tcshrc or
+~/.history. The shell may be compiled to
+read ~/.login before instead of after
+~/.tcshrc and ~/.history; see the version
+shell variable.
+
+~/.cshdirs (+) Read by login shells after ~/.login if
+savedirs is set, but see also dirsfile.
+
+/etc/csh.logout Read by login shells at logout. ConvexOS,
+Stellix and Intel use /etc/logout and NeXTs
+use /etc/logout.std. A/UX, AMIX, Cray and
+IRIX have no equivalent in csh(1), but read
+this file in tcsh anyway. Solaris 2.x does
+not have it either, but tcsh reads
+/etc/.cshrc. (+)
+
+~/.logout Read by login shells at logout after
+/etc/csh.logout or its equivalent.
+
+
+SHELL=/bin/bash - on LINUX.CS.SONOMA.EDU
+
+/etc/profile
+The systemwide initialization file, executed for login shells
+
+~/.bash_profile
+The personal initialization file, executed for login shells
+
+~/.bashrc
+The individual per-interactive-shell startup file
+
+~/.inputrc
+Individual readline initialization file

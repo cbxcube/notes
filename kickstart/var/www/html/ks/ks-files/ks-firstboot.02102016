@@ -1,0 +1,225 @@
+#!/bin/bash
+
+# chkconfig: 35 99 95
+# Provides: firstboot
+# Short-Description: Starts the firstboot configuration program
+# Description: Firstboot runs the first time a machine is booted after
+#              installation.  It checks for the existance of an
+#              /etc/sysconfig/firstboot file.  If the file exists and
+#              contains RUN_FIRSTBOOT=NO, firstboot will not run.  Otherwise
+#              firstboot will be run.  If /etc/reconfigSys exists or if
+#              "reconfig" is provided in the kernel boot arguments,
+#              firstboot will run in reconfiguration mode.
+
+# Source function library.
+. /etc/init.d/functions
+
+OSVER=`lsb_release -sr | cut -d. -f1`
+
+# /etc/sysconfig/firstboot not used in RHEL 7
+FILENAME=/etc/sysconfig/firstboot
+LOGNAME=/root/firstboot.log
+
+[ -z "$HOME" ] && export HOME=/
+
+usage() {
+    echo $"Usage: $0 {start|stop}"
+}
+
+case "$1" in
+    start)
+        if [ `/usr/bin/id -u` -ne 0 ]; then
+            echo $"ERROR: Only root can run firstboot" exit 4
+        fi
+
+	# NOT NEEDED IN RHEL 7
+	if [ "$OSVER" != "7" ]; then
+        	if [ ! -f /usr/sbin/firstboot ]; then
+			echo $"ERROR: Program /usr/sbin/firstboot is not installed"
+			exit 5
+		fi
+
+        	if [ -f $FILENAME ] && [ ! -z "$(grep 'RUN_FIRSTBOOT=NO' $FILENAME)" ]; then
+        		exit 0
+		fi
+	fi
+        args=""
+        
+	if grep -i "reconfig" /proc/cmdline >/dev/null || [ -f /etc/reconfigSys ]; then
+            args="--reconfig"
+        fi
+
+        . /etc/profile.d/lang.sh
+
+	# Install VMware Tools if a VMware guest, else skip
+	dmidecode | grep -i "Manufacturer: VMware, Inc." > /dev/null
+	VMRETURN=$?
+	if [ "$VMRETURN" -eq 0 ]; then
+		echo "Installing VMWare Tools..."
+		# Download VMWare Tools Bundle
+		wget -O /var/tmp/VMwareTools.tar.gz http://10.40.32.25:/ks/ks-files/VMwareTools.tar.gz
+
+		# Extract
+		tar -xzvf /var/tmp/VMwareTools.tar.gz -C /var/tmp
+
+		# Install VMware Tools using defaults
+		/var/tmp/vmware-tools-distrib/vmware-install.pl -d
+
+		# Clean up
+		rm -fr /var/tmp/vmware-tools-distrib
+		rm -fr /var/tmp/VMwareTools.tar.gz
+		
+		#NOT NEEDED IN RHEL 7
+		#if  [ $(lsb_release -sr | cut -d. -f1) = '6' ] || [ $(lsb_release -sr | cut -d. -f1) = '5' ] || [ $(lsb_release -sr | cut -d. -f1) = '4' ]; then
+		if  [ "$OSVER" = '6' ] || [ "$OSVER" = '5' ] || [ "$OSVER" = '4' ]; then
+			# Download vmware tools check startup script to re-initialize vmware tools post Kernel patching
+			wget -O /etc/init.d/check-vmware-tools http://10.40.32.25/ks/ks-files/check-vmware-tools
+			chkconfig check-vmware-tools on
+			chmod +x /etc/init.d/check-vmware-tools
+		fi
+	fi
+
+	echo "Implanting several standard configuration files..."
+		# Write appropriate ntp.conf
+		wget -O /etc/ntp.conf http://10.40.32.25:/ks/ks-files/ntp.conf
+		# Write appropriate snmpd.conf
+		wget -O /etc/snmp/snmpd.conf http://10.40.32.25:/ks/ks-files/snmpd.conf
+
+	echo "Registering with Satellite..."
+		# Prepare server for Satellte registration
+		wget -O /usr/share/rhn/RHN-ORG-TRUSTED-SSL-CERT http://10.40.32.99:/pub/RHN-ORG-TRUSTED-SSL-CERT
+		wget -O /etc/sysconfig/rhn/up2date http://10.40.32.25:/ks/ks-files/up2date
+		if [ $(uname -p) = 'x86_64' ]; then
+			if  [ $(lsb_release -sr | cut -d. -f1) = '7' ]; then
+				rpm --import http://ep1p-apbuild01.starkey.com/pub/gpg/RPM-GPG-KEY-EPEL-7				
+                                /usr/sbin/rhnreg_ks --serverUrl=https://ep1p-apux04.starkey.com/XMLRPC --sslCACert=/usr/share/rhn/RHN-ORG-TRUSTED-SSL-CERT --activationkey=1-BuildKey-rhel7-64
+                                /usr/bin/yum -y update
+			elif  [ $(lsb_release -sr | cut -d. -f1) = '6' ]; then
+				rpm --import http://ep1p-apbuild01.starkey.com/pub/gpg/RPM-GPG-KEY-EPEL-6
+				/usr/sbin/rhnreg_ks --serverUrl=https://ep1p-apux04.starkey.com/XMLRPC --sslCACert=/usr/share/rhn/RHN-ORG-TRUSTED-SSL-CERT --activationkey=1-BuildKey-rhel6-64
+				/usr/bin/yum -y update
+			elif [ $(lsb_release -sr | cut -d. -f1) = '5' ]; then
+				rpm --import http://ep1p-apbuild01.starkey.com/pub/gpg/RPM-GPG-KEY-EPEL-5
+				/usr/sbin/rhnreg_ks --serverUrl=https://ep1p-apux04.starkey.com/XMLRPC --sslCACert=/usr/share/rhn/RHN-ORG-TRUSTED-SSL-CERT --activationkey=1-BuildKey-rhel5-64
+				/usr/bin/yum -y update
+			elif [ $(lsb_release -sr | cut -d. -f1) = '4' ]; then
+				echo "No Satellite activation key available for RHEL 4AS 64bit."
+			else
+				echo "No Satellite channel available for this OS."
+			fi
+		else
+			if  [ $(lsb_release -sr | cut -d. -f1) = '6' ]; then
+				echo "No Satellite activation key available for RHEL 6 32bit."
+			elif [ $(lsb_release -sr | cut -d. -f1) = '5' ]; then
+				rpm --import http://ep1p-apbuild01.starkey.com/pub/gpg/RPM-GPG-KEY-EPEL-5
+				/usr/sbin/rhnreg_ks --serverUrl=https://ep1p-apux04.starkey.com/XMLRPC --sslCACert=/usr/share/rhn/RHN-ORG-TRUSTED-SSL-CERT --activationkey=1-BuildKey-rhel5-32
+				/usr/bin/yum -y update
+			elif [ $(lsb_release -sr | cut -d. -f1) = '4' ]; then
+				rpm --import http://ep1p-apbuild01.starkey.com/pub/gpg/RPM-GPG-KEY-EPEL-4
+				/usr/sbin/rhnreg_ks --serverUrl=https://ep1p-apux04.starkey.com/XMLRPC --sslCACert=/usr/share/rhn/RHN-ORG-TRUSTED-SSL-CERT --activationkey=1-BuildKey-rhel4as-32
+				/usr/sbin/up2date -i
+			else
+				echo "No Satellite channel available for this OS."
+			fi
+		fi
+	
+	
+	echo "Installing Legato Networker..."
+		if [ -f /opt/depots/software/networker/nw80sp1/linux_x86_64/lgtoclnt-8.0.1.1-1.x86_64.rpm ]; then
+			/usr/bin/yum -y localinstall /opt/depots/software/networker/nw80sp1/linux_x86_64/lgtoclnt-8.0.1.1-1.x86_64.rpm /opt/depots/software/networker/nw80sp1/linux_x86_64/lgtoman-8.0.1.1-1.x86_64.rpm
+			mkdir -p /nsr/res
+			echo "ep1p-apnsr01.starkey.com" > /nsr/res/servers
+		else
+			echo "Legato Networker RPM not available from /opt/depots NFS share. Install manually."
+		fi
+
+	echo "Installing Puppet..."
+		# add puppet repo
+		mkdir -m 755 /usr/share/pki/ep1p-apbuild01.starkey.com
+		wget -O /usr/share/pki/ep1p-apbuild01.starkey.com/ca.crt http://10.40.32.25/ks/ks-files/ep1p-apbuild01.starkey.com-ca.crt
+		wget -O /etc/yum.repos.d/starkey-puppet.repo http://10.40.32.25:/ks/ks-files/starkey-puppet.repo
+		wget -O /etc/yum.repos.d/starkey.repo http://10.40.32.25:/ks/ks-files/starkey.repo
+		yum clean all
+		yum -y install puppet
+		mv /etc/puppet/puppet.conf /etc/puppet/puppet.conf.orig
+		if [ -f /etc/puppet.environ ]; then
+			ENVIRON=`cat /etc/puppet.environ`
+				case "${ENVIRON}" in
+					lab) wget -O /etc/puppet/puppet.conf http://10.40.32.25:/ks/ks-files/lab.puppet.conf;;
+					infrastructure) wget -O /etc/puppet/puppet.conf http://10.40.32.25:/ks/ks-files/infra.puppet.conf;;
+					oracle-prod) wget -O /etc/puppet/puppet.conf http://10.40.32.25:/ks/ks-files/ora-prd.puppet.conf;;
+					oracle-web) wget -O /etc/puppet/puppet.conf http://10.40.32.25:/ks/ks-files/ora-web.puppet.conf;;
+					oracle-non-prod) wget -O /etc/puppet/puppet.conf http://10.40.32.25:/ks/ks-files/ora-nonprd.puppet.conf;;
+					web) wget -O /etc/puppet/puppet.conf http://10.40.32.25:/ks/ks-files/web-prd.puppet.conf;;
+					other-prod) wget -O /etc/puppet/puppet.conf http://10.40.32.25:/ks/ks-files/def-prd.puppet.conf;;
+					other-non-prod) wget -O /etc/puppet/puppet.conf http://10.40.32.25:/ks/ks-files/def-nonprd.puppet.conf;;
+				esac
+
+#			if [ $(lsb_release -sr | cut -d. -f1) = '7' ]; then
+			if [ "$OSVER" = '7' ]; then
+				systemctl enable puppet
+			else
+				chkconfig puppet on
+			fi
+			puppet agent -t
+		else
+			echo "Puppet environment not set. Manually configure puppet."
+		fi
+
+	# Installing additional packages not available at initial build 
+	yum -y install sharutils dos2unix unix2dos
+
+	# Set Default desktop session on RHEL 7
+	if [ "$OSVER" = '7' ]; then
+		systemctl set-default graphical.target
+		# Disable firstboot from running again
+		chkconfig ks-firstboot off
+	else
+		chkconfig firstboot off
+	fi
+
+	# Disable user list on GDM login screen
+	if [ "$OSVER" = '7' ]; then
+		wget -O  /etc/dconf/db/gdm.d/00-login-screen http://10.40.32.25:/ks/ks-files/gdm-db.00-login-screen
+		/usr/bin/dconf update
+	fi
+
+	echo "Rebooting one last time for all settings to take effect..."
+	shutdown -r now
+        ;;
+
+    stop)
+        exit 0
+        ;;
+
+    status)
+	if [ "$OSVER" = '7' ]; then
+		/usr/bin/systemctl status ks-firstboot
+	else
+		/sbin/service ks-firstboot status
+	fi
+        RETVAL=$?
+
+        if [ "$RETVAL" -eq 0 ]; then
+            if [ ! -f $FILENAME ] || [ -z "$(grep 'RUN_FIRSTBOOT=NO' $FILENAME)" ]; then
+                echo $"firstboot is scheduled to run"
+            else
+                echo $"firstboot is not scheduled to run"
+            fi
+        else
+            echo $"firstboot is not scheduled to run"
+        fi
+
+        exit 0
+        ;;
+
+    restart | reload | force-reload | condrestart | try-restart)
+        usage
+        exit 3
+        ;;
+
+    *)
+        usage
+        exit 2
+        ;;
+esac

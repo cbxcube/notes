@@ -1,0 +1,58 @@
+1) Verify osbackup and explorer are current, if not execute one:
+    on ssmn00pk00144:
+      ls -ltr /osbackups/ssmn00pk00071
+      if it doesn't exist:
+       /usr/local/bin/backupos.sh
+    from ssmn00pk00071:
+      ls -ltr /home/uss/bin/explorer/servers/ssmn00pk00071
+      if it doesn't exist:
+        /home/uss/bin/explorer/bin/run_explorer.ksh -i
+2) Move dumpdevice to good disk:
+    dumpadm -d /dev/dsk/c1t1d0s1
+3) Verify which is the disk to repalce:
+    for each internal disk, c1t1d0, c1t2d0, c1t3d0, c1t4d0, and c1t5d0 run the following
+      format c1t1d0 -> analyze -> read -> yes
+        look at the server to see which disk is lighting up.
+        By running this on each of the internal disks you can verify which is your bad one.
+3) Offline the disk in Veritas:
+    vxdisk offline c1t0d0s2 
+4) Verify disk is marked as offline:
+    vxdisk list | grep c1t0d0
+5) Attempt to tell the OS to remove the disk:
+    luxadm remove_device /dev/rdsk/c1t0d0s2
+    if this does not work:
+      vxdisk rm c1t0d0s2
+      luxadm -e offline /dev/rdsk/c1t0d0s2
+6) Clean up device tree:
+    devfsadm -Cv -c disk
+7) Verify disk has been removed:
+    vxdisk list - if the disk is still listed run: vxdisk rm c1t0d0s2
+    echo |format | more
+8) Physically replace the disk
+9) Pull the disk under OS control:
+    devfsadm -v
+10) format and label the disk:
+     format c1t0d0 -> label -> yes
+     prtvtoc /dev/rdsk/c1t1d0s2 | fmthard -s - /dev/rdsk/c1t0d0s2
+11) configure the disk for use in veritas:
+     vxdctl enable
+     /etc/vx/bin/vxdisksetup -i c1t0d0
+12) replace failed disk in Veritas
+     vxdiskadm -> option 5 -> select failed disk -> select replacement disk -> yes
+
+       
+
+
+
+Other Pertinent information:
+root@ssmn00pk00071# vxdisk list |grep rootdg
+c1t1d0s2     sliced    rootmirr     rootdg       online
+-            -         rootdisk     rootdg       failed was:c1t0d0s2
+
+root@ssmn00pk00071# ls -al /dev/rdsk/c1t0d0s0
+lrwxrwxrwx   1 root     root          74 Jan 30  2003 /dev/rdsk/c1t0d0s0 -> ../../devices/pci@8,600000/SUNW,qlc@2/fp@0,0/ssd@w21000004cf58dec5,0:a,raw
+
+root@ssmn00pk00071# eeprom nvramrc
+nvramrc=devalias vx-rootdisk /pci@8,600000/SUNW,qlc@2/fp@0,0/disk@w21000004cf58dec5,0:a
+devalias vx-rootmirr /pci@8,600000/SUNW,qlc@2/fp@0,0/disk@w21000004cf58d2c4,0:a
+
