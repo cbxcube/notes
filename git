@@ -1,0 +1,39 @@
+git clone http://github.com/jeffroeq/notes.git
+
+cd ./notes/
+git checkout -b branchname
+
+git status -> will show you what's changed or any issues
+git branch -> will show what branch you're working on
+
+git checkout FILE -> will revert FILE to status prior to modification
+
+# to delete branchname
+git checkout master -> switch to master branch
+git branch -D branchname
+
+# get git to track files for changes
+git add FILENAME -> for one file
+git add FILE1 FILE2 -> for multiple file
+git add . -> for all files in dir
+
+git commit FILENAME -m "message" -> commits changes to FILENAME and notes with a messages
+git commit -a -m "message" -> commits changes to all modified files
+
+git log --branches --not --remotes -> displays which changes haven't yet been pushed upstream but are still in branches
+
+git push origin branchname -> pushes commits upstream
+
+log onto github, generate pull request, and merge the branches;
+
+delete outdated branch on github
+
+on client:
+git checkout master
+git pull origin master
+git branch -d branchname -> force delete with a "D" instead
+
+
+
+
+
