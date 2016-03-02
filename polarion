@@ -1,0 +1,32 @@
+
+
+#Adjust apache to redirect url to not require appending 'polarion'
+ on the coordinator and shared services servers
+  vim /etc/httpd/conf.d/welcome.conf -> to include 'RedirectMatch permanent ^/$ /polarion/'
+    <LocationMatch "^/+$">
+      Options -Indexes
+      ErrorDocument 403 /error/noindex.html
+      RedirectMatch permanent ^/$ /polarion/
+    </LocationMatch>
+ restart Apache
+  service httpd restart
+
+#Import SVN data to from old to new:
+ source: tar -czvf /tmp/polarin_svn.tgz /opt/polarion/data/svn 
+  copy tarball to Shared Service server;
+  Stop Polarion Apache on Shared Services server:
+    service httpd stop
+  backup /opt/polarion/data/svn on destination:
+    mv /opt/polarion/data/svn /opt/polaroin/data/svn.orig
+  untar tarball:
+
+ # ReIndex Nodes: Application will be unavailable until this completes
+  on all nodes; 
+  stop polarion:
+    service polarion stop
+  remove /opt/polarion/data/workspace/polarion-data; 
+    rm -fr /opt/polarion/data/workspace/polarion-data
+  restart polarion:
+    sevice polarion start
+  monitor log files for completion of reindex
+    less +F /var/log/polarion/polarion.log

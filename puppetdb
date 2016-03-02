@@ -1,0 +1,39 @@
+# install jdk 1.8
+yum install java-1.8.0-openjdk
+
+# Install puppet repo
+rpm -ivh https://yum.puppetlabs.com/puppetlabs-release-pc1-el-7.noarch.rpm
+
+# Install puppetdb
+puppet resource package puppetdb ensure=latest
+
+[root@ep1p-apux08 ~]# rpm -qa --last puppetdb
+puppetdb-3.2.4-1.el7.noarch                   Tue 01 Mar 2016 10:02:07 AM CST
+
+
+# Postgresql Configuration
+/etc/sysconfig/puppetdb -> JAVA_ARGS="-Xmx1g"
+# Create separate file system for pgsql, copy directories to it, and symlink to original location
+mkdir -m 755 /pgsql
+rsync -avuz /var/lig/pgsql/ /pgsql
+mv /var/lib/pgsql /var/lib/pgsql.orig
+ln -s /pgsql /var/lib/pgsql
+
+# install postgresql
+yum -y install rh-postgresql94 rh-postgresql94-server rh-postgresql94-contrib
+
+# initialize postgresql
+postgresql-setup initdb
+
+systemctl enable postgresql
+systemctl start postgresql
+
+# configure postgresql for puppetdb
+sudo -u postgres sh
+createuser -DRSP puppetdb
+# password = St@rk3y!
+# install the regexp optimized index extension pg_trgm
+psql puppetdb -c 'create extension pg_trgm'
+exit
+
+
