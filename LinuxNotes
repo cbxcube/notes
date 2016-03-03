@@ -1,3 +1,8 @@
+# TZ change
+cd /usr/share/zoneinfo -> find file for city/region
+cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+vim /etc/sysconfig/clock -> ZONE="Asia/Seoul"
+
 # Perl replace inline
 /usr/bin/perl -p -i'.backup' -e 's/runinterval = 1h/runinterval = 30m/g' /etc/puppet/puppet.conf
 
