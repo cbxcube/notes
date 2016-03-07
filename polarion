@@ -26,6 +26,11 @@ Change to SVN protocol from HTTP
   backup /opt/polarion/data/svn on destination:
     mv /opt/polarion/data/svn /opt/polaroin/data/svn.orig
   untar tarball:
+    cd /opt/polarion/data
+    cat /tmp/polarion_svn.tgz | tar xzvf -
+    mv /opt/polarion/data/opt/polarion/data/svn /opt/polarion/data
+  Start Polarion Apache service:
+    service httpd start
 
  # ReIndex Nodes: Application will be unavailable until this completes
   on all nodes; 
@@ -34,6 +39,6 @@ Change to SVN protocol from HTTP
   remove /opt/polarion/data/workspace/polarion-data; 
     rm -fr /opt/polarion/data/workspace/polarion-data
   restart polarion:
-    sevice polarion start
+    service polarion start
   monitor log files for completion of reindex
     less +F /var/log/polarion/polarion.log
