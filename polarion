@@ -1,4 +1,11 @@
-
+# Backup and Restore
+isilon snapshots -> restore SVN data and reindex.
+# Versions of software upgrade
+Subversion: 1.9
+Java: 1.8
+Apache: 
+Postgresql: 
+Change to SVN protocol from HTTP
 
 #Adjust apache to redirect url to not require appending 'polarion'
  on the coordinator and shared services servers
