@@ -1,0 +1,2 @@
+#Create new schedule from CLI
+roott@ep1p-apav01:~/#: mccli schedule add --name=servers_China --domain=/servers --days=M,Tu,W,Th,F,Sa,Su --start=00:10 --duration=8:00 --tz=Asia/Shanghai
