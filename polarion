@@ -1,3 +1,53 @@
+# SSL Cert
+1) Generate cert pair:
+su - polarion
+openssl req -x509 -nodes -days 3650 -newkey rsa:1024 -keyout serverKey.key -out serverCert.pem
+polarion@ep1p-appol01 ~]$ openssl req -x509 -nodes -days 3650 -newkey rsa:1024 -keyout serverKey.key -out serverCert.pem
+Generating a 1024 bit RSA private key
+................................................++++++
+..............++++++
+writing new private key to 'serverKey.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [XX]:US
+State or Province Name (full name) []:Minnesota
+Locality Name (eg, city) [Default City]:Eden Prairie
+Organization Name (eg, company) [Default Company Ltd]:Starkey Hearing Technologies
+Organizational Unit Name (eg, section) []:Polarion
+Common Name (eg, your name or your server's hostname) []:polarion-coord.starkey.com
+Email Address []:.
+polarion@ep1p-appol01 ~]$ exit
+
+2) Copy certs into place:
+cp /opt/polarion/home/serverCert.pem /etc/pki/tls/certs
+cp /opt/polarion/home/serverKey.key /etc/pki/tls/private
+
+3) Install Apache ssl module and edit config files:
+yum install mod_ssl
+vim /etc/httpd/conf/httpd.conf -> comment out "Listen 80"
+
+4) Import certs into java keystore:
+cp /usr/java/jdk1.7.0_79/jre/lib/security/cacerts /usr/java/jdk1.7.0_79/jre/lib/security/jssecacerts
+/usr/java/jdk1.7.0_79/bin/keytool -importcert -file /etc/pki/tls/certs/serverCert.pem -alias polarion-coord.starkey.c
+om -keystore /usr/java/jdk1.7.0_79/jre/lib/security/jssecacerts -storepass changeit
+...
+#3: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: 97 5D 95 01 F1 82 D9 33   EB 18 04 E3 BD 2F 0F 48  .].....3...../.H
+0010: D8 EE CB 8F                                        ....
+]
+]
+
+Trust this certificate? [no]:  yes
+
+
 # Backup and Restore
 isilon snapshots -> restore SVN data and reindex.
 # Versions of software upgrade
