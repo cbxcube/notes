@@ -30,7 +30,17 @@ cp /opt/polarion/home/serverKey.key /etc/pki/tls/private
 
 3) Install Apache ssl module and edit config files:
 yum install mod_ssl
-vim /etc/httpd/conf/httpd.conf -> comment out "Listen 80"
+vim /etc/httpd/conf.d/ssl.conf:
+  SSLCertificateFile /etc/pki/tls/certs/serverCert.pem
+  SSLCertificateKeyFile /etc/pki/tls/private/serverKey.key
+vim /etc/httpd/conf/httpd.con:
+  ServerName polarion-clstr.starkey.com
+  Timeout 600
+  <VirtualHost *:80>
+       ServerName polarion-clstr.starkey.com
+       Redirect permanent / https://polarion-clstr.starkey.com/
+  </VirtualHost>
+
 
 4) Import certs into java keystore:
 cp /usr/java/jdk1.7.0_79/jre/lib/security/cacerts /usr/java/jdk1.7.0_79/jre/lib/security/jssecacerts
@@ -47,6 +57,10 @@ KeyIdentifier [
 
 Trust this certificate? [no]:  yes
 
+# Post-Polarion install configuration
+1) Coordinator:
+2) Shared Services:
+3) Nodes:
 
 # Backup and Restore
 isilon snapshots -> restore SVN data and reindex.
