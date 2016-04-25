@@ -1,0 +1,24 @@
+#Upgrade
+1) Prior to upgrade, backup stash-home
+rsync -avuz /opt/stash/stash-home/ /opt/stash/stash-home.date
+2) Shutdown bitbucket
+service atlbitbucket stop
+3) update git
+yum erase git
+yum install curl-devel expat-devel gettext-devel openssl-devel perl-devel zlib-devel asciidoc xmlto docbook2X
+ln -s /usr/bin/db2x_docbook2texi /usr/bin/docbook2x-texi
+cd /var/tmp/; tar xzvf git-2.8.1.tar.gz; cd git-2.8.1; 
+  make configure 
+  ./configure --prefix=/usr
+  make all doc info
+  make install install-doc install-html install-info
+4) Download bitbucket upgrade binary
+wget https://www.atlassian.com/software/stash/downloads/binary/atlassian-bitbucket-4.5.1-x64.bin
+5) Install Oracle JDK 1.8
+rpm -ivh /opt/depots/software/polarion/prereqs/jdk-8u77-linux-x64.rpm
+vi ~atlbitbucket/.bashrc ->
+export JAVA_HOME=/usr/java/jdk1.7.0_79
+export JDK_HOME=${JAVA_HOME}
+export PATH=$JAVA_HOME/bin:$PATH
+6) One last backup before upgrading
+rsync -avuz --delete /opt/stash/stash-home/ /opt/stash/stash-home.date
