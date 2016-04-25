@@ -1,0 +1,12 @@
+#automate RHIM client add
+on IPA server: ipa host-add clienthostname.starkey.com --password=St@rk3y!
+in kickstart or on client: /usr/sbin/ipa-client-install --domain=UX.STARKEY.COM --mkhomedir -w St@rk3y! --unattended
+
+# Convert client to 'mkhomedir'
+authconfig --enablemkhomedir --update
+
+# Resolve caching issues (force update of sudo)
+service sssd stop; rm -f /var/lib/sss/db/*; service sssd start
+sss_cache -E
+
+
