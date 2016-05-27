@@ -1,0 +1,3 @@
+CREATE USER 'wordpressuser'@'localhost' IDENTIFIED BY 'W0rdPr3sS!'
+
+CREATE USER 'plesk_admin'@'%' IDENTIFIED BY PASSWORD 'Al1Am3ric@n'

@@ -1,3 +1,22 @@
+# Add HTTP service to RHIM
+on client, configure HTTP application (Apache, cups, etc...) to use KRB5
+# CUPS
+   vim /etc/cups/cupsd.conf:
+      # Default authentication type, when authentication is required
+      DefaultAuthType Basic
+      Krb5Keytab /etc/cups/cups.keytab
+      # Administrator user groups (printeradmin is a local group, printer_admins is in RHIM)
+      SystemGroup printeradmin printer_admins
+
+on IPA server, create the service that will provide the authentication mechanism
+   ipa service-add HTTP/viking.starkey.com
+on client, generate the keytab for the application will use
+   ipa-getkeytab -s ep1p-apux07.ux.starkey.com -p HTTP/ep1d-apcups01.starkey.com -k /etc/cups/cups.keytab -e aes256-cts
+restart HTTP application
+
+# Enable local authentication if it's not working correctly
+authconfig --enablelocauthorize --update
+
 #automate RHIM client add
 on IPA server: ipa host-add clienthostname.starkey.com --password=St@rk3y!
 in kickstart or on client: /usr/sbin/ipa-client-install --domain=UX.STARKEY.COM --mkhomedir -w St@rk3y! --unattended
@@ -8,5 +27,4 @@ authconfig --enablemkhomedir --update
 # Resolve caching issues (force update of sudo)
 service sssd stop; rm -f /var/lib/sss/db/*; service sssd start
 sss_cache -E
-
 
