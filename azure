@@ -14,4 +14,6 @@ azure account list
 scl enable nodejs010 bash
 npm update -g azure-cli
 
-
+# Upload Image
+azure vm image create rhel7v1-starkey --blob-url https://rhel7poc2537.blob.core.windows.net/images/rhel7v1-starkey.vhd --location "Central US" --os Linux /apps/rhel7.2-azure-template.vhd
+azure vm image create <ImageName> --blob-url <BlobStorageURL>/<YourImagesFolder>/<VHDName> --os Linux <PathToVHDFile>
