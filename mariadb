@@ -1,0 +1,10 @@
+#Boot strap galera cluster
+1) on first node
+  galera_new_cluster -> will start up mariadb on the first node in a proper state
+2) on second, and any other ndoes
+  systemctl start mariadb
+3) on first node
+  systemctl restart mariadb
+4) validate the cluster status; log into mariadb and output from the 'show status' should display active settings
+  mysql -u root -p
+  MariaDB [(none)]> SHOW STATUS LIKE 'wsrep%';
