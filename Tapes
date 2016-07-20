@@ -12,7 +12,9 @@ log back onto site, verify new cartridge is viable with proper number of cleanin
 # EJECT TAPES -> Complete before 10am when Iron Mt typically arrives
 1) Log onto ep1p-apnsr01
 2) cd /nsr/scripts
-3) ./ejt_full_tapes -> 
+3) Run the following script:
+	for normal weeks: ./ejt_full_tapes -> 
+	for cycle end weeks: ./etc_full_tapes_ce (marks tapes for 7 year retention) ->
 	select 1 (Create the Full Tapes file)
 	select 2 (Send File to Iron Mtn)
 	select 3 (Create the withdraw scripts)

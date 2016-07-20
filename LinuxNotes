@@ -1,3 +1,7 @@
+# Adjust ext2/3/4 reserved block size
+tune2fs -l /dev/vg_root/lv_home | grep 'reserved block count' -> displays current reserved block count
+tune2fs -m 0 /dev/vg_root/lv_home -> changes reserved block count to 0
+
 # Sudo and redirect output
 sudo sh -c 'command > /tmp/logfile.out'
 or
