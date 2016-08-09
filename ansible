@@ -1,0 +1,37 @@
+All commands should be run from ep1p-apux11 using sudo
+# Ad-hoc commands: http://docs.ansible.com/ansible/intro_adhoc.html
+run puppet agent in all of the 'lab' hosts: sudo -u ansible /usr/bin/ansible lab -m shell -u root -a 'puppet agent -t'
+
+# Change root password
+1) log onto Ansible host: ep1p-apux11
+2) switch to Ansible user: sudo su - ansible
+3) Generate password hash:
+python -c "from passlib.hash import sha512_crypt; import getpass; print sha512_crypt.encrypt(getpass.getpass())"
+4) edit root_password.yaml playbook:
+vim /apps/ansible/playbooks/root_password.yaml
+  change hosts to host group to be changed (can be found in /etc/ansible/hosts); ie lab, web, infra_prod, non-prod:children, etc...
+  change hash in "COMMON_ROOT_PASSWORD" to new hash
+5) Run playbook:
+ansible-playbook /apps/ansible/playbooks/root_password.yaml
+6) Watch for status of updates. Will show changed, ok, failed, unreachable...:
+[ansible@ep1p-apux11 ~]$ ansible-playbook /apps/ansible/playbooks/root_password.yaml
+
+PLAY [lab] *********************************************************************
+
+TASK [Change root password] ****************************************************
+ok: [ep1d-rhel5lab.starkey.com]
+changed: [ep1d-rhel6lab.starkey.com]
+ok: [ep1d-testvm4.starkey.com]
+ok: [ep1d-rhel7lab.starkey.com]
+ok: [ep1d-apux06.starkey.com]
+ok: [ep1p-apux05.starkey.com]
+ok: [ep1t-rhel7a1.starkey.com]
+
+PLAY RECAP *********************************************************************
+ep1d-apux06.starkey.com    : ok=1    changed=0    unreachable=0    failed=0   
+ep1d-rhel5lab.starkey.com  : ok=1    changed=0    unreachable=0    failed=0   
+ep1d-rhel6lab.starkey.com  : ok=1    changed=1    unreachable=0    failed=0   
+ep1d-rhel7lab.starkey.com  : ok=1    changed=0    unreachable=0    failed=0   
+ep1d-testvm4.starkey.com   : ok=1    changed=0    unreachable=0    failed=0   
+ep1p-apux05.starkey.com    : ok=1    changed=0    unreachable=0    failed=0   
+ep1t-rhel7a1.starkey.com   : ok=1    changed=0    unreachable=0    failed=0
