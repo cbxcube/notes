@@ -1,0 +1,12 @@
+1) /etc/ssh/sshd_config LogLevel no higher than INFO
+/usr/bin/perl -p -i'.backup' -e 's/^#LogLevel.*/Loglevel INFO/' /etc/ssh/sshd_config
+
+2) /etc/sysconfig/authconfig PASSWDALGORITHM stronger
+***Expects md5 at least, currently set to sha512 which is stronger***
+
+3) NFS Server Version on the host
+
+4) Authorized Processes?
+
+
+

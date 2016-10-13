@@ -1,19 +1,23 @@
+Run ansible using the ansible user
+# ssh-agent bash
+# ssh-add ~/.ssh/id_rsa_ansible
+# ansible -u ansible [ hostname.starkey.com | hostgroup ] -m ping
+
 All commands should be run from ep1p-apux11 using sudo
 # Ad-hoc commands: http://docs.ansible.com/ansible/intro_adhoc.html
 run puppet agent in all of the 'lab' hosts: sudo -u ansible /usr/bin/ansible lab -m shell -u root -a 'puppet agent -t'
 
 # Change root password
 1) log onto Ansible host: ep1p-apux11
-2) switch to Ansible user: sudo su - ansible
-3) Generate password hash:
+2) Generate password hash:
 python -c "from passlib.hash import sha512_crypt; import getpass; print sha512_crypt.encrypt(getpass.getpass())"
-4) edit root_password.yaml playbook:
+3) edit root_password.yaml playbook:
 vim /apps/ansible/playbooks/root_password.yaml
   change hosts to host group to be changed (can be found in /etc/ansible/hosts); ie lab, web, infra_prod, non-prod:children, etc...
   change hash in "COMMON_ROOT_PASSWORD" to new hash
-5) Run playbook:
+4) Run playbook:
 ansible-playbook /apps/ansible/playbooks/root_password.yaml
-6) Watch for status of updates. Will show changed, ok, failed, unreachable...:
+5) Watch for status of updates. Will show changed, ok, failed, unreachable...:
 [ansible@ep1p-apux11 ~]$ ansible-playbook /apps/ansible/playbooks/root_password.yaml
 
 PLAY [lab] *********************************************************************

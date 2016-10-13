@@ -21,7 +21,7 @@ cockpit: real-time graphical via browers; multifunctional "rhel-7-server-extras-
 pcp: performance co-pilot (RHEL 7 and => 6.6)
   yum install pcp; systemctl enable pmcd; systemctl pmlogger; systemctl start pmcd; systemctl pmlogger
   /etc/pcp/pmlogger
-  yum search pcp | grpe pmda -> pcp charts
+  yum search pcp | grep pmda -> pcp charts
   client + server
      client = pmchart; gui client
      server = pmcd; pmlogger
@@ -31,4 +31,8 @@ tuna: CPU/IRQ affinity; Real time tuning (can adjust IRQ/kernel parameters on th
 Collectd:
   collection agent
   using carbon with collectd plugins; scalable
+
+tuned:
+tuned-adm --list -> displays available tuned profiles
+tuned-adm profile throughput-performacne -> changes tuned profile to throughput-performance profile
   

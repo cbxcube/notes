@@ -1,3 +1,38 @@
+# Query SYM Disks
+symdev list -wwn |grep 32343531
+5C44 Not Visible            TDEV          (m)  60000970000195702791533035433434
+
+# Refresh SNAP with Multi destinations
+symclone -g devicegroup query -multi
+[johnsjef@ep1p-dbor21 ~]$ sudo symclone -g mrpt1_to_mrpt95_dg query -multi
+...
+         Source Device                   Target Device            State     Copy
+--------------------------------- ---------------------------- ------------ ----
+               Protected Modified                Modified
+Logical   Sym  Tracks    Tracks   Logical   Sym  Tracks   CGDP SRC <=> TGT  (%)
+--------------------------------- ---------------------------- ------------ ----
+DEV001    4F33  14307589        0 N/A       2794        0 V... CopyOnWrite   14
+                13853158        0 N/A       226F        0 V... CopyOnWrite   17
+                13821391        0 TGT001    236D        0 VX.. CopyOnWrite   17
+
+Total           -------- --------                --------
+  Track(s)      41982138        0                       0
+  MB(s)          2623884        0                       0
+
+symclone -g devicegroup terminate -tgt
+symclone -g devicegroup create -vse -tgt -nop -concurrent
+symclone -g devicegroup activate -tgt -nop
+
+         Source Device                   Target Device            State     Copy
+--------------------------------- ---------------------------- ------------ ----
+               Protected Modified                Modified
+Logical   Sym  Tracks    Tracks   Logical   Sym  Tracks   CGDP SRC <=> TGT  (%)
+--------------------------------- ---------------------------- ------------ ----
+DEV001    4F33  16768423        0 TGT001    236D        0 VX.. CopyOnWrite    0
+                14307482        0 N/A       2794        0 V... CopyOnWrite   14
+                13853102        0 N/A       226F        0 V... CopyOnWrite   17
+
+
 # Destroy SNAP thru Device Group
 symclone -g devicegroup terminate -tgt  # This can take a long time for the tgt lun to vacate
 symdg show devicegroup

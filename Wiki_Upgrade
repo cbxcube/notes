@@ -1,14 +1,20 @@
-1) Backup
+1) Download recent Confluence for Linux 64bit package from Atlassian: https://www.atlassian.com/software/confluence/download
+2) Prepare for upgrade: Atlassian documentation can be found at https://confluence.atlassian.com/doc/confluence-installation-and-upgrade-guide-214864161.html
+    - check for possible compatibility issues with new version of Confluence, MySQL, Java: https://confluence.atlassian.com/doc/supported-platforms-207488198.html
+
+3) Backup
 	Shutdown Confluence
-		service confluence stop
+		sudo service confluence stop
 	Backup Confluence configurations
-		rsync -avuz /wiki/application-data /wiki_backups/application-data.09022015
-		rsync -avuz /wiki/confluence /wiki_backups/confluence.09022015
+		sudo rsync -avuz /wiki/application-data /wiki_backups/application-data.backup
+		sudo rsync -avuz /wiki/confluence /wiki_backups/confluence.backup
+	Backup MySQL DB
+		sudo /wiki_backups/mysql/mysql_backup	
 	Backup Virtual Machine for quick restore
 		from VMware, right click on ep1p-apwiki02, select Snapshot, select Take Snapshot
 	Restart Confluence prior to upgrade
 		service confluence start
-2) Patch
+4) Patch
     Run Confluence Upgrade script
 		/var/tmp/atlassian-confluence-5.8.9-x64.bin
 		o <enter> -> Ok to continue

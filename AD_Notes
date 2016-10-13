@@ -1,0 +1,63 @@
+dsquery user -name *idm*
+C:\Users\johnsjef>dsquery user -name *idm*
+"CN=Bryan Widmark,OU=HQ,OU=Central,DC=ms,DC=starkey,DC=com"
+"CN=Svc IDMTst,OU=Service,DC=ms,DC=starkey,DC=com"
+
+dsquery * CN="Jeff M. Johnson",OU=HQ,OU=Central,DC=ms,DC=starkey,DC=com -scope base -attr *
+
+dsquery * CN="svc account",OU=ADFolder,dc=ms,dc=starkey,dc=com
+C:\Users\johnsjef>dsquery * CN=svc_idmtst,OU=Service,DC=ms,DC=starkey,DC=com -sc
+ope base -attr *
+dsquery failed:Directory object not found.
+type dsquery /? for help.
+C:\Users\johnsjef>dsquery * CN="svc idmtst",OU=Service,DC=ms,DC=starkey,DC=com -
+scope base -attr *
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+cn: Svc IDMTst
+sn: IDMTst
+description: Test Unix Identity Management service account
+physicalDeliveryOfficeName: Service
+givenName: Svc
+distinguishedName: CN=Svc IDMTst,OU=Service,DC=ms,DC=starkey,DC=com
+instanceType: 4
+whenCreated: 07/30/2015 13:41:26
+whenChanged: 10/13/2016 15:15:25
+displayName: Svc IDMTst
+uSNCreated: 1265377460
+memberOf: CN=Enterprise Read-only Domain Controllers,CN=Users,DC=ms,DC=starkey,D
+C=com
+memberOf: CN=Account Operators,CN=Builtin,DC=ms,DC=starkey,DC=com
+memberOf: CN=Domain Admins,CN=Users,DC=ms,DC=starkey,DC=com
+uSNChanged: 1438915640
+department: hidefromdir
+name: Svc IDMTst
+objectGUID: {1C789704-9EAC-43AC-8735-CAA5890B01DC}
+userAccountControl: 66048
+badPwdCount: 0
+codePage: 0
+countryCode: 0
+badPasswordTime: 130966661629088046
+lastLogoff: 0
+lastLogon: 131032337506142019
+pwdLastSet: 130891522075414324
+primaryGroupID: 513
+objectSid: S-1-5-21-2431348056-1940463047-4232883084-72283
+adminCount: 1
+accountExpires: 9223372036854775807
+logonCount: 13
+sAMAccountName: Svc_IDMTst
+sAMAccountType: 805306368
+userPrincipalName: Svc_IDMTst@ms.starkey.com
+objectCategory: CN=Person,CN=Schema,CN=Configuration,DC=ms,DC=starkey,DC=com
+dSCorePropagationData: 08/25/2016 22:27:22
+dSCorePropagationData: 08/25/2016 22:25:19
+dSCorePropagationData: 03/14/2016 14:49:51
+dSCorePropagationData: 09/25/2015 20:10:48
+dSCorePropagationData: 01/01/1601 00:00:00
+lastLogonTimestamp: 131208444412678922
+extensionAttribute5: DontSyncAccount
+ADsPath: LDAP://EP2P-HQDC1.ms.starkey.com/CN=svc idmtst,OU=Service,DC=ms,DC=star
+key,DC=com
