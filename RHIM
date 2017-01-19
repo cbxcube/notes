@@ -1,3 +1,32 @@
+# Repair 'ipa: ERROR: hostname.domain.com: host not found" errors; WebUI shows server, but deletion fails and host doesn't authenticate
+#from IPA server (ep1p-apux07.ux.starkey.com)
+ldapsearch -LL -Y GSSAPI -b "dc=ux,dc=starkey,dc=com" > /tmp/starkey.com
+view /tmp/starkey.com -> search for hostname to delete, could be multiple entries for same hostname
+#entry will look like:
+dn: fqdn=ep1t-apcq322.starkey.com+nsuniqueid=7d50ec97-8fca11e6-a090b309-14ffc5de,cn=computers,cn=accounts,dc=ux,dc=starkey,dc=com
+#Delete each entry for the hostname in ldap:
+ldapdelete -x -D "cn=Directory Manager" -W "dn: fqdn=ep1t-apcq322.starkey.com+nsuniqueid=7d50ec97-8fca11e6-a090b309-14ffc5de,cn=computers,cn=accounts,dc=ux,dc=starkey,dc=com"
+# Log into the WebUI and verify the host is gone from the hosts list
+# Re-install the IPA Client on the client server
+ipa-client-install --uninstall
+ipa-client-isntall --domain=UX.STARKEY.COM hostname=hostname.starkey.com --mkhomedir --no-ntp
+
+# Replicas
+# https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Identity_Management_Guide/ipa-replica-manage.html
+ipa-replica-manage list
+ipa-replica-manage force-sync --from ep1p-apux07.ux.starkey.com
+ipa-replica-manage re-initialize --from ep1p-apux07.ux.starkey.com
+
+# rngd.service entropy
+sudo cp /usr/lib/systemd/system/rngd.service /etc/systemd/system/
+sudo vim /etc/systemd/system/rngd.service
+ replace :
+   ExecStart=/sbin/rngd -f
+   with
+   ExecStart=/sbin/rngd -f -r /dev/urandom -o /dev/random
+sudo systemctl daemon-reload
+sudo systemctl start rngd.service
+
 # Add HTTP service to RHIM
 on client, configure HTTP application (Apache, cups, etc...) to use KRB5
 # CUPS

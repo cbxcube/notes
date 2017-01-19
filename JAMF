@@ -1,0 +1,46 @@
+[root@ep1p-apjamf01 init.d]# mysqladmin -u root password 'Starkey2924!'
+[root@ep1p-apjamf01 init.d]# mysql -u root -p
+Enter password: 
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 4
+Server version: 5.6.16 MySQL Community Server (GPL)
+
+Copyright (c) 2000, 2014, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> create database jamfsoftware;
+Query OK, 1 row affected (0.00 sec)
+
+mysql> GRANT all on jamfsoftware.* TO 'jamfsoftware'@localhost identified by 'JaMfSt@rK3y';
+Query OK, 0 rows affected (0.00 sec)
+
+
+Implementation
+1) Take one last backup before upgrade
+	log onto ep1p-apjamf01
+	/usr/local/bin/xsudo.sh -> obtains X11 keys
+	sudo su - -> switch to root, and follow instructions from xsudo.sh command
+	java -jar /usr/local/jss/bin/JSSDatabaseUtil.jar -> new window will appear to take backup of DB
+	From VMWare, take snapshots of all 3 VM's (ep1p-apjamf01, ep1p-apjamf02, ep1p-apjamfds01)
+2) Install upgrade on ep1p-apjamf01 and ep1p-apjamf02
+	sudo /var/tmp/JSSInstaller/JSS Installation/jssinstaller.run
+3) Install upgrade on ep1p-apjamfds01
+	sudo /var/tmp/JDS-Linux-Installer-9.96.run; when prompted:
+	JDS Hostname: ep1p-apjamfds01.starkey.com
+	JSS URL: https://macmgmt.starkey.com:8443
+	JSS Username: svc_casper
+	JSS Password: <vaulted pword>
+4) Reboot
+Backout
+Revert to snapshots
+Verification
+log onto https://macmgmt.starkey.com:8443 as svc_casper
+Greg Deegan will validate application
+
+JaMfSt@rK3y
+Starkey2924!

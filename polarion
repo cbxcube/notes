@@ -1,3 +1,124 @@
+# POLARION SUPPORT
+Polarion Support:
+ftp://mail.cz.polarion.com/47429_Starkey
+
+username:upload
+password:Upload1
+
+
+#UPDATE POLARION:
+1) Download updates from Polarion
+	Download PolarionUpdate_2016_SR1.zip; unzip in /var/tmp; chmod +x /var/tmp/Polarion_update/update.sh
+	Download PolarionVARIANTSServerAddon_2016_SR1_linux.zip (https://www.polarion.com/downloads/variants); 
+
+2) snapshot all servers in cluster
+3) backup /opt/polarion/bundled/purevariants in /var/tmp on the nodes (node01 & node02)
+	mv /opt/polarion/bundled/purevariants /var/tmp
+4) backup /opt/polarion/polarion/plugins in /var/tmp/on the nodes (node01 & node02)
+    cp -pr /opt/polarion/polarion/plugins /var/tmp
+
+5) Update on coordinator (appol01)
+	service polarion stop
+	/var/tmp/Polarion_update/update.sh
+	service polarion start
+	less +F /var/log/polarion/polarion.log
+
+6) Update on nodes (appol03 and appol04)
+	service polarion stop
+	service postgresql-polarion stop
+	vim /var/tmp/Polarion_update/linux/bin/postgresql-polarion.init -> change "$pg_ctl" to "/usr/bin/pg_ctl"
+	#mv /etc/init.d/postresql-polarion /etc/init.d/postgresql-polarion.bkup
+	#cp -p /opt/polarion/bin/postgresql-polarion.init ./postgresql-polarion
+	#	vim /etc/init.d/postgresql-polarion -> change "$pg_ctl" to "/usr/bin/pg_ctl"
+	cp -pr /opt/polarion/data/postgresql-data /opt/polarion/data/postgresql-data.07082016
+	/var/tmp/Polarion_update/update.sh
+	# if prompted for PostgreSQL password
+	PostgreSQL password = 5TArk3y!
+	rm -f /opt/polarion/bundled/purevariants/*
+	cp PolarionVARIANTSServerAddon_2016_SR1_linux.zip /opt/polarion/bundled/purevariants
+	cd /opt/polarion/bundled/purevariants; unzip PolarionVARIANTSServerAddon_2016_SR1_linux; chmod +x setup.sh; ./setup.sh
+	
+7) Update on shared server (appol02)
+	/var/tmp/Polarion_update/update.sh
+	when prompted for repository credentials:
+	Login: polarion
+	Password: cnqm%6RZR
+	
+8) Start services
+	on coordinator (appol01): service polarion start; less +F /var/log/polarion/polarion.log
+	on nodes (appol01/02): service postgresql-polarion start; service polarion start; less +F /var/log/polarion/polarion.log
+
+
+#INSTALL POLARION:
+Polarion installation:
+cp /opt/depots/software/polarion/PolarionALM_2015_SR3_linux.zip /var/tmp
+cd /var/tmp; unzip PolarionALM_2015_SR3_linux.zip
+groupadd -g 500 polarion
+useradd -g 500 -u 500 -c "Polarion User" -d /opt/polarion/home -m -s /bin/bash polarion
+passwd polarion = 5T@rk3y!
+umount /opt/polarion/shared;
+chown polarion:polarion /opt/polarion
+
+yum -y erase java-1.7.0-openjdk
+rpm -ivh /opt/depots/software/polarion/prereqs/jdk-7u79-linux-x64.rpm
+vi ~/.bashrc
+export JAVA_HOME=/usr/java/jdk1.7.0_79
+export JDK_HOME=${JAVA_HOME}
+export PATH=$JAVA_HOME/bin:$PATH
+	
+vi ~polarion/.bashrc
+-add the following:
+export JAVA_HOME=/usr/java/jdk1.7.0_79
+export JDK_HOME=${JAVA_HOME}
+export PATH=$JAVA_HOME/bin:$PATH
+
+cd ~; . ./.bashrc
+
+rhn-channel -a -c subversion1.9-rhel6-x86_64-jan2016
+append to /etc/yum/pluginconf.d/rhnplugin.conf:
+[subversion1.9-rhel6-x86_64-jan2016]
+gpgcheck = 0
+
+cd /var/tmp/Polarion; chmod +x ./install.sh; ./install.sh
+Do you want use a new local SVN repository with default settings?:
+Type answer <yes|no>, default [yes] yes
+Would you like to check and install the prerequisities?
+Type answer <yes|no>, default [yes] yes
+It's possible you may want install new packages from:
+  
+  http://dag.wieers.com/rpm/packages/subversion/
+  http://mirrors.dotsrc.org/jpackage/1.7/
+
+
+
+ When you are done press Enter to continue. 
+ Or press "Ctrl+C" to halt the script. You can re-run it later.
+<enter>
+Would you like to install the default Apache and Subversion configuration?
+Please make a back up of /etc before continuing!
+Do you want to copy predefined conf. files into /etc/httpd?
+Type answer <yes|no>, default [yes] yes
+Do you want to initialize and configure PostgreSQL database for Polarion?
+Type answer <yes|no>, default [yes] yes
+
+PostgreSQL password = 5TArk3y!
+
+Would you like install Polarion sample data?
+Type answer <yes|no>, default [yes] no
+
+
+Do you want start Polarion now?
+Type answer <yes|no>, default [yes] no
+
+
+#not necessary: chown -R polarion:apache /opt/polarion
+chown -R postgres:postgres /opt/polarion/data/postgres-data
+
+Nodes
+vi /opt/polarion/etc/polarion.properties: baseurl=nodeurl
+vi /opt/polarion/etc/config.sh: add "  -XX:PermSize=256m \  -XX:MaxPermSize=512m \"
+
+
 # SSL Cert
 1) Generate cert pair:
 su - polarion
@@ -96,7 +217,7 @@ Change to SVN protocol from HTTP
   Start Polarion Apache service:
     service httpd start
 
- # ReIndex Nodes: Application will be unavailable until this completes
+# ReIndex Nodes: Application will be unavailable until this completes
   on all nodes; 
   stop polarion:
     service polarion stop

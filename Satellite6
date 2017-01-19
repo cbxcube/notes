@@ -1,0 +1,19 @@
+# ESXi Hosts UUIDs
+https://ep3p-invm01.ms.starkey.com/mob/?moid=ha-host&doPath=hardware%2esystemInfo
+
+# Virt-Who (server=Vcenter Server)
+yum install virt-who
+cat << EOF > /etc/virt-who.d/virt
+[vcenter]
+type=esx
+server=<vcenterserver>.ms.starkey.com
+username=svc_satvcenter@ms.starkey.com
+password=J@m0n!t
+# The following owner value comes "subscription-manager identity"
+# "subscription-manager identity" can be ran from the same server that virt-who is running on
+owner=Starkey_Hearing_Technologies
+env=Library
+hypervisor_id=hostname
+EOF
+systemctl enable virt-who
+systemctl start virt-who
