@@ -1,11 +1,17 @@
-Run ansible using the ansible user
-# ssh-agent bash
-# ssh-add ~/.ssh/id_rsa_ansible
-# ansible -u ansible [ hostname.starkey.com | hostgroup ] -m ping
+# Query facts
+ansible au1p-apor02.starkey.com -u ansible -m setup
+# Custom facts query
+ansible au1p-apor02.starkey.com -u ansible -m setup -a "filter=ansible_local"
 
-All commands should be run from ep1p-apux11 using sudo
+# Run ansible using the ansible user
+ssh-agent bash
+ssh-add ~/.ssh/id_rsa_ansible
+ansible -u ansible [ hostname.starkey.com | hostgroup ] -m ping
+
+# All commands should be run from ep1p-apux11 using sudo
 # Ad-hoc commands: http://docs.ansible.com/ansible/intro_adhoc.html
-run puppet agent in all of the 'lab' hosts: sudo -u ansible /usr/bin/ansible lab -m shell -u root -a 'puppet agent -t'
+# run puppet agent in all of the 'lab' hosts:
+sudo -u ansible /usr/bin/ansible lab -m shell -u root -a 'puppet agent -t'
 
 # Change root password
 1) log onto Ansible host: ep1p-apux11
@@ -32,10 +38,10 @@ ok: [ep1p-apux05.starkey.com]
 ok: [ep1t-rhel7a1.starkey.com]
 
 PLAY RECAP *********************************************************************
-ep1d-apux06.starkey.com    : ok=1    changed=0    unreachable=0    failed=0   
-ep1d-rhel5lab.starkey.com  : ok=1    changed=0    unreachable=0    failed=0   
-ep1d-rhel6lab.starkey.com  : ok=1    changed=1    unreachable=0    failed=0   
-ep1d-rhel7lab.starkey.com  : ok=1    changed=0    unreachable=0    failed=0   
-ep1d-testvm4.starkey.com   : ok=1    changed=0    unreachable=0    failed=0   
-ep1p-apux05.starkey.com    : ok=1    changed=0    unreachable=0    failed=0   
+ep1d-apux06.starkey.com    : ok=1    changed=0    unreachable=0    failed=0
+ep1d-rhel5lab.starkey.com  : ok=1    changed=0    unreachable=0    failed=0
+ep1d-rhel6lab.starkey.com  : ok=1    changed=1    unreachable=0    failed=0
+ep1d-rhel7lab.starkey.com  : ok=1    changed=0    unreachable=0    failed=0
+ep1d-testvm4.starkey.com   : ok=1    changed=0    unreachable=0    failed=0
+ep1p-apux05.starkey.com    : ok=1    changed=0    unreachable=0    failed=0
 ep1t-rhel7a1.starkey.com   : ok=1    changed=0    unreachable=0    failed=0

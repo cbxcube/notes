@@ -1,3 +1,24 @@
+# default domain login
+# https://access.redhat.com/solutions/1614103
+Issue
+
+In IPA-AD trust environment, how do I make sure that trusted AD users would be able to login without domain component on IPA client?
+For IPA -AD trust, set up an environment where Active Directory can be used as the primary user authentication source. Most user accounts would be stored in Active Directory with a handful of special purpose, Linux specific accounts (build accounts, for example) stored in IdM. When logging into a Linux IdM client with an Active Directory account, it is necessary to log in as aduser@ad.domain.com. This would be cumbersome for our end users and potentially lead to a number of transition issues.
+Resolution
+
+At the moment, there is no way to use non-qualified names for both, either of domains must be qualified. By default it's FQDNs for AD accounts, using default_domain_suffix reverts that behaviour.
+
+Reverting this behaviour will allow trusted AD users to login without domain component on RHEL systems(IPA clients), however IPA users will have to use ipauser@ipa.domain.com format for login purpose. To revert the default behaviour set default_domain_suffix = ad.domain.com in [sssd] section:
+
+Raw
+[sssd]
+services = nss, sudo, pam, ssh
+config_file_version = 2
+
+domains =ipa.domain.com    <- Red Hat IdM domain
+default_domain_suffix = ad.domain.com    <-AD domain
+use_fully_qualified_names = True
+
 # Repair 'ipa: ERROR: hostname.domain.com: host not found" errors; WebUI shows server, but deletion fails and host doesn't authenticate
 #from IPA server (ep1p-apux07.ux.starkey.com)
 ldapsearch -LL -Y GSSAPI -b "dc=ux,dc=starkey,dc=com" > /tmp/starkey.com

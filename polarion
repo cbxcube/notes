@@ -55,7 +55,7 @@ cp /opt/depots/software/polarion/PolarionALM_2015_SR3_linux.zip /var/tmp
 cd /var/tmp; unzip PolarionALM_2015_SR3_linux.zip
 groupadd -g 500 polarion
 useradd -g 500 -u 500 -c "Polarion User" -d /opt/polarion/home -m -s /bin/bash polarion
-passwd polarion = 5T@rk3y!
+passwd polarion = 5T@rk3y!   or   5tArk3y!
 umount /opt/polarion/shared;
 chown polarion:polarion /opt/polarion
 

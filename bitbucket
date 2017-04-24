@@ -71,7 +71,10 @@ Finishing installation ...
 8) update /opt/stash/stash-home/shared/bitbucket.properties to include the following line:
 page.max.diff.lines=20000
 
-9) Start atlbitbucket service
+9) Add snmp monitoring to JVM
+add the following to JAVA_OPTS in /opt/stash/bitbucket/4.5.1/bin/setenv.sh: -Dcom.sun.management.snmp.port=1161 -Dcom.sun.management.snmp.interface=0.0.0.0
+
+10) Start atlbitbucket service
 service atlbitbucket start
 
-10) point browser to http://ep1d-apbitbkt01:7990 for initial verification before passing to DevOps
+11) point browser to http://ep1d-apbitbkt01:7990 for initial verification before passing to DevOps

@@ -29,13 +29,25 @@ Implementation
 	From VMWare, take snapshots of all 3 VM's (ep1p-apjamf01, ep1p-apjamf02, ep1p-apjamfds01)
 2) Install upgrade on ep1p-apjamf01 and ep1p-apjamf02
 	sudo /var/tmp/JSSInstaller/JSS Installation/jssinstaller.run
-3) Install upgrade on ep1p-apjamfds01
+	browse to: https://ep1d-apjamf01.starkey.com:8443 to complete installation.
+3) Verify DataBase.xml has proper credentials
+	sudo vim /usr/local/jss/tomcat/webapps/ROOT/WEB-INF/xml/DataBase.xml
+		ep1p-apjamf01:
+	        <DataBaseName>jamfsoftware</DataBaseName>
+	        <DataBaseUser>jamfsoftware</DataBaseUser>
+	        <DataBasePassword>JaMfSt@rK3y</DataBasePassword>
+		ep1p-apjamf02:
+		<DataBaseName>jamfsoftware</DataBaseName>
+	        <DataBaseUser>jamfdmz</DataBaseUser>
+		<DataBasePassword>wqUqkqU2yBCPo</DataBasePassword>
+4) Install upgrade on ep1p-apjamfds01
 	sudo /var/tmp/JDS-Linux-Installer-9.96.run; when prompted:
 	JDS Hostname: ep1p-apjamfds01.starkey.com
 	JSS URL: https://macmgmt.starkey.com:8443
 	JSS Username: svc_casper
 	JSS Password: <vaulted pword>
-4) Reboot
+5) Reboot JSS server before JDS
+
 Backout
 Revert to snapshots
 Verification
@@ -44,3 +56,5 @@ Greg Deegan will validate application
 
 JaMfSt@rK3y
 Starkey2924!
+
+
