@@ -1,0 +1,83 @@
+# Notes:
+The following ports must be available. On some systems, these ports are open by default.
+TCP port 2377 for cluster management communications
+TCP and UDP port 7946 for communication among nodes
+UDP port 4789 for overlay network traffic
+
+
+1) create file system for docker
+/var/lib/docker - local file system
+/var/lib/registry - NAS
+
+2) Install docker-engine and Docker Compose
+yum install docker-engine
+# Get the most recent link for Docker Compose from https://github.com/docker/compose/releases
+sudo sh -c "curl -L https://github.com/docker/compose/releases/download/1.13.0-rc1/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose"
+sudo chmod +x /usr/local/bin/docker-compose
+
+3) Start and enable docker services
+systemctl start docker
+systemctl enable docker
+
+4) Initialize first docker manager (IP address of initial docker swarm manager)
+docker swarm init -advertise-addr 10.40.32.219
+Example:
+[johnsjef@ep1d-apdock01 ~]$ sudo docker swarm init --advertise-addr 10.40.32.219
+Swarm initialized: current node (k1h9jjl8sddohcy5twc8508vl) is now a manager.
+
+To add a worker to this swarm, run the following command:
+
+    docker swarm join \
+    --token SWMTKN-1-0gz1bge8c8aqfs1gmv97ud0ucalk9u9x8k8cyxkumqenp017gn-4dbwk3ij60c9ncilxk3ufeurw \
+    10.40.32.219:2377
+
+To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+
+4b) Join other docker nodes to the swarm using output from the swarm init command
+docker swarm join --token SWMTKN-1-0gz1bge8c8aqfs1gmv97ud0ucalk9u9x8k8cyxkumqenp017gn-4dbwk3ij60c9ncilxk3ufeurw 10.40.32.219:2377
+
+5) Manage docker manager and nodes
+from a manager:
+docker info -> provides status on the swarm
+docker node ls -> lists nodes on the swarm
+docker node promote nodename.starkey.com -> promotes nodename.starkey.com to act as a manager
+docker swarm join-token worker -> provides then necessary token to use to join a node to the swarm
+
+6) Deploy a service to the swarm
+from a manager:
+docker service create --replicas 1 --name containername containerimage
+docker service ls -> lists running services
+docker service inspect --pretty containername -> displays details of a service (--pretty makes it easier to read)
+docker service ps containername -> shows what nodes the service is running on
+
+7) Change the scale of a service
+from a manager:
+docker service scale containername=5 -> changes the number of replicas to 5
+
+8) Remove a service
+from a manager:
+docker service rm containername -> will destroy all containers in the service
+
+9) Using rolling updates
+from a manager:
+docker service create --replicas 3 --name containername --update-delay 10s containerimage -> deploys 3 replicas and sets a 10second delay when rolling out updates
+docker service update --image newcontainerimage containername -> will update containername with the new image using the rolling update delay
+docker service ps -> will show the new containers spinning up, while the old shutdown, all in a rolling fashion
+
+10) Drain a node
+from a manager:
+docker node update --availability drain nodename.starkey.com -> will move any containers on nodename.starkey.com to other nodes
+docker node inspect --pretty nodename.starkey.com -> will now show nodename.starkey.com 'drained'
+docker node update --availability active nodename.starkey.com -> will activate a node, enabling for new containers
+
+11) Docker Swarm Mesh
+from a manager:
+docker service create --name containername --publish <PUBLISHED-PORT>:<TARGET-PORT> containerimage
+	PUBLISHED PORT is what external users connect to on the node
+	TARGET PORT is the internal port the container is listening on
+	https://docs.docker.com/engine/swarm/ingress/#publish-a-port-for-a-service
+docker service udpate --publish-add <PUBLISHED-PORT>:<TARGET-PORT> containername -> will add a new published port to the container
+docker service inspect --format="{{json .Endpoint.Spec.Ports}}" conaintername -> will display currently published port(s)
+
+
+
