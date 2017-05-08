@@ -1,6 +1,6 @@
 https://docs.mongodb.org/v3.2/tutorial/
 
-# Install
+# Install - NOt needed after migrating to SAT 6
 vim /etc/yum/pluginconf.d/rhnplugin.conf
  append the following:
  [mongodb-org-3.2-rhel6-x86_64-jan2016]
@@ -78,16 +78,11 @@ on the Arbiter, change 'port:' to 27019
 service mongod start
 
 mongo
-
-rs.initiate(); initiates replica set
-
-rs.conf(); displays configuration
-
-rs.add("ep1q-dbmongo03.starkey.com"); second node
-
-rs.status();
-
-rs.addArb("ep1q-dbmongo01.starkey.com:27019"); adds ep1q-dbmongo01.starkey.com:27019 as the arbiter
+> rs.initiate(); initiates replica set
+> rs.conf(); displays configuration
+> rs.add("ep1q-dbmongo03.starkey.com"); second node
+> rs.status();
+> rs.addArb("ep1q-dbmongo01.starkey.com:27019"); adds ep1q-dbmongo01.starkey.com:27019 as the arbiter
 
 https://docs.mongodb.org/v3.0/tutorial/deploy-replica-set/
 https://docs.mongodb.org/v3.0/tutorial/add-replica-set-arbiter/
@@ -102,5 +97,37 @@ where:
 
 for encryption:
 https://blog.istern.dk/2014/05/01/encrypting-and-securing-your-sitecore-connenction-strings/
+
+# Create Authentication
+mongo
+> use admin
+> db.createUser(
+  {
+     user: "root",
+     pwd: "St@rk3y!",
+     roles: [ { role: "userAdminAnyDatabase", db: "admin" }, { role: "dbAdminAnyDatabase", db: "admin"}, { role: "readWriteAnyDatabase", db: "admin" } ]
+  }
+)
+> exit
+vi /etc/mongod.conf
+...
+security:
+  authorization: enabled
+service mongod restart
+
+mongo -u root -p'St@rk3y!' --authenticationDatabase admin
+or
+mongo
+> use admin
+> db.auth("root", 'St@rk3y!')
+
+# Sitecore MongoDB
+db.createUser(
+  {
+     user: "svc_scdev",
+     pwd: "fromvault",
+     roles: [ { role: "dbOwner", db: "Sitecore_analytics" }, { role: "dbOwner", db: "Sitecore_tracking_live" }, { role: "dbOwner", db: "Sitecore_tracking_history" }, { role: "dbOwner", db: "Sitecore_tracking_contact" } ]
+  }
+)
 
 

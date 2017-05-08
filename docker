@@ -20,7 +20,7 @@ systemctl start docker
 systemctl enable docker
 
 4) Initialize first docker manager (IP address of initial docker swarm manager)
-docker swarm init -advertise-addr 10.40.32.219
+docker swarm init --advertise-addr 10.40.32.219
 Example:
 [johnsjef@ep1d-apdock01 ~]$ sudo docker swarm init --advertise-addr 10.40.32.219
 Swarm initialized: current node (k1h9jjl8sddohcy5twc8508vl) is now a manager.

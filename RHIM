@@ -1,3 +1,6 @@
+# Query LDAP
+ldapsearch -x -h ms.starkey.com -p 3268 -b dc=ms,dc=starkey,dc=com -D "CN=Svc IDMTst,OU=Service,DC=ms,DC=starkey,DC=com" -W -x sAMAccountName=johnsjef
+
 # default domain login
 # https://access.redhat.com/solutions/1614103
 Issue
