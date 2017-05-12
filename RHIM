@@ -1,3 +1,18 @@
+# Manually start services (stop in reverse order, ie 1st stop is ipa-dnskeysyncd)
+systemctl start dirsrv.target
+systemctl start krb5kdc
+systemctl start kadmin
+systemctl start named-pkcs11
+systemctl start pia_memcached
+systemctl start httpd
+systemctl start ipa-custodia
+systemctl start pki-tomcatd.target
+systemctl start sssd
+systemctl start smb
+systemctl start winbind
+systemctl start ipa-otpd.socket
+systemctl start ipa-dnskeysyncd
+
 # Query LDAP
 ldapsearch -x -h ms.starkey.com -p 3268 -b dc=ms,dc=starkey,dc=com -D "CN=Svc IDMTst,OU=Service,DC=ms,DC=starkey,DC=com" -W -x sAMAccountName=johnsjef
 
